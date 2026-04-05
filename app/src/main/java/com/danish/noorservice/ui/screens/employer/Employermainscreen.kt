@@ -1,6 +1,6 @@
 package com.danish.noorservice.ui.screens.employer
 
-
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -14,23 +14,24 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.danish.noorservice.ui.theme.*
+import kotlinx.coroutines.launch
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Bottom Nav Items
+// Home | Browse | My Proposals | Settings
+// Proposals badge = number of SENT (pending) proposals in AdminProposalStore
 // ─────────────────────────────────────────────────────────────────────────────
 
 private data class EmployerNavItem(
     val label: String,
-    val emoji: String,
-    val badgeCount: Int = 0
+    val emoji: String
 )
 
 private val employerNavItems = listOf(
-    EmployerNavItem("Home",     "🏠"),
-    EmployerNavItem("Browse",   "🔍"),
-    EmployerNavItem("Proposals", "📋", badgeCount = 2),
-    EmployerNavItem("Messages", "💬", badgeCount = 3),
-    EmployerNavItem("Settings", "⚙️"),
+    EmployerNavItem("Home",      "🏠"),
+    EmployerNavItem("Browse",    "🔍"),
+    EmployerNavItem("Proposals", "📋"),
+    EmployerNavItem("Settings",  "⚙️"),
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -44,14 +45,47 @@ fun EmployerMainScreen(
 ) {
     var selectedTab by remember { mutableIntStateOf(initialTab) }
 
+    var lastBackPressTime by remember { mutableStateOf(0L) }
+    val currentTime = System.currentTimeMillis()
+
+    val scope             = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Live count of pending (SENT) proposals — drives the badge
+    val pendingCount by remember {
+        derivedStateOf {
+            AdminProposalStore.proposals.count { it.status == AdminProposalStatus.SENT }
+        }
+    }
+
+    BackHandler(enabled = true) {
+        if (selectedTab != 0) {
+            selectedTab = 0
+        } else {
+            if (currentTime - lastBackPressTime < 2000) {
+                android.os.Process.killProcess(android.os.Process.myPid())
+            } else {
+                lastBackPressTime = currentTime
+                scope.launch {
+                    snackbarHostState.showSnackbar(
+                        message  = "Press back again to exit",
+                        duration = SnackbarDuration.Short
+                    )
+                }
+            }
+        }
+    }
+
     Scaffold(
         containerColor = NoorBackground,
         bottomBar = {
             EmployerBottomNav(
-                selectedIndex  = selectedTab,
+                selectedIndex = selectedTab,
+                pendingCount  = pendingCount,
                 onItemSelected = { selectedTab = it }
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
         Box(
             modifier = Modifier
@@ -61,16 +95,11 @@ fun EmployerMainScreen(
             when (selectedTab) {
                 0 -> EmployerHomeScreen(
                     onBrowse   = { selectedTab = 1 },
-                    onBookings = { selectedTab = 2 },
-                    onMessages = { selectedTab = 3 },
-                    onSettings = { selectedTab = 4 }
+                    onSettings = { selectedTab = 3 }
                 )
-                1 -> EmployerBrowseScreen(
-                    onOpenWorker = { /* handled internally */ }
-                )
-                2 -> EmployerProposalsScreen()
-                3 -> EmployerMessagesScreen()
-                4 -> EmployerSettingsScreen(onLogout = onLogout)
+                1 -> EmployerBrowseScreen()
+                2 -> AdminProposalInboxScreen()
+                3 -> EmployerSettingsScreen(onLogout = onLogout)
             }
         }
     }
@@ -83,6 +112,7 @@ fun EmployerMainScreen(
 @Composable
 private fun EmployerBottomNav(
     selectedIndex: Int,
+    pendingCount: Int,
     onItemSelected: (Int) -> Unit
 ) {
     NavigationBar(
@@ -92,18 +122,25 @@ private fun EmployerBottomNav(
     ) {
         employerNavItems.forEachIndexed { index, item ->
             val isSelected = selectedIndex == index
+            // Show badge on Proposals tab (index 2) when there are pending proposals
+            val badgeCount = if (index == 2) pendingCount else 0
+
             NavigationBarItem(
                 selected = isSelected,
                 onClick  = { onItemSelected(index) },
                 icon     = {
                     BadgedBox(
                         badge = {
-                            if (item.badgeCount > 0) {
+                            if (badgeCount > 0) {
                                 Badge(
                                     containerColor = NoorOrange,
                                     contentColor   = Color.White
                                 ) {
-                                    Text(item.badgeCount.toString(), fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                    Text(
+                                        badgeCount.toString(),
+                                        fontSize   = 9.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
                                 }
                             }
                         }

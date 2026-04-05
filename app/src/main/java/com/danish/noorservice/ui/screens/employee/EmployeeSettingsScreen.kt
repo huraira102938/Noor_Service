@@ -30,7 +30,7 @@ private enum class SettingsSubScreen {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Settings Screen (with built-in sub-screen navigation)
+// Settings Screen
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
@@ -39,7 +39,6 @@ fun EmployeeSettingsScreen(
 ) {
     var subScreen by remember { mutableStateOf(SettingsSubScreen.NONE) }
 
-    // Route to sub-screens
     when (subScreen) {
         SettingsSubScreen.EDIT_PROFILE -> {
             EditProfileScreen(
@@ -65,10 +64,7 @@ fun EmployeeSettingsScreen(
     }
 
     // ── Main settings UI ──────────────────────────────────────────────────────
-    var isAvailable       by remember { mutableStateOf(true)  }
     var pushNotifications by remember { mutableStateOf(true)  }
-    var messageAlerts     by remember { mutableStateOf(true)  }
-    var newProposals      by remember { mutableStateOf(false) }
     var showDeleteDialog  by remember { mutableStateOf(false) }
     var showLogoutDialog  by remember { mutableStateOf(false) }
 
@@ -148,6 +144,7 @@ fun EmployeeSettingsScreen(
 
             // ── Availability ──────────────────────────────────────────────────
             SettingsGroup(title = "Availability") {
+                var isAvailable by remember { mutableStateOf(true) }
                 SettingsToggleItem(
                     emoji    = "🟢",
                     emojiBg  = NoorGreenLight,
@@ -174,21 +171,7 @@ fun EmployeeSettingsScreen(
                     onToggle = { pushNotifications = it }
                 )
                 HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
-                SettingsToggleItem(
-                    emoji    = "💬",
-                    emojiBg  = NoorBlueLight,
-                    title    = "Message Alerts",
-                    checked  = messageAlerts,
-                    onToggle = { messageAlerts = it }
-                )
-                HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
-                SettingsToggleItem(
-                    emoji    = "📩",
-                    emojiBg  = NoorOrangeLight,
-                    title    = "New Proposal Alerts",
-                    checked  = newProposals,
-                    onToggle = { newProposals = it }
-                )
+
             }
 
             // ── Account ───────────────────────────────────────────────────────
@@ -209,7 +192,7 @@ fun EmployeeSettingsScreen(
                 HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
                 SettingsNavItem(emoji = "📄", emojiBg = NoorBackground, title = "Terms & Conditions", onClick = {})
                 HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
-                SettingsNavItem(emoji = "🛡️", emojiBg = NoorBackground, title = "Privacy Policy",    onClick = {})
+                SettingsNavItem(emoji = "🛡️", emojiBg = NoorBackground, title = "Privacy Policy", onClick = {})
             }
 
             // ── Session ───────────────────────────────────────────────────────

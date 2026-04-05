@@ -30,7 +30,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import coil3.compose.AsyncImage
 
 import com.danish.noorservice.ui.components.NoorPrimaryButton
@@ -81,6 +80,11 @@ fun EditProfileScreen(
     var dob      by remember { mutableStateOf("15/03/1992") }
     var bio      by remember { mutableStateOf("Experienced professional driver with 5+ years in DHA & Gulberg area.") }
 
+    // ── Pricing fields ────────────────────────────────────────────────────────
+    var dailyRate   by remember { mutableStateOf("1,200") }
+    var hourlyRate  by remember { mutableStateOf("") }
+    var monthlyRate by remember { mutableStateOf("") }
+
     // ── Photo ─────────────────────────────────────────────────────────────────
     var photoUri by remember { mutableStateOf<Uri?>(null) }
 
@@ -88,12 +92,9 @@ fun EditProfileScreen(
     val languages         = listOf("Urdu", "Punjabi", "English", "Pashto", "Sindhi", "Saraiki")
     val selectedLanguages = remember { mutableStateListOf("Urdu", "Punjabi") }
 
-    // Services that were already registered — treated as "existing" (no re-fill required)
     val existingServiceIds = remember { mutableStateListOf("driver", "houseBoy") }
-    // Currently-selected services (starts == existing)
     val selectedServices   = remember { mutableStateListOf("driver", "houseBoy") }
 
-    // Detail states: pre-created for existing services, lazily created when a new one is added
     val serviceDetailStates = remember {
         mutableStateMapOf<String, ServiceDetailState>().also { map ->
             existingServiceIds.forEach { id ->
@@ -102,7 +103,6 @@ fun EditProfileScreen(
         }
     }
 
-    // IDs that are newly added this session (not in original existingServiceIds)
     val newlyAddedIds by remember {
         derivedStateOf { selectedServices.filter { it !in existingServiceIds } }
     }
@@ -147,7 +147,6 @@ fun EditProfileScreen(
                     .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 28.dp)
             ) {
                 Column {
-                    // Back button
                     Box(
                         modifier = Modifier
                             .size(38.dp)
@@ -167,7 +166,6 @@ fun EditProfileScreen(
                         verticalAlignment     = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        // Tappable avatar → opens gallery directly
                         Box(modifier = Modifier.clickable { galleryLauncher.launch("image/*") }) {
                             Box(
                                 modifier = Modifier
@@ -182,16 +180,13 @@ fun EditProfileScreen(
                                         model              = photoUri,
                                         contentDescription = "Profile photo",
                                         contentScale       = ContentScale.Crop,
-                                        modifier           = Modifier
-                                            .size(76.dp)
-                                            .clip(CircleShape)
+                                        modifier           = Modifier.size(76.dp).clip(CircleShape)
                                     )
                                 } else {
                                     Text("MA", fontSize = 28.sp,
                                         fontWeight = FontWeight.ExtraBold, color = Color.White)
                                 }
                             }
-                            // Orange camera badge (bottom-end)
                             Box(
                                 modifier = Modifier
                                     .size(26.dp)
@@ -314,6 +309,133 @@ fun EditProfileScreen(
                     }
                 }
 
+                // ── 💰 Pricing ────────────────────────────────────────────────
+                NoorSectionCard {
+                    ProfileSectionLabel("My Rates (PKR)")
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Set your pricing so employers know what to expect. Leave blank if not applicable.",
+                        fontSize   = 11.sp,
+                        color      = NoorTextHint,
+                        lineHeight = 16.sp
+                    )
+                    Spacer(Modifier.height(14.dp))
+
+                    // Daily rate row
+                    Row(
+                        modifier              = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment     = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(NoorGreenLight),
+                            contentAlignment = Alignment.Center
+                        ) { Text("📅", fontSize = 18.sp) }
+                        NoorTextField(
+                            value           = dailyRate,
+                            onValueChange   = { dailyRate = it },
+                            label           = "Daily Rate",
+                            placeholder     = "e.g. 1,200",
+                            modifier        = Modifier.weight(1f),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        )
+                        Text(
+                            "/ day",
+                            fontSize   = 12.sp,
+                            color      = NoorTextHint,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    Spacer(Modifier.height(12.dp))
+
+                    // Hourly rate row
+                    Row(
+                        modifier              = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment     = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(NoorBlueLight),
+                            contentAlignment = Alignment.Center
+                        ) { Text("⏱️", fontSize = 18.sp) }
+                        NoorTextField(
+                            value           = hourlyRate,
+                            onValueChange   = { hourlyRate = it },
+                            label           = "Hourly Rate (optional)",
+                            placeholder     = "e.g. 150",
+                            modifier        = Modifier.weight(1f),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        )
+                        Text(
+                            "/ hr",
+                            fontSize   = 12.sp,
+                            color      = NoorTextHint,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    Spacer(Modifier.height(12.dp))
+
+                    // Monthly rate row
+                    Row(
+                        modifier              = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment     = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(NoorOrangeLight),
+                            contentAlignment = Alignment.Center
+                        ) { Text("🗓️", fontSize = 18.sp) }
+                        NoorTextField(
+                            value           = monthlyRate,
+                            onValueChange   = { monthlyRate = it },
+                            label           = "Monthly Rate (optional)",
+                            placeholder     = "e.g. 25,000",
+                            modifier        = Modifier.weight(1f),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        )
+                        Text(
+                            "/ mo",
+                            fontSize   = 12.sp,
+                            color      = NoorTextHint,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    // Info tip
+                    Spacer(Modifier.height(12.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(NoorBlueLight)
+                            .padding(horizontal = 12.dp, vertical = 9.dp)
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment     = Alignment.CenterVertically
+                        ) {
+                            Text("💡", fontSize = 13.sp)
+                            Text(
+                                "Employers see your daily rate on your profile card. Your rates help them decide faster.",
+                                fontSize   = 11.sp,
+                                color      = NoorBlueDark,
+                                lineHeight = 16.sp
+                            )
+                        }
+                    }
+                }
+
                 // ── Services Offered ──────────────────────────────────────────
                 NoorSectionCard {
                     ProfileSectionLabel("Services Offered")
@@ -330,7 +452,6 @@ fun EditProfileScreen(
                             val isSelected = selectedServices.contains(svc.id)
                             val isNew      = isSelected && svc.id !in existingServiceIds
                             NoorSelectableChip(
-                                // Newly-added chips show a ✨ to signal "needs details"
                                 label    = svc.label,
                                 icon     = if (isNew) "✨" else svc.emoji,
                                 selected = isSelected,
@@ -351,7 +472,6 @@ fun EditProfileScreen(
 
                 // ── Inline detail cards for NEWLY added services ───────────────
                 if (newlyAddedIds.isNotEmpty()) {
-                    // Info banner
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -449,18 +569,13 @@ private fun ProfileServiceDetailCard(
     onRemove: () -> Unit
 ) {
     NoorSectionCard {
-        // ── Card header ───────────────────────────────────────────────────────
         Row(
-            modifier             = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 14.dp),
+            modifier             = Modifier.fillMaxWidth().padding(bottom = 14.dp),
             verticalAlignment    = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(NoorBlueLight, RoundedCornerShape(10.dp)),
+                modifier = Modifier.size(40.dp).background(NoorBlueLight, RoundedCornerShape(10.dp)),
                 contentAlignment = Alignment.Center
             ) { Text(emoji, fontSize = 20.sp) }
 
@@ -470,7 +585,6 @@ private fun ProfileServiceDetailCard(
                     fontSize = 10.sp, color = NoorOrange, fontWeight = FontWeight.SemiBold)
             }
 
-            // Remove (×) button
             Box(
                 modifier = Modifier
                     .size(30.dp)
@@ -487,7 +601,6 @@ private fun ProfileServiceDetailCard(
         HorizontalDivider(color = NoorDivider, thickness = 0.8.dp)
         Spacer(Modifier.height(16.dp))
 
-        // ── Skills ────────────────────────────────────────────────────────────
         val skillOptions = editServiceSkillOptions[state.serviceId] ?: emptyList()
         if (skillOptions.isNotEmpty()) {
             DetailSubLabel("Skills")
@@ -509,7 +622,6 @@ private fun ProfileServiceDetailCard(
             Spacer(Modifier.height(16.dp))
         }
 
-        // ── Driver licence ────────────────────────────────────────────────────
         if (state.serviceId == "driver") {
             DetailSubLabel("Licence Type")
             Spacer(Modifier.height(10.dp))
@@ -518,7 +630,6 @@ private fun ProfileServiceDetailCard(
             Spacer(Modifier.height(16.dp))
         }
 
-        // ── Experience ────────────────────────────────────────────────────────
         DetailSubLabel("Experience *")
         Spacer(Modifier.height(10.dp))
         FlowRow(modifier = Modifier.fillMaxWidth(),
@@ -532,11 +643,9 @@ private fun ProfileServiceDetailCard(
         }
         Spacer(Modifier.height(16.dp))
 
-        // ── Available Days ────────────────────────────────────────────────────
         DetailSubLabel("Available Days *")
         Spacer(Modifier.height(10.dp))
-        Row(modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             editDaysOfWeek.forEach { day ->
                 val selected = state.selectedDays.contains(day)
                 Box(
@@ -559,7 +668,6 @@ private fun ProfileServiceDetailCard(
         }
         Spacer(Modifier.height(16.dp))
 
-        // ── Preferred Time Slot ───────────────────────────────────────────────
         DetailSubLabel("Preferred Time Slot *")
         Spacer(Modifier.height(10.dp))
         FlowRow(modifier = Modifier.fillMaxWidth(),
@@ -573,7 +681,6 @@ private fun ProfileServiceDetailCard(
         }
         Spacer(Modifier.height(16.dp))
 
-        // ── Additional Notes ──────────────────────────────────────────────────
         NoorTextField(value = state.note, onValueChange = { state.note = it },
             label = "Additional Notes (optional)",
             placeholder = "Any extra info about this service…",
@@ -597,7 +704,6 @@ private fun DetailSubLabel(text: String) {
         color = NoorTextHint, letterSpacing = 0.5.sp)
 }
 
-// Pre-fills realistic mock data for already-registered services
 private fun ServiceDetailState.applyMockData(id: String): ServiceDetailState {
     experience = "3–5 yrs"
     selectedDays.addAll(listOf("Mon", "Tue", "Wed", "Thu", "Fri"))

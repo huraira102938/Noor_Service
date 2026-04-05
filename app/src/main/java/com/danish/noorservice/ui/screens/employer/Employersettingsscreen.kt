@@ -1,6 +1,5 @@
 package com.danish.noorservice.ui.screens.employer
 
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -62,7 +61,7 @@ fun EmployerSettingsScreen(onLogout: () -> Unit = {}) {
     }
 
     var pushNotifications by remember { mutableStateOf(true)  }
-    var messageAlerts     by remember { mutableStateOf(true)  }
+
     var showLogoutDialog  by remember { mutableStateOf(false) }
     var showDeleteDialog  by remember { mutableStateOf(false) }
 
@@ -77,19 +76,23 @@ fun EmployerSettingsScreen(onLogout: () -> Unit = {}) {
                 .padding(horizontal = 20.dp, vertical = 18.dp)
         ) {
             Column {
-                Text("Settings", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White, letterSpacing = (-0.3).sp)
-                Text("Manage your preferences", fontSize = 12.sp, color = Color.White.copy(alpha = 0.72f))
+                Text("Settings", fontSize = 22.sp, fontWeight = FontWeight.Bold,
+                    color = Color.White, letterSpacing = (-0.3).sp)
+                Text("Manage your preferences", fontSize = 12.sp,
+                    color = Color.White.copy(alpha = 0.72f))
             }
         }
 
         Column(
-            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 16.dp),
+            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
 
             // ── Profile summary card ──────────────────────────────────────────
             Card(
-                modifier  = Modifier.fillMaxWidth().clickable { subScreen = EmployerSettingsSubScreen.EDIT_PROFILE },
+                modifier  = Modifier.fillMaxWidth()
+                    .clickable { subScreen = EmployerSettingsSubScreen.EDIT_PROFILE },
                 shape     = RoundedCornerShape(16.dp),
                 colors    = CardDefaults.cardColors(containerColor = NoorSurface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -111,41 +114,55 @@ fun EmployerSettingsScreen(onLogout: () -> Unit = {}) {
                         Text("newservicesprovided@gmail.com", fontSize = 11.sp, color = NoorTextHint)
                         Spacer(Modifier.height(6.dp))
                         Box(
-                            modifier = Modifier.clip(RoundedCornerShape(20.dp)).background(NoorOrangeLight).padding(horizontal = 8.dp, vertical = 3.dp)
-                        ) { Text("🏠 Employer Account", fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = NoorOrange) }
+                            modifier = Modifier.clip(RoundedCornerShape(20.dp))
+                                .background(NoorOrangeLight).padding(horizontal = 8.dp, vertical = 3.dp)
+                        ) { Text("🏠 Employer Account", fontSize = 10.sp,
+                            fontWeight = FontWeight.SemiBold, color = NoorOrange) }
                     }
-                    Icon(Icons.Default.ChevronRight, contentDescription = null, tint = NoorTextHint, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Default.ChevronRight, contentDescription = null,
+                        tint = NoorTextHint, modifier = Modifier.size(20.dp))
                 }
             }
 
             // ── Notifications ─────────────────────────────────────────────────
             EmployerSettingsGroup("Notifications") {
-                EmployerSettingsToggle("🔔", NoorBlueLight, "Push Notifications", pushNotifications) { pushNotifications = it }
+                EmployerSettingsNavItem("🔔", NoorBlueLight, "View Notifications") {
+                    subScreen = EmployerSettingsSubScreen.NOTIFICATIONS
+                }
                 HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
-                EmployerSettingsToggle("💬", NoorBlueLight, "Message Alerts", messageAlerts) { messageAlerts = it }
+                EmployerSettingsToggle("🔔", NoorBlueLight, "Push Notifications",
+                    pushNotifications) { pushNotifications = it }
+                HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
+
             }
 
             // ── Account ───────────────────────────────────────────────────────
             EmployerSettingsGroup("Account") {
-                EmployerSettingsNavItem("🔒", Color(0xFFF3EEF9),   "Change Password")  { subScreen = EmployerSettingsSubScreen.CHANGE_PASSWORD }
+                EmployerSettingsNavItem("👤", NoorOrangeLight, "Edit Profile") {
+                    subScreen = EmployerSettingsSubScreen.EDIT_PROFILE
+                }
                 HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
-                EmployerSettingsNavItem("📄", NoorBackground,      "Terms & Conditions") {}
+                EmployerSettingsNavItem("🔒", Color(0xFFF3EEF9), "Change Password") {
+                    subScreen = EmployerSettingsSubScreen.CHANGE_PASSWORD
+                }
                 HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
-                EmployerSettingsNavItem("🛡️", NoorBackground,     "Privacy Policy")    {}
+                EmployerSettingsNavItem("📄", NoorBackground, "Terms & Conditions") {}
+                HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
+                EmployerSettingsNavItem("🛡️", NoorBackground, "Privacy Policy") {}
             }
 
             // ── Session ───────────────────────────────────────────────────────
             EmployerSettingsGroup("Session") {
                 EmployerSettingsNavItem("🚪", NoorBlueLight, "Log Out") { showLogoutDialog = true }
                 HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
-                EmployerSettingsNavItem("🗑️", NoorRedLight, "Delete Account", titleColor = NoorRed) { showDeleteDialog = true }
+                EmployerSettingsNavItem("🗑️", NoorRedLight, "Delete Account",
+                    titleColor = NoorRed) { showDeleteDialog = true }
             }
 
             Spacer(Modifier.height(8.dp))
         }
     }
 
-    // Logout dialog
     if (showLogoutDialog) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
@@ -157,23 +174,34 @@ fun EmployerSettingsScreen(onLogout: () -> Unit = {}) {
                     Text("Log Out", color = NoorBlue, fontWeight = FontWeight.SemiBold)
                 }
             },
-            dismissButton    = { TextButton(onClick = { showLogoutDialog = false }) { Text("Cancel", color = NoorTextHint) } }
+            dismissButton    = {
+                TextButton(onClick = { showLogoutDialog = false }) {
+                    Text("Cancel", color = NoorTextHint)
+                }
+            }
         )
     }
 
-    // Delete dialog
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
             shape            = RoundedCornerShape(20.dp),
-            title            = { Text("Delete Account", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = NoorRed) },
-            text             = { Text("This will permanently delete your account and all data. This action cannot be undone.", fontSize = 13.sp, color = NoorTextSecondary) },
+            title            = { Text("Delete Account", fontWeight = FontWeight.Bold,
+                fontSize = 16.sp, color = NoorRed) },
+            text             = {
+                Text("This will permanently delete your account and all data. This cannot be undone.",
+                    fontSize = 13.sp, color = NoorTextSecondary)
+            },
             confirmButton    = {
                 TextButton(onClick = { showDeleteDialog = false }) {
                     Text("Delete", color = NoorRed, fontWeight = FontWeight.SemiBold)
                 }
             },
-            dismissButton    = { TextButton(onClick = { showDeleteDialog = false }) { Text("Cancel", color = NoorTextHint) } }
+            dismissButton    = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancel", color = NoorTextHint)
+                }
+            }
         )
     }
 }
@@ -212,14 +240,17 @@ private fun EmployerSettingsToggle(
     checked: Boolean, onToggle: (Boolean) -> Unit
 ) {
     Row(
-        modifier             = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 13.dp),
+        modifier             = Modifier.fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 13.dp),
         verticalAlignment    = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Box(modifier = Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(emojiBg), contentAlignment = Alignment.Center) {
+        Box(modifier = Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(emojiBg),
+            contentAlignment = Alignment.Center) {
             Text(emoji, fontSize = 16.sp)
         }
-        Text(title, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = NoorTextPrimary, modifier = Modifier.weight(1f))
+        Text(title, fontSize = 13.sp, fontWeight = FontWeight.Medium,
+            color = NoorTextPrimary, modifier = Modifier.weight(1f))
         Switch(
             checked         = checked,
             onCheckedChange = onToggle,
@@ -239,14 +270,17 @@ private fun EmployerSettingsNavItem(
     titleColor: Color = NoorTextPrimary, onClick: () -> Unit
 ) {
     Row(
-        modifier             = Modifier.fillMaxWidth().clickable { onClick() }.padding(horizontal = 14.dp, vertical = 13.dp),
+        modifier             = Modifier.fillMaxWidth().clickable { onClick() }
+            .padding(horizontal = 14.dp, vertical = 13.dp),
         verticalAlignment    = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Box(modifier = Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(emojiBg), contentAlignment = Alignment.Center) {
+        Box(modifier = Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(emojiBg),
+            contentAlignment = Alignment.Center) {
             Text(emoji, fontSize = 16.sp)
         }
-        Text(title, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = titleColor, modifier = Modifier.weight(1f))
+        Text(title, fontSize = 13.sp, fontWeight = FontWeight.Medium,
+            color = titleColor, modifier = Modifier.weight(1f))
         Icon(Icons.Default.ChevronRight, contentDescription = null,
             tint     = if (titleColor == NoorRed) NoorRed else NoorTextHint,
             modifier = Modifier.size(18.dp))

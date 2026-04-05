@@ -1,7 +1,6 @@
 package com.danish.noorservice.ui.screens.employee
 
-
-
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -15,9 +14,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.danish.noorservice.ui.theme.*
+import kotlinx.coroutines.launch
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Bottom Nav Items
+// Employee can only: view their profile/home, view notifications, manage settings
+// No direct messaging or proposals — all contact goes through admin
 // ─────────────────────────────────────────────────────────────────────────────
 
 private data class NavItem(
@@ -28,8 +30,7 @@ private data class NavItem(
 
 private val navItems = listOf(
     NavItem("Home",      "🏠"),
-    NavItem("Messages",  "💬", badgeCount = 3),
-    NavItem("Proposals", "📋", badgeCount = 4),
+    NavItem("Notifications", "🔔", badgeCount = 3),
     NavItem("Settings",  "⚙️"),
 )
 
@@ -44,11 +45,35 @@ fun EmployeeMainScreen(
 ) {
     var selectedTab by remember { mutableIntStateOf(initialTab) }
 
+    var lastBackPressTime by remember { mutableStateOf(0L) }
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    BackHandler(enabled = true) {
+        if (selectedTab != 0) {
+            selectedTab = 0
+        } else {
+            val now = System.currentTimeMillis()
+            if (now - lastBackPressTime < 2000) {
+                android.os.Process.killProcess(android.os.Process.myPid())
+            } else {
+                lastBackPressTime = now
+                scope.launch {
+                    snackbarHostState.showSnackbar(
+                        message  = "Press back again to exit",
+                        duration = SnackbarDuration.Short
+                    )
+                }
+            }
+        }
+    }
+
     Scaffold(
         containerColor = NoorBackground,
+        snackbarHost   = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             EmployeeBottomNav(
-                selectedIndex = selectedTab,
+                selectedIndex  = selectedTab,
                 onItemSelected = { selectedTab = it }
             )
         }
@@ -60,13 +85,13 @@ fun EmployeeMainScreen(
         ) {
             when (selectedTab) {
                 0 -> EmployeeHomeScreen(
-                    onNavigateToMessages  = { selectedTab = 1 },
-                    onNavigateToProposals = { selectedTab = 2 },
-                    onNavigateToSettings  = { selectedTab = 3 }
+                    onNavigateToNotifications = { selectedTab = 1 },
+                    onNavigateToSettings      = { selectedTab = 2 }
                 )
-                1 -> EmployeeMessagesScreen()
-                2 -> EmployeeProposalsScreen()
-                3 -> EmployeeSettingsScreen(onLogout = onLogout)
+                1 -> NotificationsScreen(
+                    onBack = { selectedTab = 0 }
+                )
+                2 -> EmployeeSettingsScreen(onLogout = onLogout)
             }
         }
     }
@@ -125,11 +150,11 @@ private fun EmployeeBottomNav(
                     )
                 },
                 colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor      = NoorBlue,           // Color for selected icon/text
-                    selectedTextColor      = NoorBlue,           // Color for selected text
-                    unselectedTextColor    = NoorTextHint,       // Color for unselected text
-                    indicatorColor         = NoorBlueLight,      // Background indicator when selected
-                    unselectedIconColor    = NoorTextHint        // Color for unselected icon
+                    selectedIconColor   = NoorBlue,
+                    selectedTextColor   = NoorBlue,
+                    unselectedTextColor = NoorTextHint,
+                    indicatorColor      = NoorBlueLight,
+                    unselectedIconColor = NoorTextHint
                 )
             )
         }

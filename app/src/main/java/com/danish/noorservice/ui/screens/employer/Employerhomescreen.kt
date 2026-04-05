@@ -1,5 +1,6 @@
 package com.danish.noorservice.ui.screens.employer
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -8,8 +9,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,16 +27,20 @@ import com.danish.noorservice.ui.theme.*
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Employer Home Screen
+// Employer browses profiles. To hire, they contact the admin — no direct
+// contact with workers.
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 fun EmployerHomeScreen(
     onBrowse: () -> Unit,
-    onBookings: () -> Unit,
-    onMessages: () -> Unit,
     onSettings: () -> Unit
 ) {
     var subScreen by remember { mutableStateOf<EmployerSubScreen>(EmployerSubScreen.None) }
+
+    BackHandler(enabled = subScreen !is EmployerSubScreen.None) {
+        subScreen = EmployerSubScreen.None
+    }
 
     when (subScreen) {
         is EmployerSubScreen.Notifications -> {
@@ -90,10 +93,11 @@ fun EmployerHomeScreen(
                 }
                 Spacer(Modifier.width(10.dp))
                 Column {
-                    Text("Noor Services", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White, letterSpacing = (-0.2).sp)
-                    Text("Provider (Pvt.) Ltd.", fontSize = 10.sp, color = Color.White.copy(alpha = 0.65f), letterSpacing = 0.5.sp)
+                    Text("Noor Services", fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                        color = Color.White, letterSpacing = (-0.2).sp)
+                    Text("Provider (Pvt.) Ltd.", fontSize = 10.sp,
+                        color = Color.White.copy(alpha = 0.65f), letterSpacing = 0.5.sp)
                 }
-                Spacer(Modifier.weight(1f))
             }
         }
 
@@ -111,6 +115,7 @@ fun EmployerHomeScreen(
                     .clip(RoundedCornerShape(20.dp))
                     .background(Brush.linearGradient(listOf(NoorOrange, Color(0xFFB84800))))
                     .padding(18.dp)
+                    .clickable { subScreen = EmployerSubScreen.EditProfile }
             ) {
                 Row(
                     verticalAlignment     = Alignment.CenterVertically,
@@ -127,7 +132,8 @@ fun EmployerHomeScreen(
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Danish Awan", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                        Text("DHA Phase 3, Lahore", fontSize = 11.sp, color = Color.White.copy(alpha = 0.72f))
+                        Text("DHA Phase 3, Lahore", fontSize = 11.sp,
+                            color = Color.White.copy(alpha = 0.72f))
                         Spacer(Modifier.height(8.dp))
                         Box(
                             modifier = Modifier
@@ -135,136 +141,172 @@ fun EmployerHomeScreen(
                                 .background(Color.White.copy(alpha = 0.2f))
                                 .padding(horizontal = 10.dp, vertical = 4.dp)
                         ) {
-                            Text("Employer Account", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text("Employer Account", fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold, color = Color.White)
                         }
                     }
                 }
 
-                // Notification badge removed from here
+                Text(
+                    "✏️ Edit",
+                    fontSize   = 10.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color      = Color.White.copy(alpha = 0.8f),
+                    modifier   = Modifier.align(Alignment.TopEnd)
+                )
             }
+
+            // ── How It Works Banner ───────────────────────────────────────────
+            Box(
+                modifier = Modifier
+                    .padding(horizontal = 16.dp)
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(NoorBlueLight)
+                    .padding(14.dp)
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment     = Alignment.Top
+                ) {
+                    Text("ℹ️", fontSize = 16.sp)
+                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text(
+                            "How it works",
+                            fontSize   = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color      = NoorBlueDark
+                        )
+                        Text(
+                            "Browse worker profiles and find your match. To hire, contact the Noor Services admin — " +
+                                    "they will connect you with the worker and handle the arrangement.",
+                            fontSize   = 12.sp,
+                            color      = NoorBlueDark,
+                            lineHeight = 17.sp
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
 
             // ── Stats Row ─────────────────────────────────────────────────────
             Row(
                 modifier              = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                EmployerStatCard("5",  "Total Workers",   NoorBlue,   Modifier.weight(1f))
-                EmployerStatCard("12", "Proposal Sent",   NoorGreen,  Modifier.weight(1f))
-                EmployerStatCard("2",  "Proposal Accepted",       NoorOrange, Modifier.weight(1f))
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            // ── Free Access Card ───────────────────────────────────────────────
-            Card(
-                modifier = Modifier
-                    .padding(horizontal = 16.dp)
-                    .fillMaxWidth()
-                    .clickable { /* Show coming soon info */ },
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF1C1C1E)),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Left side - Icon and text
-                    Column(modifier = Modifier.weight(1f)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("✨", fontSize = 24.sp)
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                "Full Access - No Charges Yet!",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                        }
-                        Spacer(Modifier.height(6.dp))
-                        Text(
-                            "You're enjoying completely FREE access to all features. Enjoy Noor services — your trusted partner for every task.!",
-                            fontSize = 11.sp,
-                            color = Color.White.copy(alpha = 0.7f),
-                            lineHeight = 14.sp
-                        )
-                        Spacer(Modifier.height(10.dp))
-                        // Decorative line
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth(0.5f)
-                                .height(2.dp)
-                                .background(
-                                    Brush.horizontalGradient(
-                                        listOf(NoorOrange, Color.White.copy(alpha = 0.3f))
-                                    )
-                                )
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("⭐", fontSize = 10.sp)
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                "Premium features coming soon!",
-                                fontSize = 10.sp,
-                                color = Color.White.copy(alpha = 0.6f),
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    }
-
-                    // Right side - Badge
-                    Box(
-                        modifier = Modifier
-                            .width(70.dp)
-                            .height(70.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(NoorOrange.copy(alpha = 0.2f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("🎉", fontSize = 24.sp)
-                            Text(
-                                "BETA",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                        }
-                    }
-                }
+                EmployerStatCard("48",  "Workers Listed", NoorBlue,   Modifier.weight(1f))
+                EmployerStatCard("10+", "Services",       NoorGreen,  Modifier.weight(1f))
+                EmployerStatCard("Free", "Access",        NoorOrange, Modifier.weight(1f))
             }
 
             Spacer(Modifier.height(20.dp))
 
             // ── Quick Actions ─────────────────────────────────────────────────
-            Text("Quick Actions", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = NoorTextPrimary,
-                modifier = Modifier.padding(horizontal = 16.dp))
+            Text("Quick Actions", fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                color = NoorTextPrimary, modifier = Modifier.padding(horizontal = 16.dp))
             Spacer(Modifier.height(12.dp))
 
             Row(
                 modifier              = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                QuickActionCard(emoji = "🔍", label = "Find Workers", bg = NoorBlueLight, onClick = onBrowse, modifier = Modifier.weight(1f))
-                QuickActionCard(emoji = "🔔", label = "Notifications",  bg = NoorGreenLight, onClick = onBookings, modifier = Modifier.weight(1f))
+                QuickActionCard(
+                    emoji    = "🔍",
+                    label    = "Find Workers",
+                    bg       = NoorBlueLight,
+                    onClick  = onBrowse,
+                    modifier = Modifier.weight(1f)
+                )
+                QuickActionCard(
+                    emoji    = "🔔",
+                    label    = "Notifications",
+                    bg       = NoorOrangeLight,
+                    onClick  = { subScreen = EmployerSubScreen.Notifications },
+                    modifier = Modifier.weight(1f)
+                )
             }
 
             Spacer(Modifier.height(20.dp))
 
-            // ── Recent Proposals ───────────────────────────────────────────────
-            Row(modifier = Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("Recent", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = NoorTextPrimary, modifier = Modifier.weight(1f))
-                Text("See all", fontSize = 12.sp, color = NoorBlue, fontWeight = FontWeight.SemiBold, modifier = Modifier.clickable { onBookings() })
-            }
+            // ── Contact Admin Card ────────────────────────────────────────────
+            Text("Contact Admin", fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                color = NoorTextPrimary, modifier = Modifier.padding(horizontal = 16.dp))
             Spacer(Modifier.height(12.dp))
 
-            Column(modifier = Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                EmployerActivityItem("✅", NoorGreenLight, "Proposal Accepted", "Muhammad Ali — Driver · DHA Phase 5", "Today")
-                EmployerActivityItem("⏳", NoorOrangeLight, "Proposal Pending", "Sara Khan — Maid · Model Town", "Yesterday")
+            Card(
+                modifier  = Modifier
+                    .padding(horizontal = 16.dp)
+                    .fillMaxWidth(),
+                shape     = RoundedCornerShape(16.dp),
+                colors    = CardDefaults.cardColors(containerColor = NoorSurface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(
+                    modifier            = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        "Found a worker you'd like to hire?",
+                        fontSize   = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color      = NoorTextPrimary
+                    )
+                    Text(
+                        "Share the worker's name and your requirements with our admin. " +
+                                "We'll verify and connect you with the right candidate.",
+                        fontSize   = 12.sp,
+                        color      = NoorTextHint,
+                        lineHeight = 17.sp
+                    )
+                    HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
+                    AdminContactRow(emoji = "📞", label = "Phone / WhatsApp", value = "+92 300 000 0000")
+                    AdminContactRow(emoji = "📧", label = "Email", value = "admin@noorservices.pk")
+                    AdminContactRow(emoji = "⏰", label = "Office Hours", value = "Mon–Sat, 9 AM – 6 PM")
+                }
             }
+
+            Spacer(Modifier.height(20.dp))
+
+            // ── Free Access Banner ────────────────────────────────────────────
+            Card(
+                modifier = Modifier
+                    .padding(horizontal = 16.dp)
+                    .fillMaxWidth(),
+                shape  = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF1C1C1E)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("✨", fontSize = 24.sp)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Full Access — No Charges Yet!",
+                                fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            "Enjoy completely FREE access to all features. Premium plans coming soon!",
+                            fontSize = 11.sp, color = Color.White.copy(alpha = 0.7f), lineHeight = 14.sp
+                        )
+                    }
+                    Box(
+                        modifier = Modifier.size(60.dp).clip(RoundedCornerShape(12.dp))
+                            .background(NoorOrange.copy(alpha = 0.2f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("🎉", fontSize = 22.sp)
+                            Text("BETA", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        }
+                    }
+                }
+            }
+
             Spacer(Modifier.height(8.dp))
         }
     }
@@ -298,7 +340,8 @@ fun EmployerStatCard(number: String, label: String, accent: Color, modifier: Mod
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(number, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = accent)
-            Text(label, fontSize = 9.sp, color = NoorTextHint, fontWeight = FontWeight.SemiBold, letterSpacing = 0.3.sp)
+            Text(label, fontSize = 9.sp, color = NoorTextHint,
+                fontWeight = FontWeight.SemiBold, letterSpacing = 0.3.sp)
         }
     }
 }
@@ -332,6 +375,20 @@ private fun QuickActionCard(
 }
 
 @Composable
+private fun AdminContactRow(emoji: String, label: String, value: String) {
+    Row(
+        verticalAlignment    = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Text(emoji, fontSize = 16.sp)
+        Column {
+            Text(label, fontSize = 10.sp, color = NoorTextHint, fontWeight = FontWeight.Medium)
+            Text(value, fontSize = 13.sp, color = NoorTextPrimary, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+@Composable
 fun EmployerActivityItem(emoji: String, bg: Color, title: String, subtitle: String, time: String) {
     Card(
         modifier  = Modifier.fillMaxWidth(),
@@ -344,11 +401,12 @@ fun EmployerActivityItem(emoji: String, bg: Color, title: String, subtitle: Stri
             verticalAlignment    = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Box(modifier = Modifier.size(38.dp).clip(CircleShape).background(bg), contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier.size(38.dp).clip(CircleShape).background(bg),
+                contentAlignment = Alignment.Center) {
                 Text(emoji, fontSize = 16.sp)
             }
             Column(modifier = Modifier.weight(1f)) {
-                Text(title,    fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = NoorTextPrimary)
+                Text(title, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = NoorTextPrimary)
                 Spacer(Modifier.height(2.dp))
                 Text(subtitle, fontSize = 11.sp, color = NoorTextHint)
             }

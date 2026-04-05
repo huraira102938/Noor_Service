@@ -11,9 +11,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,41 +27,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.danish.noorservice.ui.theme.*
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Home sub-screen routing
-// ─────────────────────────────────────────────────────────────────────────────
-
-private enum class HomeSubScreen { NONE, NOTIFICATIONS, EDIT_PROFILE }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Employee Home Screen
-// ─────────────────────────────────────────────────────────────────────────────
-
 @Composable
 fun EmployeeHomeScreen(
-    onNavigateToMessages: () -> Unit,
-    onNavigateToProposals: () -> Unit,
+    onNavigateToNotifications: () -> Unit,
     onNavigateToSettings: () -> Unit
 ) {
-    var subScreen by remember { mutableStateOf(HomeSubScreen.NONE) }
-
-    // ── Sub-screen routing ────────────────────────────────────────────────────
-    when (subScreen) {
-        HomeSubScreen.NOTIFICATIONS -> {
-            NotificationsScreen(onBack = { subScreen = HomeSubScreen.NONE })
-            return
-        }
-        HomeSubScreen.EDIT_PROFILE -> {
-            EditProfileScreen(
-                onBack  = { subScreen = HomeSubScreen.NONE },
-                onSaved = { subScreen = HomeSubScreen.NONE }
-            )
-            return
-        }
-        HomeSubScreen.NONE -> { /* fall through */ }
-    }
-
-    // ── Main home content ─────────────────────────────────────────────────────
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -77,66 +46,51 @@ fun EmployeeHomeScreen(
                 .padding(horizontal = 20.dp, vertical = 14.dp)
         ) {
             Row(
-                modifier          = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Logo mark
-                Box(
-                    modifier = Modifier
-                        .size(52.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.2f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Image(
-                        painter     = painterResource(id = R.drawable.noor_services_app_logo),
-                        contentDescription = "Logo",
-                        modifier    = Modifier
-                            .size(45.dp)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(52.dp)
                             .clip(CircleShape)
-                            .graphicsLayer {
-                                scaleX       = 3f
-                                scaleY       = 3f
-                                translationY = 39f
-                                translationX = 4f
-                            },
-                        contentScale = ContentScale.Crop
-                    )
+                            .background(Color.White.copy(alpha = 0.2f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.noor_services_app_logo),
+                            contentDescription = "Logo",
+                            modifier = Modifier
+                                .size(45.dp)
+                                .clip(CircleShape)
+                                .graphicsLayer {
+                                    scaleX = 3f
+                                    scaleY = 3f
+                                    translationY = 39f
+                                    translationX = 4f
+                                },
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                    Spacer(Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            "Noor Services",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            letterSpacing = (-0.2).sp
+                        )
+                        Text(
+                            "Provider (Pvt.) Ltd.",
+                            fontSize = 10.sp,
+                            color = Color.White.copy(alpha = 0.65f),
+                            letterSpacing = 0.5.sp
+                        )
+                    }
                 }
-                Spacer(Modifier.width(10.dp))
-                Column {
-                    Text(
-                        "Noor Services",
-                        fontSize      = 15.sp,
-                        fontWeight    = FontWeight.Bold,
-                        color         = Color.White,
-                        letterSpacing = (-0.2).sp
-                    )
-                    Text(
-                        "Provider (Pvt.) Ltd.",
-                        fontSize      = 10.sp,
-                        color         = Color.White.copy(alpha = 0.65f),
-                        letterSpacing = 0.5.sp
-                    )
-                }
-                Spacer(Modifier.weight(1f))
 
-                // ── Settings icon ─────────────────────────────────────────────
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.15f))
-                        .clickable { onNavigateToSettings() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.Settings,
-                        contentDescription = "Settings",
-                        tint               = Color.White,
-                        modifier           = Modifier.size(20.dp)
-                    )
-                }
             }
         }
 
@@ -148,332 +102,442 @@ fun EmployeeHomeScreen(
                 .padding(bottom = 16.dp)
         ) {
             // ── Profile Card ──────────────────────────────────────────────────
-            Box(
+            Card(
                 modifier = Modifier
                     .padding(16.dp)
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(Brush.linearGradient(listOf(NoorBlue, NoorBlueDark)))
-                    .padding(18.dp)
+                    .fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = NoorSurface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
-                Row(
-                    verticalAlignment     = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
+                Column {
                     Box(
                         modifier = Modifier
-                            .size(58.dp)
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.22f)),
-                        contentAlignment = Alignment.Center
+                            .fillMaxWidth()
+                            .background(Brush.linearGradient(listOf(NoorBlue, NoorBlueDark)))
+                            .padding(18.dp)
                     ) {
-                        Text(
-                            "MA",
-                            fontSize   = 20.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color      = Color.White
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(58.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White.copy(alpha = 0.22f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    "MA",
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color.White
+                                )
+                            }
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "Muhammad Ali",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Text(
+                                    "Lahore · Joined Mar 2025",
+                                    fontSize = 11.sp,
+                                    color = Color.White.copy(alpha = 0.72f)
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = Color.White.copy(alpha = 0.2f),
+                                    modifier = Modifier.wrapContentSize()
+                                ) {
+                                    Text(
+                                        "💰 PKR 1,200/day",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color.White,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(NoorGreen)
+                                .padding(horizontal = 10.dp, vertical = 4.dp)
+                                .align(Alignment.BottomEnd)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(5.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(6.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF90EE90))
+                                )
+                                Text(
+                                    "Available",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
+                        }
                     }
 
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            "Muhammad Ali",
-                            fontSize   = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color      = Color.White
-                        )
-                        Text(
-                            "Lahore · Joined Mar 2025",
-                            fontSize = 11.sp,
-                            color    = Color.White.copy(alpha = 0.72f)
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            ServiceTag("🚗 Driver")
-                            ServiceTag("🧹 House Boy")
+                    // Availability Details Row
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("📅", fontSize = 18.sp)
+                            Text("Mon - Fri", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = NoorTextPrimary)
+                            Text("Available Days", fontSize = 10.sp, color = NoorTextHint)
+                        }
+                        Divider(color = NoorDivider, modifier = Modifier.width(1.dp).height(40.dp))
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("🕐", fontSize = 18.sp)
+                            Text("Full Day", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = NoorTextPrimary)
+                            Text("Time Slot", fontSize = 10.sp, color = NoorTextHint)
+                        }
+                        Divider(color = NoorDivider, modifier = Modifier.width(1.dp).height(40.dp))
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("⏱️", fontSize = 18.sp)
+                            Text("3-5 yrs", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = NoorTextPrimary)
+                            Text("Experience", fontSize = 10.sp, color = NoorTextHint)
                         }
                     }
                 }
+            }
 
-                // ── Edit button (top-right) → EditProfileScreen ───────────────
-                Box(
-                    modifier = Modifier
-                        .size(30.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.18f))
-                        .clickable { subScreen = HomeSubScreen.EDIT_PROFILE }
-                        .align(Alignment.TopEnd),
-                    contentAlignment = Alignment.Center
+            // ── Bio Section ───────────────────────────────────────────────────
+            Card(
+                modifier = Modifier
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = NoorSurface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(
-                        Icons.Default.Edit,
-                        contentDescription = "Edit Profile",
-                        tint               = Color.White,
-                        modifier           = Modifier.size(14.dp)
+                    Text(
+                        "📝 About Me",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = NoorBlue
+                    )
+                    Text(
+                        "Experienced professional driver with 5+ years in DHA & Gulberg area. Punctual and trustworthy.",
+                        fontSize = 13.sp,
+                        color = NoorTextSecondary,
+                        lineHeight = 20.sp
                     )
                 }
+            }
 
-                // ── Available pill (bottom-right) ─────────────────────────────
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(NoorGreen)
-                        .padding(horizontal = 10.dp, vertical = 4.dp)
-                        .align(Alignment.BottomEnd)
+            // ── My Services ────────────────────────────────────────────────────
+            Card(
+                modifier = Modifier
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = NoorSurface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Row(
-                        verticalAlignment     = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(6.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFF90EE90))
+                    Text(
+                        "🛠️ My Services",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = NoorBlue
+                    )
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = NoorBlueLight,
+                            modifier = Modifier.wrapContentSize()
+                        ) {
+                            Text(
+                                "🚗 Driver",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = NoorBlue,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                            )
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = NoorBlueLight,
+                            modifier = Modifier.wrapContentSize()
+                        ) {
+                            Text(
+                                "🧹 House Boy",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = NoorBlue,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // ── Skills Section ─────────────────────────────────────────────────
+            Card(
+                modifier = Modifier
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = NoorSurface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        "🔧 Skills",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = NoorBlue
+                    )
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = NoorBackground,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, NoorBorder),
+                            modifier = Modifier.wrapContentSize()
+                        ) {
+                            Text(
+                                "City Driving",
+                                fontSize = 11.sp,
+                                color = NoorTextSecondary,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                            )
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = NoorBackground,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, NoorBorder),
+                            modifier = Modifier.wrapContentSize()
+                        ) {
+                            Text(
+                                "Highway",
+                                fontSize = 11.sp,
+                                color = NoorTextSecondary,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                            )
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = NoorBackground,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, NoorBorder),
+                            modifier = Modifier.wrapContentSize()
+                        ) {
+                            Text(
+                                "Cleaning",
+                                fontSize = 11.sp,
+                                color = NoorTextSecondary,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // ── Languages Section ──────────────────────────────────────────────
+            Card(
+                modifier = Modifier
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = NoorSurface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        "🗣️ Languages",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = NoorBlue
+                    )
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = NoorGreenLight,
+                            modifier = Modifier.wrapContentSize()
+                        ) {
+                            Text(
+                                "Urdu",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = NoorGreen,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                            )
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = NoorGreenLight,
+                            modifier = Modifier.wrapContentSize()
+                        ) {
+                            Text(
+                                "Punjabi",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = NoorGreen,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                            )
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = NoorGreenLight,
+                            modifier = Modifier.wrapContentSize()
+                        ) {
+                            Text(
+                                "English",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = NoorGreen,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // ── How it works ─────────────────────────────────────────────────────
+            Card(
+                modifier = Modifier
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = NoorBlueLight),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(14.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Text("ℹ️", fontSize = 16.sp)
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            "How it works",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = NoorBlueDark
                         )
                         Text(
-                            "Available",
-                            fontSize   = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color      = Color.White
+                            "Keep your profile updated. Employers browse profiles through Noor Services admin. " +
+                                    "If an employer is interested, the admin will contact you directly.",
+                            fontSize = 12.sp,
+                            color = NoorBlueDark,
+                            lineHeight = 18.sp
                         )
                     }
                 }
             }
 
-            // ── Stats Row ─────────────────────────────────────────────────────
-            Row(
-                modifier              = Modifier
-                    .padding(horizontal = 16.dp)
-                    .fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                StatCard(number = "12", label = "Proposals", modifier = Modifier.weight(1f))
-                StatCard(number = "8",  label = "Accepted",  modifier = Modifier.weight(1f))
-            }
-
-            Spacer(Modifier.height(20.dp))
-
-            // ── Quick Access ──────────────────────────────────────────────────
-            Text(
-                "Quick Access",
-                fontSize   = 15.sp,
-                fontWeight = FontWeight.Bold,
-                color      = NoorTextPrimary,
-                modifier   = Modifier.padding(horizontal = 16.dp)
-            )
-
-            Spacer(Modifier.height(12.dp))
-
-            Column(
-                modifier            = Modifier.padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                QuickMenuItem(
-                    emoji    = "👤",
-                    iconBg   = NoorBlueLight,
-                    title    = "How Your Profile Appears",
-                    subtitle = "View your public profile as employers see it",
-                    badge    = null,
-                    onClick  = { /* TODO: Navigate to profile preview */ }
-                )
-                QuickMenuItem(
-                    emoji    = "🔔",
-                    iconBg   = NoorOrangeLight,
-                    title    = "Notifications",
-                    subtitle = "View all updates",
-                    badge    = "3",
-                    onClick  = { subScreen = HomeSubScreen.NOTIFICATIONS }
-                )
-                QuickMenuItem(
-                    emoji    = "⚙️",
-                    iconBg   = Color(0xFFF3EEF9),
-                    title    = "Settings",
-                    subtitle = "Notifications, privacy & more",
-                    badge    = null,
-                    onClick  = onNavigateToSettings
-                )
-            }
-
-            Spacer(Modifier.height(20.dp))
-
             // ── Recent Activity ───────────────────────────────────────────────
-            Row(
-                modifier          = Modifier.padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "Recent Activity",
-                    fontSize   = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    color      = NoorTextPrimary,
-                    modifier   = Modifier.weight(1f)
-                )
-                Text(
-                    "See all",
-                    fontSize   = 12.sp,
-                    color      = NoorBlue,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier   = Modifier.clickable { onNavigateToProposals() }
-                )
-            }
-
-            Spacer(Modifier.height(12.dp))
-
-            Column(
-                modifier            = Modifier.padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                ActivityItem(
-                    emoji    = "✅",
-                    bg       = NoorGreenLight,
-                    title    = "Proposal Accepted",
-                    subtitle = "Farhan Ahmed — Driver · DHA Phase 5",
-                    time     = "Today"
-                )
-                ActivityItem(
-                    emoji    = "📩",
-                    bg       = NoorOrangeLight,
-                    title    = "New Proposal Received",
-                    subtitle = "Sara Khan — Driver · Model Town",
-                    time     = "Yesterday"
-                )
-            }
-
-            Spacer(Modifier.height(8.dp))
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Small composables
-// ─────────────────────────────────────────────────────────────────────────────
-
-@Composable
-private fun ServiceTag(label: String) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(Color.White.copy(alpha = 0.18f))
-            .padding(horizontal = 10.dp, vertical = 4.dp)
-    ) {
-        Text(label, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
-    }
-}
-
-@Composable
-private fun StatCard(number: String, label: String, modifier: Modifier = Modifier) {
-    Card(
-        modifier  = modifier,
-        shape     = RoundedCornerShape(14.dp),
-        colors    = CardDefaults.cardColors(containerColor = NoorSurface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(
-            modifier            = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 14.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Text(number, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = NoorBlue)
-            Text(label,  fontSize = 10.sp, color = NoorTextHint, fontWeight = FontWeight.SemiBold, letterSpacing = 0.3.sp)
-        }
-    }
-}
-
-@Composable
-private fun QuickMenuItem(
-    emoji: String,
-    iconBg: Color,
-    title: String,
-    subtitle: String,
-    badge: String?,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier  = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
-        shape     = RoundedCornerShape(14.dp),
-        colors    = CardDefaults.cardColors(containerColor = NoorSurface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier             = Modifier.padding(14.dp),
-            verticalAlignment    = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Box(
+            Card(
                 modifier = Modifier
-                    .size(42.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(iconBg),
-                contentAlignment = Alignment.Center
-            ) { Text(emoji, fontSize = 20.sp) }
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(title,   fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = NoorTextPrimary)
-                Spacer(Modifier.height(2.dp))
-                Text(subtitle, fontSize = 11.sp, color = NoorTextHint)
-            }
-
-            if (badge != null) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(NoorOrange)
-                        .padding(horizontal = 8.dp, vertical = 3.dp),
-                    contentAlignment = Alignment.Center
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = NoorSurface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(badge, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "🔔 Recent Updates",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = NoorBlue
+                        )
+                        TextButton(
+                            onClick = onNavigateToNotifications,
+                            contentPadding = PaddingValues(0.dp)
+                        ) {
+                            Text(
+                                "View all",
+                                fontSize = 11.sp,
+                                color = NoorBlue,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(NoorGreenLight),
+                            contentAlignment = Alignment.Center
+                        ) { Text("✅", fontSize = 16.sp) }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Profile Approved", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = NoorTextPrimary)
+                            Text("Your profile has been verified by admin", fontSize = 11.sp, color = NoorTextHint)
+                        }
+                        Text("Today", fontSize = 10.sp, color = NoorTextHint)
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(NoorOrangeLight),
+                            contentAlignment = Alignment.Center
+                        ) { Text("📝", fontSize = 16.sp) }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Under Review", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = NoorTextPrimary)
+                            Text("Your updated profile is being reviewed", fontSize = 11.sp, color = NoorTextHint)
+                        }
+                        Text("Yesterday", fontSize = 10.sp, color = NoorTextHint)
+                    }
                 }
             }
 
-            Icon(
-                Icons.Default.ChevronRight,
-                contentDescription = null,
-                tint               = NoorTextHint,
-                modifier           = Modifier.size(18.dp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun ActivityItem(
-    emoji: String,
-    bg: Color,
-    title: String,
-    subtitle: String,
-    time: String
-) {
-    Card(
-        modifier  = Modifier.fillMaxWidth(),
-        shape     = RoundedCornerShape(14.dp),
-        colors    = CardDefaults.cardColors(containerColor = NoorSurface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Row(
-            modifier             = Modifier.padding(12.dp),
-            verticalAlignment    = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(CircleShape)
-                    .background(bg),
-                contentAlignment = Alignment.Center
-            ) { Text(emoji, fontSize = 16.sp) }
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(title,    fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = NoorTextPrimary)
-                Spacer(Modifier.height(2.dp))
-                Text(subtitle, fontSize = 11.sp, color = NoorTextHint)
-            }
-
-            Text(time, fontSize = 10.sp, color = NoorTextHint)
+            Spacer(Modifier.height(8.dp))
         }
     }
 }

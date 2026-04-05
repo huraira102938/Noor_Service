@@ -46,3 +46,11 @@ val NoorTextHint      = Color(0xFF9EA8BE)
 val NoorSuccess = NoorGreen
 val NoorWarning = NoorOrange
 val NoorError   = NoorRed
+
+
+// ── Vendor (Teal) palette ────────────────────────────────────────────────────
+val VendorTeal       = Color(0xFF00897B)   // primary teal
+val VendorTealDark   = Color(0xFF005F56)   // deep teal (gradient end)
+val VendorTealLight  = Color(0xFFE0F2F1)   // soft teal background / chips
+val VendorAccent     = Color(0xFF26A69A)   // mid teal (active badge)
+val VendorAccentDark = Color(0xFF00695C)   // dark accent (stat card)

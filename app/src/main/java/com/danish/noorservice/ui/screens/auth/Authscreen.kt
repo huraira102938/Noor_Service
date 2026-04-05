@@ -3,9 +3,11 @@ package com.danish.noorservice.ui.screens.auth
 import com.danish.noorservice.ui.components.NoorPrimaryButton
 import com.danish.noorservice.ui.components.NoorTextField
 
-
-
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import com.danish.noorservice.R
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -56,11 +59,17 @@ fun AuthScreen(
                         .background(Color.White.copy(alpha = 0.18f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "N",
-                        fontSize = 34.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = Color.White
+                    Image(
+                        painter = painterResource(id = R.drawable.noor_services_app_logo),
+                        contentDescription = "App Logo",
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer(
+                                scaleX = 2.1f, // increase for more zoom
+                                scaleY = 2.1f,
+                                translationY = 20f
+                            ),
+                        contentScale = ContentScale.Crop
                     )
                 }
                 Spacer(Modifier.height(14.dp))
