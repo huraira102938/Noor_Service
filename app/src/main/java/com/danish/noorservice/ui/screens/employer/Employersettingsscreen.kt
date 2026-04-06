@@ -27,7 +27,7 @@ import com.danish.noorservice.ui.theme.*
 // ─────────────────────────────────────────────────────────────────────────────
 
 private enum class EmployerSettingsSubScreen {
-    NONE, EDIT_PROFILE, CHANGE_PASSWORD, NOTIFICATIONS
+    NONE, EDIT_PROFILE, CHANGE_PASSWORD
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -53,14 +53,8 @@ fun EmployerSettingsScreen(onLogout: () -> Unit = {}) {
             )
             return
         }
-        EmployerSettingsSubScreen.NOTIFICATIONS -> {
-            EmployerNotificationsScreen(onBack = { subScreen = EmployerSettingsSubScreen.NONE })
-            return
-        }
         EmployerSettingsSubScreen.NONE -> {}
     }
-
-    var pushNotifications by remember { mutableStateOf(true)  }
 
     var showLogoutDialog  by remember { mutableStateOf(false) }
     var showDeleteDialog  by remember { mutableStateOf(false) }
@@ -122,18 +116,6 @@ fun EmployerSettingsScreen(onLogout: () -> Unit = {}) {
                     Icon(Icons.Default.ChevronRight, contentDescription = null,
                         tint = NoorTextHint, modifier = Modifier.size(20.dp))
                 }
-            }
-
-            // ── Notifications ─────────────────────────────────────────────────
-            EmployerSettingsGroup("Notifications") {
-                EmployerSettingsNavItem("🔔", NoorBlueLight, "View Notifications") {
-                    subScreen = EmployerSettingsSubScreen.NOTIFICATIONS
-                }
-                HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
-                EmployerSettingsToggle("🔔", NoorBlueLight, "Push Notifications",
-                    pushNotifications) { pushNotifications = it }
-                HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
-
             }
 
             // ── Account ───────────────────────────────────────────────────────
@@ -230,36 +212,6 @@ private fun EmployerSettingsGroup(
             colors    = CardDefaults.cardColors(containerColor = NoorSurface),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
             content   = { Column(content = content) }
-        )
-    }
-}
-
-@Composable
-private fun EmployerSettingsToggle(
-    emoji: String, emojiBg: Color, title: String,
-    checked: Boolean, onToggle: (Boolean) -> Unit
-) {
-    Row(
-        modifier             = Modifier.fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 13.dp),
-        verticalAlignment    = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Box(modifier = Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(emojiBg),
-            contentAlignment = Alignment.Center) {
-            Text(emoji, fontSize = 16.sp)
-        }
-        Text(title, fontSize = 13.sp, fontWeight = FontWeight.Medium,
-            color = NoorTextPrimary, modifier = Modifier.weight(1f))
-        Switch(
-            checked         = checked,
-            onCheckedChange = onToggle,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor   = Color.White,
-                checkedTrackColor   = NoorBlue,
-                uncheckedThumbColor = Color.White,
-                uncheckedTrackColor = NoorBorder
-            )
         )
     }
 }

@@ -39,85 +39,204 @@ import java.util.*
 // No direct contact info — all hiring goes through the admin
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────────────────────
+// UPDATED WorkerProfile data class
+// Replace your existing WorkerProfile with this one.
+// ─────────────────────────────────────────────────────────────────────────────
+
 data class WorkerProfile(
     val id: String,
     val name: String,
     val initials: String,
+    val avatarColor: Color,
     val workerUsername: String,
-    val serviceIds: List<String>,
     val city: String,
     val area: String,
-    val experience: String,
-    val timeSlot: String,
-    val isAvailable: Boolean,
-    val dailyRate: String,
-    val avatarColor: Color,
+
+    // ── Personal Details (new) ─────────────────────────────────────────────
+    val phone: String = "",
+    val cnic: String = "",
+    val dob: String = "",
+    val address: String = "",
+    val gender: String = "",
+
+    // ── Work profile ───────────────────────────────────────────────────────
+    val serviceIds: List<String>,
     val skills: List<String>,
+    val experience: String,
+    val licenceType: String = "",         // new
+    val availableDays: List<String> = emptyList(), // new
+    val timeSlot: String,
+    val additionalNote: String = "",       // new
+    val isAvailable: Boolean,
+    val joinedDate: String,
+
+    // ── Rates ──────────────────────────────────────────────────────────────
+    val dailyRate: String,
+    val hourlyRate: String = "",           // new
+    val monthlyRate: String = "",          // new
+
+    // ── Profile ────────────────────────────────────────────────────────────
     val bio: String,
-    val languages: List<String>,
-    val joinedDate: String
+    val languages: List<String>
 )
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sample workers — updated with all new fields populated
+// ─────────────────────────────────────────────────────────────────────────────
 
 val sampleWorkers = listOf(
     WorkerProfile(
-        id = "1", name = "Muhammad Ali", initials = "MA", workerUsername = "@NS-1001",
+        id = "w1", name = "Muhammad Ali", initials = "MA",
+        avatarColor = NoorBlue, workerUsername = "@m_ali_driver",
+        city = "Lahore", area = "DHA Phase 3",
+        phone = "0312-3456789", cnic = "35202-1234567-9",
+        dob = "15/03/1992", address = "House 12, Street 5, DHA Phase 3, Lahore",
+        gender = "Male",
         serviceIds = listOf("driver", "houseBoy"),
-        city = "Lahore", area = "DHA Phase 3", experience = "5 yrs",
-        timeSlot = "Full Day", isAvailable = true, dailyRate = "PKR 1,200",
-        avatarColor = NoorBlue,
         skills = listOf("City Driving", "Highway", "Cleaning", "Laundry"),
-        bio = "Experienced driver with 5+ years in DHA & Gulberg area. Punctual and trustworthy.",
-        languages = listOf("Urdu", "Punjabi"), joinedDate = "Mar 2025"
+        experience = "3–5 yrs",
+        licenceType = "LTV",
+        availableDays = listOf("Mon", "Tue", "Wed", "Thu", "Fri"),
+        timeSlot = "Full Day",
+        additionalNote = "Can work late hours if required. Own car available.",
+        isAvailable = true, joinedDate = "Jan 2025",
+        dailyRate = "PKR 1,200", hourlyRate = "PKR 150", monthlyRate = "PKR 25,000",
+        bio = "Experienced professional driver with 5+ years in DHA & Gulberg area.",
+        languages = listOf("Urdu", "Punjabi")
     ),
     WorkerProfile(
-        id = "2", name = "Ayesha Bibi", initials = "AB", workerUsername = "@NS-1002",
+        id = "w2", name = "Amina Bibi", initials = "AB",
+        avatarColor = Color(0xFFE91E63), workerUsername = "@amina_maid",
+        city = "Lahore", area = "Gulberg II",
+        phone = "0321-9988776", cnic = "35201-9876543-2",
+        dob = "22/06/1988", address = "Street 7, Gulberg II, Lahore",
+        gender = "Female",
         serviceIds = listOf("maid", "cook"),
-        city = "Lahore", area = "Gulberg III", experience = "3 yrs",
-        timeSlot = "Morning", isAvailable = true, dailyRate = "PKR 900",
-        avatarColor = NoorOrange,
-        skills = listOf("Deep Cleaning", "Laundry", "Pakistani Cuisine", "Baking"),
-        bio = "Hardworking and reliable house maid with cooking expertise. Available mornings.",
-        languages = listOf("Urdu", "Saraiki"), joinedDate = "Jan 2025"
+        skills = listOf("Deep Cleaning", "Laundry", "Dishes", "Pakistani Cuisine"),
+        experience = "6–10 yrs",
+        licenceType = "",
+        availableDays = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat"),
+        timeSlot = "Morning",
+        additionalNote = "Available for live-in arrangement.",
+        isAvailable = true, joinedDate = "Feb 2025",
+        dailyRate = "PKR 900", hourlyRate = "", monthlyRate = "PKR 18,000",
+        bio = "Dedicated housemaid and cook with 10 years experience in Lahore homes.",
+        languages = listOf("Urdu", "Punjabi", "Saraiki")
     ),
     WorkerProfile(
-        id = "3", name = "Imran Khan", initials = "IK", workerUsername = "@NS-1003",
+        id = "w3", name = "Tariq Hussain", initials = "TH",
+        avatarColor = Color(0xFF37474F), workerUsername = "@tariq_guard",
+        city = "Lahore", area = "Model Town",
+        phone = "0300-5544332", cnic = "35202-6655443-1",
+        dob = "10/01/1985", address = "Block B, Model Town, Lahore",
+        gender = "Male",
         serviceIds = listOf("security"),
-        city = "Lahore", area = "Bahria Town", experience = "7 yrs",
-        timeSlot = "Full Day", isAvailable = false, dailyRate = "PKR 1,500",
-        avatarColor = NoorGreen,
-        skills = listOf("CCTV Operation", "First Aid", "Patrolling"),
-        bio = "Ex-army trained security guard with 7 years of residential & commercial experience.",
-        languages = listOf("Urdu", "English", "Pashto"), joinedDate = "Nov 2024"
+        skills = listOf("Patrolling", "CCTV Operation", "First Aid"),
+        experience = "10+ yrs",
+        licenceType = "Armed Security Licence",
+        availableDays = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"),
+        timeSlot = "Night",
+        additionalNote = "Firearms certified. Available for rotating shifts.",
+        isAvailable = false, joinedDate = "Dec 2024",
+        dailyRate = "PKR 1,500", hourlyRate = "PKR 200", monthlyRate = "PKR 35,000",
+        bio = "Seasoned security professional with a decade of experience guarding residential & commercial premises.",
+        languages = listOf("Urdu", "Punjabi", "Pashto")
     ),
     WorkerProfile(
-        id = "4", name = "Sana Fatima", initials = "SF", workerUsername = "@NS-1004",
-        serviceIds = listOf("babysitter", "maid"),
-        city = "Lahore", area = "Model Town", experience = "4 yrs",
-        timeSlot = "Flexible", isAvailable = true, dailyRate = "PKR 1,000",
-        avatarColor = Color(0xFF9C27B0),
-        skills = listOf("Infant Care", "School Drop-off", "Deep Cleaning", "Childcare"),
-        bio = "Caring and patient babysitter. Great with infants and toddlers. First Aid certified.",
-        languages = listOf("Urdu", "English"), joinedDate = "Feb 2025"
+        id = "w4", name = "Sana Iqbal", initials = "SI",
+        avatarColor = NoorOrange, workerUsername = "@sana_sitter",
+        city = "Lahore", area = "Johar Town",
+        phone = "0332-7788990", cnic = "35202-3344556-3",
+        dob = "05/09/1995", address = "Street 11, Johar Town, Lahore",
+        gender = "Female",
+        serviceIds = listOf("babysitter", "elderCare"),
+        skills = listOf("Infant Care", "School Drop-off", "Medication Reminders", "Companionship"),
+        experience = "1–2 yrs",
+        licenceType = "First Aid Certificate",
+        availableDays = listOf("Mon", "Tue", "Wed", "Thu", "Fri"),
+        timeSlot = "Morning",
+        additionalNote = "Non-smoker. Comfortable with infants from 0–12 months.",
+        isAvailable = true, joinedDate = "Mar 2025",
+        dailyRate = "PKR 800", hourlyRate = "PKR 120", monthlyRate = "",
+        bio = "Caring and patient babysitter with special interest in early childhood development.",
+        languages = listOf("Urdu", "English")
     ),
     WorkerProfile(
-        id = "5", name = "Zulfiqar Ali", initials = "ZA", workerUsername = "@NS-1005",
-        serviceIds = listOf("driver"),
-        city = "Lahore", area = "Johar Town", experience = "10+ yrs",
-        timeSlot = "Morning", isAvailable = true, dailyRate = "PKR 1,100",
-        avatarColor = Color(0xFF009688),
-        skills = listOf("City Driving", "Highway", "Heavy Vehicle"),
-        bio = "Senior driver with LTV & HTV licence. Calm and professional with Lahore route expertise.",
-        languages = listOf("Urdu", "Punjabi", "Saraiki"), joinedDate = "Sep 2024"
-    ),
-    WorkerProfile(
-        id = "6", name = "Nazia Malik", initials = "NM", workerUsername = "@NS-1006",
+        id = "w5", name = "Usman Qureshi", initials = "UQ",
+        avatarColor = NoorGreen, workerUsername = "@usman_cook",
+        city = "Islamabad", area = "F-7",
+        phone = "0311-4455667", cnic = "61101-1234567-5",
+        dob = "20/07/1990", address = "F-7/2, Islamabad",
+        gender = "Male",
         serviceIds = listOf("cook"),
-        city = "Lahore", area = "Askari X", experience = "6 yrs",
-        timeSlot = "Morning", isAvailable = true, dailyRate = "PKR 1,300",
-        avatarColor = Color(0xFFE91E63),
-        skills = listOf("Pakistani Cuisine", "Chinese", "Continental", "Baking", "BBQ"),
-        bio = "Versatile home cook specialising in Pakistani and Chinese cuisine. Highly rated.",
-        languages = listOf("Urdu", "Punjabi"), joinedDate = "Dec 2024"
+        skills = listOf("Pakistani Cuisine", "Chinese", "Continental", "BBQ"),
+        experience = "6–10 yrs",
+        licenceType = "Food Hygiene Certificate",
+        availableDays = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat"),
+        timeSlot = "Full Day",
+        additionalNote = "Can cook for events and gatherings of up to 50 people.",
+        isAvailable = true, joinedDate = "Nov 2024",
+        dailyRate = "PKR 1,800", hourlyRate = "", monthlyRate = "PKR 38,000",
+        bio = "Versatile chef specialising in multi-cuisine cooking for families and corporate kitchens.",
+        languages = listOf("Urdu", "Punjabi", "English")
+    ),
+    WorkerProfile(
+        id = "w6", name = "Bilal Raza", initials = "BR",
+        avatarColor = Color(0xFF9C27B0), workerUsername = "@bilal_mechanic",
+        city = "Lahore", area = "Bahria Town",
+        phone = "0342-3322110", cnic = "35202-8877665-7",
+        dob = "14/04/1987", address = "Sector C, Bahria Town, Lahore",
+        gender = "Male",
+        serviceIds = listOf("mechanic"),
+        skills = listOf("Engine Repair", "Electrical", "Tyre Change", "AC Service"),
+        experience = "6–10 yrs",
+        licenceType = "LTV, HTV",
+        availableDays = listOf("Mon", "Tue", "Wed", "Thu", "Sat"),
+        timeSlot = "Morning",
+        additionalNote = "Workshop available. House calls accepted in Bahria Town.",
+        isAvailable = true, joinedDate = "Feb 2025",
+        dailyRate = "PKR 1,400", hourlyRate = "PKR 180", monthlyRate = "",
+        bio = "Skilled automobile mechanic with expertise in Toyota, Honda and Suzuki models.",
+        languages = listOf("Urdu", "Punjabi")
+    ),
+    WorkerProfile(
+        id = "w7", name = "Rehana Bibi", initials = "RB",
+        avatarColor = Color(0xFFE91E63), workerUsername = "@rehana_office",
+        city = "Karachi", area = "Clifton",
+        phone = "0333-9900112", cnic = "42201-1122334-1",
+        dob = "30/11/1993", address = "Block 4, Clifton, Karachi",
+        gender = "Female",
+        serviceIds = listOf("officeBoy"),
+        skills = listOf("Photocopying", "File Management", "Tea/Coffee", "Errands"),
+        experience = "1–2 yrs",
+        licenceType = "",
+        availableDays = listOf("Mon", "Tue", "Wed", "Thu", "Fri"),
+        timeSlot = "Full Day",
+        additionalNote = "Punctual and well-presented. Familiar with MS Office basics.",
+        isAvailable = false, joinedDate = "Apr 2025",
+        dailyRate = "PKR 700", hourlyRate = "", monthlyRate = "PKR 14,000",
+        bio = "Reliable office support staff with a background in administrative assistance.",
+        languages = listOf("Urdu", "Sindhi", "English")
+    ),
+    WorkerProfile(
+        id = "w8", name = "Zahid Gardener", initials = "ZG",
+        avatarColor = NoorGreen, workerUsername = "@zahid_garden",
+        city = "Rawalpindi", area = "Saddar",
+        phone = "0300-4433221", cnic = "37405-1234567-3",
+        dob = "08/08/1980", address = "Raja Bazaar, Saddar, Rawalpindi",
+        gender = "Male",
+        serviceIds = listOf("gardener"),
+        skills = listOf("Lawn Mowing", "Pruning", "Planting", "Pest Control"),
+        experience = "10+ yrs",
+        licenceType = "",
+        availableDays = listOf("Tue", "Thu", "Sat"),
+        timeSlot = "Morning",
+        additionalNote = "Brings own tools. Available for weekly maintenance contracts.",
+        isAvailable = true, joinedDate = "Jan 2025",
+        dailyRate = "PKR 600", hourlyRate = "PKR 80", monthlyRate = "",
+        bio = "Experienced gardener specialising in landscaping, lawn care and seasonal planting.",
+        languages = listOf("Urdu", "Punjabi")
     ),
 )
 
@@ -690,7 +809,7 @@ private fun SendProposalToAdminDialog(
                             offerPrice     = offerPrice.trim(),
                             note           = note.trim(),
                             sentAt         = now,
-                            status         = AdminProposalStatus.SENT
+                            status         = AdminProposalStatus.PENDING
                         )
                     )
                     onSent()

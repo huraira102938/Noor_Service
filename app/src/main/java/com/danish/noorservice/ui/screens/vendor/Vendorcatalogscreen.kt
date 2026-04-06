@@ -56,7 +56,7 @@ data class VendorServiceListing(
 // Options defined in VendorRegistrationScreen.kt (internal) — referenced here directly
 // coverageAreaOptions, pricingModelOptions, contractDurationOpts
 
-private val sampleListings = mutableListOf(
+ val sampleListings = mutableListOf(
     VendorServiceListing(
         id = "1", categoryId = "cleaning",
         categoryLabel = "Cleaning & Janitorial", emoji = "🧹",

@@ -1,6 +1,3 @@
-// ═══════════════════════════════════════════════════════════════════════════
-// FILE 1:  navigation/AppNavigation.kt
-// ═══════════════════════════════════════════════════════════════════════════
 
 package com.danish.noorservice.navigation
 
@@ -9,13 +6,14 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.danish.noorservice.ui.screens.admin.AdminMainScreen
 import com.danish.noorservice.ui.screens.auth.AuthScreen
 import com.danish.noorservice.ui.screens.auth.EmployerRegistrationScreen
 import com.danish.noorservice.ui.screens.auth.RoleSelectionScreen
 import com.danish.noorservice.ui.screens.employee.*
 import com.danish.noorservice.ui.screens.employer.EmployerMainScreen
-import com.danish.noorservice.ui.screens.vendor.VendorMainScreen           // ← NEW
-import com.danish.noorservice.ui.screens.vendor.VendorRegistrationScreen   // ← NEW
+import com.danish.noorservice.ui.screens.vendor.VendorMainScreen
+import com.danish.noorservice.ui.screens.vendor.VendorRegistrationScreen
 import com.danish.noorservice.ui.screens.vendor.VendorRegistrationSuccessScreen
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -35,14 +33,17 @@ object Routes {
     const val SERVICE_DETAIL         = "employee/service_detail"
     const val SUCCESS                = "employee/success"
 
-    // Vendor registration                                    ← NEW
-    const val VENDOR_REGISTRATION    = "vendor/registration"  // ← NEW
-    const val VENDOR_SUCCESS         = "vendor/success"       // ← NEW
+    // Vendor registration
+    const val VENDOR_REGISTRATION    = "vendor/registration"
+    const val VENDOR_SUCCESS         = "vendor/success"
 
     // Main shells (bottom nav)
     const val EMPLOYEE_HOME          = "employee/home"
     const val EMPLOYER_HOME          = "employer/home"
-    const val VENDOR_HOME            = "vendor/home"           // ← NEW
+    const val VENDOR_HOME            = "vendor/home"
+
+    // Admin
+    const val ADMIN_HOME             = "admin/home"
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -75,7 +76,10 @@ fun AppNavigation(
                     when (role) {
                         "employee" -> navController.navigate(Routes.PERSONAL_INFO)
                         "employer" -> navController.navigate(Routes.EMPLOYER_REGISTRATION)
-                        "vendor"   -> navController.navigate(Routes.VENDOR_REGISTRATION) // ← NEW
+                        "vendor"   -> navController.navigate(Routes.VENDOR_REGISTRATION)
+                        "admin"    -> navController.navigate(Routes.ADMIN_HOME) {
+                            popUpTo(Routes.AUTH) { inclusive = true }
+                        }
                     }
                 }
             )
@@ -132,28 +136,28 @@ fun AppNavigation(
             )
         }
 
-        // ── Vendor Registration ──────────────────────────────────────────────  ← NEW
-        composable(Routes.VENDOR_REGISTRATION) {                                // ← NEW
-            VendorRegistrationScreen(                                            // ← NEW
-                onBack = { navController.popBackStack() },                      // ← NEW
-                onRegistered = {                                                 // ← NEW
-                    navController.navigate(Routes.VENDOR_SUCCESS) {             // ← NEW
-                        popUpTo(Routes.ROLE_SELECTION) { inclusive = false }    // ← NEW
-                    }                                                            // ← NEW
-                }                                                                // ← NEW
-            )                                                                    // ← NEW
-        }                                                                        // ← NEW
+        // ── Vendor Registration ──────────────────────────────────────────────
+        composable(Routes.VENDOR_REGISTRATION) {
+            VendorRegistrationScreen(
+                onBack = { navController.popBackStack() },
+                onRegistered = {
+                    navController.navigate(Routes.VENDOR_SUCCESS) {
+                        popUpTo(Routes.ROLE_SELECTION) { inclusive = false }
+                    }
+                }
+            )
+        }
 
-        // ── Vendor: Success ──────────────────────────────────────────────────  ← NEW
-        composable(Routes.VENDOR_SUCCESS) {                                     // ← NEW
-            VendorRegistrationSuccessScreen(                                    // ← NEW
-                onGoToHome = {                                                   // ← NEW
-                    navController.navigate(Routes.VENDOR_HOME) {                // ← NEW
-                        popUpTo(Routes.AUTH) { inclusive = true }               // ← NEW
-                    }                                                            // ← NEW
-                }                                                                // ← NEW
-            )                                                                    // ← NEW
-        }                                                                        // ← NEW
+        // ── Vendor: Success ──────────────────────────────────────────────────
+        composable(Routes.VENDOR_SUCCESS) {
+            VendorRegistrationSuccessScreen(
+                onGoToHome = {
+                    navController.navigate(Routes.VENDOR_HOME) {
+                        popUpTo(Routes.AUTH) { inclusive = true }
+                    }
+                }
+            )
+        }
 
         // ── Employee Home ────────────────────────────────────────────────────
         composable(Routes.EMPLOYEE_HOME) {
@@ -177,15 +181,26 @@ fun AppNavigation(
             )
         }
 
-        // ── Vendor Home ──────────────────────────────────────────────────────  ← NEW
-        composable(Routes.VENDOR_HOME) {                                        // ← NEW
-            VendorMainScreen(                                                    // ← NEW
-                onLogout = {                                                     // ← NEW
-                    navController.navigate(Routes.AUTH) {                       // ← NEW
-                        popUpTo(Routes.VENDOR_HOME) { inclusive = true }        // ← NEW
-                    }                                                            // ← NEW
-                }                                                                // ← NEW
-            )                                                                    // ← NEW
-        }                                                                        // ← NEW
+        // ── Vendor Home ──────────────────────────────────────────────────────
+        composable(Routes.VENDOR_HOME) {
+            VendorMainScreen(
+                onLogout = {
+                    navController.navigate(Routes.AUTH) {
+                        popUpTo(Routes.VENDOR_HOME) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        // ── Admin Home ───────────────────────────────────────────────────────
+        composable(Routes.ADMIN_HOME) {
+            AdminMainScreen(
+                onLogout = {
+                    navController.navigate(Routes.AUTH) {
+                        popUpTo(Routes.ADMIN_HOME) { inclusive = true }
+                    }
+                }
+            )
+        }
     }
 }

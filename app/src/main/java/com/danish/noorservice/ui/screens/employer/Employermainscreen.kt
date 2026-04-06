@@ -1,26 +1,31 @@
 package com.danish.noorservice.ui.screens.employer
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.danish.noorservice.ui.theme.*
 import kotlinx.coroutines.launch
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Bottom Nav Items
-// Home | Browse | My Proposals | Settings
-// Proposals badge = number of SENT (pending) proposals in AdminProposalStore
-// ─────────────────────────────────────────────────────────────────────────────
 
 private data class EmployerNavItem(
     val label: String,
@@ -29,7 +34,8 @@ private data class EmployerNavItem(
 
 private val employerNavItems = listOf(
     EmployerNavItem("Home",      "🏠"),
-    EmployerNavItem("Browse",    "🔍"),
+    EmployerNavItem("Workers",   "👤"),
+    EmployerNavItem("Vendors",   "🏢"),
     EmployerNavItem("Proposals", "📋"),
     EmployerNavItem("Settings",  "⚙️"),
 )
@@ -51,10 +57,11 @@ fun EmployerMainScreen(
     val scope             = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Live count of pending (SENT) proposals — drives the badge
+    // Live count of pending proposals — drives the badge
     val pendingCount by remember {
         derivedStateOf {
-            AdminProposalStore.proposals.count { it.status == AdminProposalStatus.SENT }
+            AdminProposalStore.proposals.count { it.status == AdminProposalStatus.PENDING } +
+                    VendorProposalStore.proposals.count { it.status == VendorProposalStatus.PENDING }
         }
     }
 
@@ -80,8 +87,8 @@ fun EmployerMainScreen(
         containerColor = NoorBackground,
         bottomBar = {
             EmployerBottomNav(
-                selectedIndex = selectedTab,
-                pendingCount  = pendingCount,
+                selectedIndex  = selectedTab,
+                pendingCount   = pendingCount,
                 onItemSelected = { selectedTab = it }
             )
         },
@@ -93,13 +100,11 @@ fun EmployerMainScreen(
                 .padding(bottom = innerPadding.calculateBottomPadding())
         ) {
             when (selectedTab) {
-                0 -> EmployerHomeScreen(
-                    onBrowse   = { selectedTab = 1 },
-                    onSettings = { selectedTab = 3 }
-                )
+                0 -> EmployerHomeScreen(onBrowse = { selectedTab = 1 }, onSettings = { selectedTab = 4 })
                 1 -> EmployerBrowseScreen()
-                2 -> AdminProposalInboxScreen()
-                3 -> EmployerSettingsScreen(onLogout = onLogout)
+                2 -> EmployerVendorBrowseScreen()
+                3 -> EmployerProposalsCombinedScreen()
+                4 -> EmployerSettingsScreen(onLogout = onLogout)
             }
         }
     }
@@ -122,8 +127,7 @@ private fun EmployerBottomNav(
     ) {
         employerNavItems.forEachIndexed { index, item ->
             val isSelected = selectedIndex == index
-            // Show badge on Proposals tab (index 2) when there are pending proposals
-            val badgeCount = if (index == 2) pendingCount else 0
+            val badgeCount = if (index == 3) pendingCount else 0
 
             NavigationBarItem(
                 selected = isSelected,
@@ -164,6 +168,69 @@ private fun EmployerBottomNav(
                     unselectedIconColor = NoorTextHint
                 )
             )
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Combined Proposals Screen
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+fun EmployerProposalsCombinedScreen() {
+    var activeTab by remember { mutableIntStateOf(0) }
+
+    Column(modifier = Modifier.fillMaxSize().background(NoorBackground)) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Brush.linearGradient(listOf(NoorBlue, NoorBlueDark)))
+                .statusBarsPadding()
+                .padding(start = 20.dp, end = 20.dp)
+        ) {
+            Column {
+                Spacer(Modifier.height(18.dp))
+                Text(
+                    "My Proposals", fontSize = 22.sp, fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+                Text(
+                    "Worker & vendor proposals via admin",
+                    fontSize = 12.sp, color = Color.White.copy(alpha = 0.72f)
+                )
+                Spacer(Modifier.height(14.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color.White.copy(alpha = 0.15f)),
+                    horizontalArrangement = Arrangement.spacedBy(0.dp)
+                ) {
+                    listOf("👤 Workers", "🏢 Vendors").forEachIndexed { idx, label ->
+                        val selected = activeTab == idx
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (selected) Color.White.copy(alpha = 0.25f) else Color.Transparent)
+                                .clickable { activeTab = idx }
+                                .padding(vertical = 10.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                label, fontSize = 13.sp,
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                color = Color.White
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        when (activeTab) {
+            0 -> AdminProposalInboxScreen()
+            1 -> VendorProposalInboxScreen()
         }
     }
 }
