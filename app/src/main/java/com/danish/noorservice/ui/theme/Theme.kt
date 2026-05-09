@@ -52,7 +52,9 @@ fun NoorServiceTheme(
         SideEffect {
             val window = (view.context as Activity).window
             window.statusBarColor = NoorBlue.toArgb()
+            window.navigationBarColor = NoorBackground.toArgb()
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
+            view.setBackgroundColor(NoorBackground.toArgb())
         }
     }
 

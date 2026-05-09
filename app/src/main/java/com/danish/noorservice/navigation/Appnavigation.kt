@@ -24,7 +24,9 @@ import com.danish.noorservice.ui.screens.vendor.VendorRegistrationSuccessScreen
 import com.danish.noorservice.ui.theme.NoorBackground
 import com.danish.noorservice.viewmodel.auth.AuthViewModel
 import com.danish.noorservice.viewmodel.employee.EmployeeHomeViewModel
+import com.danish.noorservice.viewmodel.employee.EmployeeNotificationsViewModel
 import com.danish.noorservice.viewmodel.employee.EmployeeRegistrationViewModel
+import com.danish.noorservice.viewmodel.employee.EmployeeSettingsViewModel
 import com.danish.noorservice.viewmodel.employer.EmployerRegistrationViewModel
 import com.danish.noorservice.viewmodel.vendor.VendorRegistrationViewModel
 
@@ -91,6 +93,8 @@ fun AppNavigation(
     //
     // The empty-UI flash between the splash and the shimmer is eliminated.
     val employeeHomeViewModel: EmployeeHomeViewModel = hiltViewModel()
+    val employeeNotificationsViewModel: EmployeeNotificationsViewModel = hiltViewModel()
+    val employeeSettingsViewModel: EmployeeSettingsViewModel = hiltViewModel()
 
     // As soon as we know who is logged in, start fetching their data.
     // hasLoaded guard inside loadProfile() ensures this never double-fetches.
@@ -98,6 +102,8 @@ fun AppNavigation(
         val user = authState.currentUser
         if (user != null && user.role == "employee" && user.isProfileComplete) {
             employeeHomeViewModel.loadProfile(user.uid)
+            employeeNotificationsViewModel.loadNotifications(user.uid)
+            employeeSettingsViewModel.loadProfile(user.uid)
         }
     }
 
@@ -261,10 +267,11 @@ fun AppNavigation(
         composable(Routes.EMPLOYEE_HOME) {
             val userId = authViewModel.getCurrentUserUid() ?: ""
             EmployeeMainScreen(
-                userId        = userId,
-                // ✅ Pass the already-loading VM down — no new hiltViewModel() call here
-                homeViewModel = employeeHomeViewModel,
-                onLogout      = {
+                userId           = userId,
+                homeViewModel    = employeeHomeViewModel,
+                notificationsViewModel = employeeNotificationsViewModel,
+                settingsViewModel     = employeeSettingsViewModel,
+                onLogout         = {
                     authViewModel.logout()
                     navController.navigate(Routes.AUTH) {
                         popUpTo(0) { inclusive = true }

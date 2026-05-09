@@ -21,11 +21,11 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.danish.noorservice.ui.components.SettingsScreenShimmer
 import com.danish.noorservice.ui.theme.*
+import com.danish.noorservice.viewmodel.employee.EmployeeNotificationsViewModel
 import com.danish.noorservice.viewmodel.employee.EmployeeSettingsViewModel
 
 private enum class SettingsSubScreen {
@@ -37,16 +37,14 @@ fun EmployeeSettingsScreen(
     userId: String,
     onLogout: () -> Unit = {},
     onProfileSaved: () -> Unit = {},
-    viewModel: EmployeeSettingsViewModel = hiltViewModel()
+    notificationsViewModel: EmployeeNotificationsViewModel? = null,
+    settingsViewModel: EmployeeSettingsViewModel
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
     var subScreen by remember { mutableStateOf(SettingsSubScreen.NONE) }
 
-    // ✅ FIX: The hasLoaded guard inside loadProfile() ensures this only
-    // triggers a real Firestore fetch on the very first call. Switching tabs
-    // and returning will NOT re-fetch — the guard short-circuits immediately.
     LaunchedEffect(userId) {
-        viewModel.loadProfile(userId)
+        settingsViewModel.loadProfile(userId)
     }
 
     when (subScreen) {
@@ -60,7 +58,7 @@ fun EmployeeSettingsScreen(
                     subScreen = SettingsSubScreen.NONE
                     onProfileSaved()
                 },
-                viewModel = viewModel
+                viewModel = settingsViewModel
             )
             return
         }
@@ -72,11 +70,16 @@ fun EmployeeSettingsScreen(
             return
         }
         SettingsSubScreen.NOTIFICATIONS -> {
-            NotificationsScreen(
-                userId = userId,
-                onBack = { subScreen = SettingsSubScreen.NONE }
-            )
-            return
+            val notifVm = notificationsViewModel
+            if (notifVm != null) {
+                NotificationsScreen(
+                    userId = userId,
+                    onBack = { subScreen = SettingsSubScreen.NONE },
+                    viewModel = notifVm
+                )
+                return
+            }
+            subScreen = SettingsSubScreen.NONE
         }
         SettingsSubScreen.NONE -> { /* fall through */ }
     }
@@ -131,7 +134,7 @@ fun EmployeeSettingsScreen(
                             .size(36.dp)
                             .clip(CircleShape)
                             .background(Color.White.copy(alpha = 0.18f))
-                            .clickable { viewModel.loadProfile(userId, forceRefresh = true) },
+                            .clickable { settingsViewModel.loadProfile(userId, forceRefresh = true) },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -246,7 +249,7 @@ fun EmployeeSettingsScreen(
                     emojiBg = NoorGreenLight,
                     title   = "Available for Work",
                     checked = uiState.isActive,
-                    onToggle = { viewModel.updateAvailability(userId, it) }
+                    onToggle = { settingsViewModel.updateAvailability(userId, it) }
                 )
             }
 

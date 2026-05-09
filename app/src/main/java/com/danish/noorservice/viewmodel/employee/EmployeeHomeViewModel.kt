@@ -13,12 +13,10 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class EmployeeHomeState(
-    val isLoading: Boolean = false,
+    val isLoading: Boolean = true,
     val profile: Employee? = null,
     val services: List<EmployeeService> = emptyList(),
     val error: String? = null,
-    // ✅ FIX: Track whether we've loaded at least once so we never show
-    // the loading spinner again when the user switches tabs and comes back.
     val hasLoaded: Boolean = false
 )
 

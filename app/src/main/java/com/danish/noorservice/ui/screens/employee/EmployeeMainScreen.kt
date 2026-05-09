@@ -15,6 +15,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.danish.noorservice.ui.theme.*
 import com.danish.noorservice.viewmodel.employee.EmployeeHomeViewModel
+import com.danish.noorservice.viewmodel.employee.EmployeeNotificationsViewModel
+import com.danish.noorservice.viewmodel.employee.EmployeeSettingsViewModel
 import kotlinx.coroutines.launch
 
 private data class NavItem(
@@ -33,21 +35,15 @@ private val navItems = listOf(
 fun EmployeeMainScreen(
     userId: String,
     onLogout: () -> Unit,
-    // ✅ FIX: Accept the VM from AppNavigation instead of creating it here.
-    // This means loadProfile() was already called the moment Firebase confirmed
-    // the user — before this composable even entered composition.
     homeViewModel: EmployeeHomeViewModel,
+    notificationsViewModel: EmployeeNotificationsViewModel,
+    settingsViewModel: EmployeeSettingsViewModel,
     initialTab: Int = 0
 ) {
     var selectedTab       by remember { mutableIntStateOf(initialTab) }
     var lastBackPressTime by remember { mutableStateOf(0L) }
     val scope             = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
-
-    // ✅ No LaunchedEffect / loadProfile() call here anymore.
-    // The load was already started in AppNavigation as soon as auth confirmed.
-    // The hasLoaded guard in the VM prevents any double-fetch if this
-    // composable somehow re-enters composition.
 
     BackHandler(enabled = true) {
         if (selectedTab != 0) {
@@ -92,12 +88,15 @@ fun EmployeeMainScreen(
                 )
                 1 -> NotificationsScreen(
                     userId = userId,
-                    onBack = { selectedTab = 0 }
+                    onBack = { selectedTab = 0 },
+                    viewModel = notificationsViewModel
                 )
                 2 -> EmployeeSettingsScreen(
                     userId    = userId,
                     onLogout  = onLogout,
-                    onProfileSaved = { homeViewModel.loadProfile(userId, forceRefresh = true) }
+                    onProfileSaved = { homeViewModel.loadProfile(userId, forceRefresh = true) },
+                    notificationsViewModel = notificationsViewModel,
+                    settingsViewModel = settingsViewModel
                 )
             }
         }

@@ -13,10 +13,11 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class EmployeeNotificationsState(
-    val isLoading: Boolean = false,
+    val isLoading: Boolean = true,
     val announcements: List<Pair<Announcement, UserAnnouncement>> = emptyList(),
     val unreadCount: Int = 0,
-    val error: String? = null
+    val error: String? = null,
+    val hasLoaded: Boolean = false
 )
 
 @HiltViewModel
@@ -27,9 +28,11 @@ class EmployeeNotificationsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(EmployeeNotificationsState())
     val uiState: StateFlow<EmployeeNotificationsState> = _uiState.asStateFlow()
 
-    fun loadNotifications(userId: String) {
+    fun loadNotifications(userId: String, forceRefresh: Boolean = false) {
+        if (_uiState.value.hasLoaded && !forceRefresh) return
+
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
             try {
                 val announcements = announcementRepository.getUserAnnouncements(userId)
@@ -38,7 +41,8 @@ class EmployeeNotificationsViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     announcements = announcements,
-                    unreadCount = unreadCount
+                    unreadCount = unreadCount,
+                    hasLoaded = true
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
@@ -53,7 +57,7 @@ class EmployeeNotificationsViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 announcementRepository.markAnnouncementAsRead(userId, announcementId)
-                loadNotifications(userId)
+                loadNotifications(userId, forceRefresh = true)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = e.message)
             }
@@ -64,7 +68,7 @@ class EmployeeNotificationsViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 announcementRepository.markAllAsRead(userId)
-                loadNotifications(userId)
+                loadNotifications(userId, forceRefresh = true)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = e.message)
             }

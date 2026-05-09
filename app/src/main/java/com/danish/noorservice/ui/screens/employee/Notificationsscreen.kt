@@ -21,7 +21,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.danish.noorservice.data.model.Announcement
 import com.danish.noorservice.data.model.UserAnnouncement
@@ -35,15 +34,10 @@ import java.util.*
 fun NotificationsScreen(
     userId: String,
     onBack: () -> Unit,
-    viewModel: EmployeeNotificationsViewModel = hiltViewModel()
+    viewModel: EmployeeNotificationsViewModel
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    // ✅ Only load once — subsequent visits use cached state in the VM.
-    // The VM doesn't have a hasLoaded guard here because notifications are
-    // relatively cheap to reload and benefit from fresh data on each visit.
-    // If you want the same "load once" behaviour, add hasLoaded to
-    // EmployeeNotificationsState and guard loadNotifications the same way.
     LaunchedEffect(userId) {
         viewModel.loadNotifications(userId)
     }
@@ -116,7 +110,7 @@ fun NotificationsScreen(
                                 .size(36.dp)
                                 .clip(CircleShape)
                                 .background(Color.White.copy(alpha = 0.16f))
-                                .clickable { viewModel.loadNotifications(userId) },
+                                .clickable { viewModel.loadNotifications(userId, forceRefresh = true) },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(Icons.Default.Refresh, contentDescription = "Refresh",
@@ -149,12 +143,11 @@ fun NotificationsScreen(
 
         // ── Content ───────────────────────────────────────────────────────────
         when {
-            // ✅ FIX: Shimmer on first load instead of a blocking spinner
-            uiState.isLoading -> {
+            uiState.isLoading && !uiState.hasLoaded -> {
                 NotificationsShimmer()
             }
 
-            uiState.error != null -> {
+            uiState.error != null && !uiState.hasLoaded -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -163,7 +156,7 @@ fun NotificationsScreen(
                         Text("⚠️", fontSize = 36.sp)
                         Text("Failed to load notifications", fontSize = 14.sp, color = NoorTextPrimary)
                         Button(
-                            onClick = { viewModel.loadNotifications(userId) },
+                            onClick = { viewModel.loadNotifications(userId, forceRefresh = true) },
                             colors  = ButtonDefaults.buttonColors(containerColor = NoorBlue)
                         ) { Text("Retry", color = Color.White) }
                     }

@@ -16,15 +16,13 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class EmployeeSettingsState(
-    val isLoading: Boolean = false,
+    val isLoading: Boolean = true,
     val isSaving: Boolean = false,
     val profile: Employee? = null,
     val services: List<EmployeeService> = emptyList(),
     val isActive: Boolean = true,
     val error: String? = null,
     val saveSuccess: Boolean = false,
-    // ✅ FIX: Guard against redundant loads — mirrors EmployeeHomeViewModel pattern.
-    // Once data is fetched once, subsequent tab visits won't re-fetch from Firestore.
     val hasLoaded: Boolean = false
 )
 
