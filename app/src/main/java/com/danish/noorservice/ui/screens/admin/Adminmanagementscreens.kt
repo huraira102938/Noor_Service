@@ -1,0 +1,1463 @@
+package com.danish.noorservice.ui.screens.admin
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.danish.noorservice.ui.screens.employer.AdminProposalStatus
+import com.danish.noorservice.ui.screens.employer.AdminProposalStore
+import com.danish.noorservice.ui.screens.employer.WorkerProfile
+import com.danish.noorservice.ui.screens.employer.sampleWorkers
+import com.danish.noorservice.ui.screens.employee.allServiceCategories
+import com.danish.noorservice.ui.theme.*
+import androidx.compose.ui.platform.LocalContext
+import android.content.Intent
+import android.net.Uri
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Worker approval status
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum class WorkerApprovalStatus { PENDING, APPROVED, SUSPENDED }
+
+data class AdminWorkerEntry(
+    val profile: WorkerProfile,
+    var approvalStatus: WorkerApprovalStatus = WorkerApprovalStatus.APPROVED
+)
+
+private val adminWorkerEntries = mutableStateListOf(
+    *sampleWorkers.mapIndexed { i, w ->
+        AdminWorkerEntry(w, if (i < 4) WorkerApprovalStatus.APPROVED else WorkerApprovalStatus.PENDING)
+    }.toTypedArray()
+)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Employer record — extended with all detail fields
+// ─────────────────────────────────────────────────────────────────────────────
+
+data class AdminEmployerRecord(
+    val id: String,
+    val name: String,
+    val initials: String,
+    val avatarColor: Color,
+    val city: String,
+    val area: String,
+    val email: String,
+    val phone: String,
+    val cnic: String,
+    val dob: String,
+    val gender: String,
+    val address: String,
+    val joinedDate: String,
+    var isVerified: Boolean,
+    val proposalCount: Int,
+    val bio: String,
+    val languages: List<String>
+)
+
+private val sampleEmployers = mutableStateListOf(
+    AdminEmployerRecord(
+        "e1", "Danish Awan", "DA", NoorOrange,
+        "Lahore", "DHA Phase 3",
+        "newservicesprovided@gmail.com", "0300-9254605",
+        "35202-1234567-9", "10/05/1990", "Male",
+        "House 7, Street 12, DHA Phase 3, Lahore",
+        "Mar 2025", true, 3,
+        "Looking for reliable domestic service workers in Lahore.",
+        listOf("Urdu", "Punjabi", "English")
+    ),
+    AdminEmployerRecord(
+        "e2", "Hina Tariq", "HT", Color(0xFF9C27B0),
+        "Lahore", "Gulberg II",
+        "hina.tariq@email.com", "0321-5556677",
+        "35201-9876543-2", "22/08/1985", "Female",
+        "Flat 3B, Gulberg II, Lahore",
+        "Jan 2025", true, 1,
+        "Seeking experienced cook and maid for residential use.",
+        listOf("Urdu", "English")
+    ),
+    AdminEmployerRecord(
+        "e3", "Farhan Ahmed", "FA", NoorBlue,
+        "Lahore", "Johar Town",
+        "farhan@email.com", "0333-1122334",
+        "35202-3344556-1", "15/03/1992", "Male",
+        "House 44B, Johar Town, Lahore",
+        "Feb 2025", false, 2,
+        "Need a driver and security guard for office and home.",
+        listOf("Urdu", "Punjabi")
+    ),
+    AdminEmployerRecord(
+        "e4", "Sara Anwar", "SA", Color(0xFFE91E63),
+        "Lahore", "Model Town",
+        "sara.anwar@email.com", "0312-7788990",
+        "35202-6655443-0", "05/11/1988", "Female",
+        "House 2, Block C, Model Town, Lahore",
+        "Apr 2025", false, 0,
+        "Looking for a babysitter and elder care provider.",
+        listOf("Urdu", "English")
+    ),
+    AdminEmployerRecord(
+        "e5", "Asad Malik", "AM", NoorGreen,
+        "Islamabad", "F-7",
+        "asad.malik@gmail.com", "0311-4455667",
+        "61101-1234567-3", "20/07/1983", "Male",
+        "Street 5, F-7/2, Islamabad",
+        "Dec 2024", true, 4,
+        "Running a business and need office boy and cleaning staff.",
+        listOf("Urdu", "Punjabi", "English", "Pashto")
+    ),
+    AdminEmployerRecord(
+        "e6", "Nadia Baig", "NB", Color(0xFF795548),
+        "Lahore", "Bahria Town",
+        "nadia.baig@email.com", "0342-9988776",
+        "35202-8877665-4", "14/01/1991", "Female",
+        "Sector C, Bahria Town, Lahore",
+        "Mar 2025", true, 1,
+        "Need a gardener and housemaid for villa maintenance.",
+        listOf("Urdu", "Punjabi")
+    ),
+)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Vendor record — extended with all detail fields
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum class VendorVerificationStatus { PENDING, VERIFIED, REJECTED }
+
+data class AdminVendorServiceDetail(
+    val categoryLabel: String,
+    val emoji: String,
+    val pricingModel: String,
+    val priceRange: String,
+    val minContract: String,
+    val coverageAreas: List<String>
+)
+
+data class AdminVendorRecord(
+    val id: String,
+    val businessName: String,
+    val contactPerson: String,
+    val avatarBg: Color,
+    val city: String,
+    val serviceCount: Int,
+    val joinedDate: String,
+    var verificationStatus: VendorVerificationStatus,
+    val email: String,
+    val phone: String,
+    val workforce: String,
+    // Extended fields
+    val ntn: String,
+    val companyRegNo: String,
+    val headOffice: String,
+    val address: String,
+    val citiesOfOperation: List<String>,
+    val bio: String,
+    val services: List<AdminVendorServiceDetail>,
+    val isIsoCertified: Boolean,
+    val hasNotableClients: Boolean,
+    val notableClients: String
+)
+
+private val sampleVendorRecords = mutableStateListOf(
+    AdminVendorRecord(
+        "v1", "Al-Noor Facility Services", "Ahmad Raza", VendorTeal,
+        "Lahore", 3, "Jan 2025", VendorVerificationStatus.VERIFIED,
+        "info@alnoor.com", "0300-1234567", "51–200",
+        "1234567-8", "REG-2015-00123",
+        "Plot 12, Sector B, DHA Phase 3, Lahore",
+        "Plot 12, Sector B, DHA Phase 3, Lahore",
+        listOf("Lahore", "Islamabad", "Faisalabad"),
+        "Providing integrated facility management services across Lahore for 8+ years.",
+        listOf(
+            AdminVendorServiceDetail("Cleaning & Janitorial", "🧹", "Monthly Contract", "PKR 15,000–80,000/mo", "1 Month", listOf("Lahore", "Islamabad")),
+            AdminVendorServiceDetail("Staffing Solutions", "👥", "Monthly Contract", "PKR 25,000–500,000/mo", "3 Months", listOf("Lahore", "Faisalabad")),
+            AdminVendorServiceDetail("Security Services", "🛡️", "Per Shift", "PKR 1,200–2,000/shift", "6 Months", listOf("Lahore"))
+        ),
+        isIsoCertified = true, hasNotableClients = true,
+        notableClients = "PTCL, Engro Corp, National Bank of Pakistan"
+    ),
+    AdminVendorRecord(
+        "v2", "City-Guard Security", "Tariq Hassan", Color(0xFF37474F),
+        "Lahore", 1, "Mar 2025", VendorVerificationStatus.PENDING,
+        "info@cityguard.pk", "0321-9876543", "11–50",
+        "7654321-0", "REG-2020-00456",
+        "Office 5, Block A, Gulberg III, Lahore",
+        "Office 5, Block A, Gulberg III, Lahore",
+        listOf("Lahore"),
+        "Professional armed and unarmed security services for commercial and residential clients.",
+        listOf(
+            AdminVendorServiceDetail("Security Services", "🛡️", "Per Shift", "PKR 1,000–1,800/shift", "3 Months", listOf("Lahore"))
+        ),
+        isIsoCertified = false, hasNotableClients = false,
+        notableClients = ""
+    ),
+    AdminVendorRecord(
+        "v3", "CleanPro Services", "Bilal Qureshi", NoorBlue,
+        "Karachi", 2, "Feb 2025", VendorVerificationStatus.VERIFIED,
+        "cleanpro@gmail.com", "0333-1122334", "1–10",
+        "9988776-5", "REG-2022-00789",
+        "Suite 3, Block 7, Clifton, Karachi",
+        "Suite 3, Block 7, Clifton, Karachi",
+        listOf("Karachi"),
+        "Eco-friendly cleaning solutions for offices and commercial spaces in Karachi.",
+        listOf(
+            AdminVendorServiceDetail("Cleaning & Janitorial", "🧹", "Monthly Contract", "PKR 10,000–50,000/mo", "1 Month", listOf("Karachi")),
+            AdminVendorServiceDetail("Pest Control", "🪲", "One-time / Annual", "PKR 5,000–25,000", "None", listOf("Karachi"))
+        ),
+        isIsoCertified = false, hasNotableClients = true,
+        notableClients = "Dolmen Mall, Ocean Mall Karachi"
+    ),
+    AdminVendorRecord(
+        "v4", "Swift Staffing", "Amir Shah", NoorOrange,
+        "Islamabad", 2, "Apr 2025", VendorVerificationStatus.PENDING,
+        "swift@staffing.pk", "0311-5544332", "51–200",
+        "1122334-5", "REG-2019-00321",
+        "Blue Area, F-6, Islamabad",
+        "Blue Area, F-6, Islamabad",
+        listOf("Islamabad", "Rawalpindi"),
+        "Bulk workforce supply and HR outsourcing for corporate clients.",
+        listOf(
+            AdminVendorServiceDetail("Staffing Solutions", "👥", "Monthly Contract", "PKR 30,000–600,000/mo", "3 Months", listOf("Islamabad", "Rawalpindi")),
+            AdminVendorServiceDetail("Office Support", "💼", "Monthly Contract", "PKR 15,000–80,000/mo", "1 Month", listOf("Islamabad"))
+        ),
+        isIsoCertified = true, hasNotableClients = false,
+        notableClients = ""
+    ),
+    AdminVendorRecord(
+        "v5", "EcoClean Corp", "Fatima Noor", NoorGreen,
+        "Faisalabad", 1, "Jan 2025", VendorVerificationStatus.REJECTED,
+        "eco@clean.pk", "0342-7766554", "1–10",
+        "6655443-2", "REG-2023-00654",
+        "Narwala Road, Faisalabad",
+        "Narwala Road, Faisalabad",
+        listOf("Faisalabad"),
+        "Sustainable cleaning services for small businesses in Faisalabad.",
+        listOf(
+            AdminVendorServiceDetail("Cleaning & Janitorial", "🧹", "Monthly Contract", "PKR 8,000–30,000/mo", "1 Month", listOf("Faisalabad"))
+        ),
+        isIsoCertified = false, hasNotableClients = false,
+        notableClients = ""
+    ),
+)
+
+// ═════════════════════════════════════════════════════════════════════════════
+// WORKERS SCREEN
+// ═════════════════════════════════════════════════════════════════════════════
+
+@Composable
+fun AdminWorkersScreen() {
+    var query          by remember { mutableStateOf("") }
+    var filterStatus   by remember { mutableStateOf<WorkerApprovalStatus?>(null) }
+    var selectedWorker by remember { mutableStateOf<AdminWorkerEntry?>(null) }
+
+    if (selectedWorker != null) {
+        AdminWorkerDetailScreen(
+            entry  = selectedWorker!!,
+            onBack = { selectedWorker = null },
+            onApprove = { entry ->
+                val idx = adminWorkerEntries.indexOfFirst { it.profile.id == entry.profile.id }
+                if (idx != -1) adminWorkerEntries[idx] = adminWorkerEntries[idx].copy(approvalStatus = WorkerApprovalStatus.APPROVED)
+                selectedWorker = null
+            },
+            onSuspend = { entry ->
+                val idx = adminWorkerEntries.indexOfFirst { it.profile.id == entry.profile.id }
+                if (idx != -1) adminWorkerEntries[idx] = adminWorkerEntries[idx].copy(approvalStatus = WorkerApprovalStatus.SUSPENDED)
+                selectedWorker = null
+            }
+        )
+        return
+    }
+
+    val filtered = adminWorkerEntries.filter { entry ->
+        val matchQuery  = query.isBlank() ||
+                entry.profile.name.contains(query, ignoreCase = true) ||
+                entry.profile.workerUsername.contains(query, ignoreCase = true) ||
+                entry.profile.city.contains(query, ignoreCase = true)
+        val matchStatus = filterStatus == null || entry.approvalStatus == filterStatus
+        matchQuery && matchStatus
+    }
+
+    Column(modifier = Modifier.fillMaxSize().background(NoorBackground)) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Brush.linearGradient(listOf(AdminPurple, AdminPurpleDark)))
+                .statusBarsPadding()
+                .padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 20.dp)
+        ) {
+            Column {
+                Text("Workers", fontSize = 22.sp, fontWeight = FontWeight.Bold,
+                    color = Color.White, letterSpacing = (-0.3).sp)
+                Text("${adminWorkerEntries.size} registered · ${adminWorkerEntries.count { it.approvalStatus == WorkerApprovalStatus.APPROVED }} approved",
+                    fontSize = 12.sp, color = Color.White.copy(alpha = 0.72f))
+                Spacer(Modifier.height(14.dp))
+                OutlinedTextField(
+                    value = query, onValueChange = { query = it },
+                    placeholder = { Text("Search name, @ID, city…", fontSize = 13.sp, color = NoorTextHint) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = NoorTextHint) },
+                    modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor   = NoorSurface, unfocusedContainerColor = NoorSurface,
+                        focusedBorderColor      = Color.Transparent, unfocusedBorderColor = Color.Transparent,
+                        cursorColor = AdminPurple
+                    )
+                )
+            }
+        }
+
+        LazyRow(
+            modifier = Modifier.fillMaxWidth().background(NoorSurface),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            item { AdminFilterChip("All", filterStatus == null) { filterStatus = null } }
+            item { AdminFilterChip("✅ Approved", filterStatus == WorkerApprovalStatus.APPROVED) { filterStatus = WorkerApprovalStatus.APPROVED } }
+            item { AdminFilterChip("⏳ Pending", filterStatus == WorkerApprovalStatus.PENDING) { filterStatus = WorkerApprovalStatus.PENDING } }
+            item { AdminFilterChip("🚫 Suspended", filterStatus == WorkerApprovalStatus.SUSPENDED) { filterStatus = WorkerApprovalStatus.SUSPENDED } }
+        }
+        HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
+
+        if (filtered.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("🔍", fontSize = 48.sp)
+                    Spacer(Modifier.height(12.dp))
+                    Text("No workers found", fontSize = 14.sp, color = NoorTextHint, fontWeight = FontWeight.Medium)
+                }
+            }
+        } else {
+            LazyColumn(
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                item {
+                    Text("${filtered.size} worker${if (filtered.size != 1) "s" else ""} found",
+                        fontSize = 11.sp, color = NoorTextHint, fontWeight = FontWeight.SemiBold)
+                }
+                items(filtered, key = { it.profile.id }) { entry ->
+                    AdminWorkerCard(entry = entry, onClick = { selectedWorker = entry })
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AdminWorkerCard(entry: AdminWorkerEntry, onClick: () -> Unit) {
+    val (statusColor, statusBg, statusLabel) = when (entry.approvalStatus) {
+        WorkerApprovalStatus.APPROVED  -> Triple(NoorGreen,   NoorGreenLight,   "Approved")
+        WorkerApprovalStatus.PENDING   -> Triple(NoorOrange,  NoorOrangeLight,  "Pending")
+        WorkerApprovalStatus.SUSPENDED -> Triple(NoorRed,     NoorRedLight,     "Suspended")
+    }
+
+    Card(
+        modifier  = Modifier.fillMaxWidth().clickable { onClick() },
+        shape     = RoundedCornerShape(14.dp),
+        colors    = CardDefaults.cardColors(containerColor = NoorSurface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(modifier = Modifier.padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+
+            Box(modifier = Modifier.size(48.dp).clip(CircleShape).background(entry.profile.avatarColor),
+                contentAlignment = Alignment.Center) {
+                Text(entry.profile.initials, fontSize = 15.sp,
+                    fontWeight = FontWeight.ExtraBold, color = Color.White)
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(entry.profile.name, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = NoorTextPrimary)
+                    Box(modifier = Modifier.clip(RoundedCornerShape(6.dp))
+                        .background(statusBg).padding(horizontal = 6.dp, vertical = 2.dp)) {
+                        Text(statusLabel, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = statusColor)
+                    }
+                }
+                Text("${entry.profile.workerUsername} · ${entry.profile.area}, ${entry.profile.city}",
+                    fontSize = 11.sp, color = NoorTextHint)
+                Spacer(Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    entry.profile.serviceIds.take(2).forEach { id ->
+                        val svc = allServiceCategories.find { it.id == id }
+                        if (svc != null) {
+                            Box(modifier = Modifier.clip(RoundedCornerShape(6.dp))
+                                .background(NoorBlueLight).padding(horizontal = 6.dp, vertical = 2.dp)) {
+                                Text("${svc.emoji} ${svc.label}", fontSize = 9.sp,
+                                    fontWeight = FontWeight.SemiBold, color = NoorBlue)
+                            }
+                        }
+                    }
+                    Box(modifier = Modifier.clip(RoundedCornerShape(6.dp))
+                        .background(NoorBackground).padding(horizontal = 6.dp, vertical = 2.dp)) {
+                        Text("⏱ ${entry.profile.experience}", fontSize = 9.sp,
+                            fontWeight = FontWeight.SemiBold, color = NoorTextSecondary)
+                    }
+                }
+            }
+
+            Column(horizontalAlignment = Alignment.End) {
+                Text(entry.profile.dailyRate, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = NoorBlue)
+                if (entry.profile.isAvailable) {
+                    Box(modifier = Modifier.padding(top = 4.dp).clip(RoundedCornerShape(20.dp))
+                        .background(NoorGreenLight).padding(horizontal = 6.dp, vertical = 2.dp)) {
+                        Text("Available", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = NoorGreen)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Worker Detail Screen — COMPLETE with all required fields
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun AdminWorkerDetailScreen(
+    entry: AdminWorkerEntry,
+    onBack: () -> Unit,
+    onApprove: (AdminWorkerEntry) -> Unit,
+    onSuspend: (AdminWorkerEntry) -> Unit
+) {
+    var showSuspendDialog by remember { mutableStateOf(false) }
+    val p = entry.profile
+
+    Column(modifier = Modifier.fillMaxSize().background(NoorBackground)) {
+        // Header
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Brush.linearGradient(listOf(AdminPurple, AdminPurpleDark)))
+                .statusBarsPadding()
+                .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 28.dp)
+        ) {
+            Column {
+                Box(modifier = Modifier.size(38.dp).clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.18f)).clickable { onBack() },
+                    contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.ArrowBack, contentDescription = "Back",
+                        tint = Color.White, modifier = Modifier.size(20.dp))
+                }
+                Spacer(Modifier.height(20.dp))
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Box(modifier = Modifier.size(64.dp).clip(CircleShape).background(p.avatarColor),
+                        contentAlignment = Alignment.Center) {
+                        Text(p.initials, fontSize = 22.sp,
+                            fontWeight = FontWeight.ExtraBold, color = Color.White)
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(p.name, fontSize = 19.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Text("${p.workerUsername} · ${p.city}",
+                            fontSize = 12.sp, color = Color.White.copy(alpha = 0.75f))
+                        Spacer(Modifier.height(6.dp))
+                        val (_, statusLabel) = when (entry.approvalStatus) {
+                            WorkerApprovalStatus.APPROVED  -> Pair(NoorGreen,  "✅ Approved")
+                            WorkerApprovalStatus.PENDING   -> Pair(NoorOrange, "⏳ Pending Review")
+                            WorkerApprovalStatus.SUSPENDED -> Pair(NoorRed,    "🚫 Suspended")
+                        }
+                        Box(modifier = Modifier.clip(RoundedCornerShape(20.dp))
+                            .background(Color.White.copy(alpha = 0.2f)).padding(horizontal = 10.dp, vertical = 4.dp)) {
+                            Text(statusLabel, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        }
+                    }
+                }
+            }
+        }
+
+        Column(
+            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+
+            // ── Quick stats tiles ──────────────────────────────────────────────
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                AdminInfoTile("💰", "Daily Rate", p.dailyRate, modifier = Modifier.weight(1f))
+                AdminInfoTile("⏱", "Experience", p.experience, modifier = Modifier.weight(1f))
+                AdminInfoTile("🕐", "Time Slot",  p.timeSlot,   modifier = Modifier.weight(1f))
+            }
+
+            // ── Personal Details ───────────────────────────────────────────────
+            AdminDetailSection("Personal Details") {
+                AdminDetailRow("🪪", "CNIC", p.cnic.ifBlank { "Not provided" })
+                AdminDetailRow("📞", "Phone Number", p.phone.ifBlank { "Not provided" })
+                AdminDetailRow("🎂", "Date of Birth", p.dob.ifBlank { "Not provided" })
+                AdminDetailRow("📍", "City", p.city)
+                AdminDetailRow("🏠", "Permanent Address", p.address.ifBlank { "Not provided" })
+                AdminDetailRow("🗓", "Member Since", p.joinedDate)
+            }
+
+            // ── Languages ──────────────────────────────────────────────────────
+            AdminDetailSection("Languages Spoken") {
+                @OptIn(ExperimentalLayoutApi::class)
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement   = Arrangement.spacedBy(8.dp)
+                ) {
+                    p.languages.forEach { lang ->
+                        Box(modifier = Modifier.clip(RoundedCornerShape(20.dp))
+                            .background(NoorBlueLight)
+                            .padding(horizontal = 10.dp, vertical = 5.dp)) {
+                            Text("🗣 $lang", fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold, color = NoorBlue)
+                        }
+                    }
+                }
+            }
+
+            // ── Services Offered ───────────────────────────────────────────────
+            AdminDetailSection("Services Offered") {
+                @OptIn(ExperimentalLayoutApi::class)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    p.serviceIds.forEach { id ->
+                        val svc = allServiceCategories.find { it.id == id }
+                        if (svc != null) {
+                            Box(modifier = Modifier.clip(RoundedCornerShape(8.dp))
+                                .background(NoorBlueLight).padding(horizontal = 10.dp, vertical = 6.dp)) {
+                                Text("${svc.emoji} ${svc.label}", fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold, color = NoorBlue)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ── Skills ─────────────────────────────────────────────────────────
+            if (p.skills.isNotEmpty()) {
+                AdminDetailSection("Skills") {
+                    @OptIn(ExperimentalLayoutApi::class)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        p.skills.forEach { skill ->
+                            Box(modifier = Modifier.clip(RoundedCornerShape(8.dp))
+                                .background(NoorBackground)
+                                .border(1.dp, NoorBorder, RoundedCornerShape(8.dp))
+                                .padding(horizontal = 10.dp, vertical = 5.dp)) {
+                                Text(skill, fontSize = 11.sp, color = NoorTextSecondary,
+                                    fontWeight = FontWeight.Medium)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ── Work Profile ───────────────────────────────────────────────────
+            AdminDetailSection("Work Profile") {
+                AdminDetailRow("⏱", "Experience", p.experience)
+                AdminDetailRow("🪪", "Licence / Cert.",
+                    p.licenceType.ifBlank { "N/A" })
+                AdminDetailRow("📅", "Availability",
+                    if (p.isAvailable) "Available" else "Not Available")
+                AdminDetailRow("🗓", "Available Days",
+                    p.availableDays.joinToString(", ").ifBlank { "Not specified" })
+                AdminDetailRow("🕐", "Preferred Time Slot", p.timeSlot)
+                if (p.additionalNote.isNotBlank()) {
+                    Spacer(Modifier.height(6.dp))
+                    Text("📝 Additional Notes", fontSize = 10.sp,
+                        color = NoorTextHint, fontWeight = FontWeight.SemiBold,
+                        letterSpacing = 0.4.sp)
+                    Spacer(Modifier.height(4.dp))
+                    Text(p.additionalNote, fontSize = 12.sp,
+                        color = NoorTextSecondary, lineHeight = 18.sp)
+                }
+            }
+
+            // ── Rates ──────────────────────────────────────────────────────────
+            AdminDetailSection("Rates (PKR)") {
+                AdminDetailRow("📅", "Daily Rate",   p.dailyRate.ifBlank { "N/A" })
+                AdminDetailRow("⏱️", "Hourly Rate",  p.hourlyRate.ifBlank { "N/A" })
+                AdminDetailRow("🗓️", "Monthly Rate", p.monthlyRate.ifBlank { "N/A" })
+            }
+
+            // ── About ──────────────────────────────────────────────────────────
+            AdminDetailSection("About") {
+                Text(p.bio, fontSize = 13.sp, color = NoorTextSecondary, lineHeight = 20.sp)
+            }
+
+            // ── Admin Actions ──────────────────────────────────────────────────
+            when (entry.approvalStatus) {
+                WorkerApprovalStatus.PENDING -> {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Button(
+                            onClick = { onApprove(entry) },
+                            modifier = Modifier.weight(1f).height(50.dp),
+                            shape  = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = NoorGreen)
+                        ) {
+                            Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Approve Worker", fontWeight = FontWeight.SemiBold)
+                        }
+                        OutlinedButton(
+                            onClick = { showSuspendDialog = true },
+                            modifier = Modifier.weight(1f).height(50.dp),
+                            shape  = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = NoorRed)
+                        ) {
+                            Icon(Icons.Default.Block, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Reject", fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+                WorkerApprovalStatus.APPROVED -> {
+                    OutlinedButton(
+                        onClick = { showSuspendDialog = true },
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        shape  = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = NoorRed)
+                    ) {
+                        Icon(Icons.Default.Block, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Suspend Worker", fontWeight = FontWeight.SemiBold)
+                    }
+                }
+                WorkerApprovalStatus.SUSPENDED -> {
+                    Button(
+                        onClick = { onApprove(entry) },
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        shape  = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = NoorGreen)
+                    ) {
+                        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Reinstate Worker", fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+        }
+    }
+
+    if (showSuspendDialog) {
+        AlertDialog(
+            onDismissRequest = { showSuspendDialog = false },
+            shape = RoundedCornerShape(20.dp),
+            title = { Text(if (entry.approvalStatus == WorkerApprovalStatus.PENDING) "Reject Worker?" else "Suspend Worker?",
+                fontWeight = FontWeight.Bold, color = NoorRed) },
+            text  = { Text("${p.name} will be ${if (entry.approvalStatus == WorkerApprovalStatus.PENDING) "rejected" else "suspended"} and removed from employer search results.",
+                fontSize = 13.sp, color = NoorTextSecondary) },
+            confirmButton = {
+                TextButton(onClick = { showSuspendDialog = false; onSuspend(entry) }) {
+                    Text(if (entry.approvalStatus == WorkerApprovalStatus.PENDING) "Reject" else "Suspend",
+                        color = NoorRed, fontWeight = FontWeight.SemiBold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSuspendDialog = false }) {
+                    Text("Cancel", color = NoorTextHint)
+                }
+            }
+        )
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// EMPLOYERS SCREEN
+// ═════════════════════════════════════════════════════════════════════════════
+
+@Composable
+fun AdminEmployersScreen() {
+    var query            by remember { mutableStateOf("") }
+    var showVerifiedOnly by remember { mutableStateOf(false) }
+    var selectedEmployer by remember { mutableStateOf<AdminEmployerRecord?>(null) }
+
+    if (selectedEmployer != null) {
+        AdminEmployerDetailScreen(
+            record = selectedEmployer!!,
+            onBack = { selectedEmployer = null },
+            onToggleVerify = { record ->
+                val idx = sampleEmployers.indexOfFirst { it.id == record.id }
+                if (idx != -1) sampleEmployers[idx] = sampleEmployers[idx].copy(isVerified = !record.isVerified)
+                selectedEmployer = null
+            }
+        )
+        return
+    }
+
+    val filtered = sampleEmployers.filter { e ->
+        val matchQuery  = query.isBlank() || e.name.contains(query, ignoreCase = true) || e.city.contains(query, ignoreCase = true)
+        val matchVerify = !showVerifiedOnly || e.isVerified
+        matchQuery && matchVerify
+    }
+
+    Column(modifier = Modifier.fillMaxSize().background(NoorBackground)) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Brush.linearGradient(listOf(AdminPurple, AdminPurpleDark)))
+                .statusBarsPadding()
+                .padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 20.dp)
+        ) {
+            Column {
+                Text("Employers", fontSize = 22.sp, fontWeight = FontWeight.Bold,
+                    color = Color.White, letterSpacing = (-0.3).sp)
+                Text("${sampleEmployers.size} registered · ${sampleEmployers.count { it.isVerified }} verified",
+                    fontSize = 12.sp, color = Color.White.copy(alpha = 0.72f))
+                Spacer(Modifier.height(14.dp))
+                OutlinedTextField(
+                    value = query, onValueChange = { query = it },
+                    placeholder = { Text("Search by name or city…", fontSize = 13.sp, color = NoorTextHint) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = NoorTextHint) },
+                    modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp), singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = NoorSurface, unfocusedContainerColor = NoorSurface,
+                        focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent,
+                        cursorColor = AdminPurple
+                    )
+                )
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth().background(NoorSurface)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("Verified only", fontSize = 12.sp, color = NoorTextSecondary, fontWeight = FontWeight.Medium)
+            Switch(
+                checked = showVerifiedOnly, onCheckedChange = { showVerifiedOnly = it },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Color.White, checkedTrackColor = AdminPurple,
+                    uncheckedThumbColor = Color.White, uncheckedTrackColor = NoorBorder
+                )
+            )
+        }
+        HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
+
+        LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            item {
+                Text("${filtered.size} employer${if (filtered.size != 1) "s" else ""} found",
+                    fontSize = 11.sp, color = NoorTextHint, fontWeight = FontWeight.SemiBold)
+            }
+            items(filtered, key = { it.id }) { record ->
+                AdminEmployerCard(record = record, onClick = { selectedEmployer = record })
+            }
+        }
+    }
+}
+
+@Composable
+private fun AdminEmployerCard(record: AdminEmployerRecord, onClick: () -> Unit) {
+    Card(
+        modifier  = Modifier.fillMaxWidth().clickable { onClick() },
+        shape     = RoundedCornerShape(14.dp),
+        colors    = CardDefaults.cardColors(containerColor = NoorSurface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(modifier = Modifier.padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+
+            Box(modifier = Modifier.size(48.dp).clip(CircleShape).background(record.avatarColor),
+                contentAlignment = Alignment.Center) {
+                Text(record.initials, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(record.name, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = NoorTextPrimary)
+                    if (record.isVerified) {
+                        Box(modifier = Modifier.clip(RoundedCornerShape(6.dp))
+                            .background(NoorGreenLight).padding(horizontal = 6.dp, vertical = 2.dp)) {
+                            Text("✅ Verified", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = NoorGreen)
+                        }
+                    }
+                }
+                Text("${record.area}, ${record.city}", fontSize = 11.sp, color = NoorTextHint)
+                Text(record.email, fontSize = 10.sp, color = NoorTextHint,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Spacer(Modifier.height(4.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(modifier = Modifier.clip(RoundedCornerShape(6.dp))
+                        .background(AdminPurpleLight).padding(horizontal = 6.dp, vertical = 2.dp)) {
+                        Text("📋 ${record.proposalCount} proposals", fontSize = 9.sp,
+                            fontWeight = FontWeight.SemiBold, color = AdminPurple)
+                    }
+                    Box(modifier = Modifier.clip(RoundedCornerShape(6.dp))
+                        .background(NoorBackground).padding(horizontal = 6.dp, vertical = 2.dp)) {
+                        Text("🗓 ${record.joinedDate}", fontSize = 9.sp, color = NoorTextSecondary)
+                    }
+                }
+            }
+
+            Icon(Icons.Default.ChevronRight, contentDescription = null,
+                tint = NoorTextHint, modifier = Modifier.size(18.dp))
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Employer Detail Screen — COMPLETE with all fields
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun AdminEmployerDetailScreen(
+    record: AdminEmployerRecord,
+    onBack: () -> Unit,
+    onToggleVerify: (AdminEmployerRecord) -> Unit
+) {
+    val employerProposals = AdminProposalStore.proposals.filter { true }
+
+    Column(modifier = Modifier.fillMaxSize().background(NoorBackground)) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Brush.linearGradient(listOf(AdminPurple, AdminPurpleDark)))
+                .statusBarsPadding()
+                .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 28.dp)
+        ) {
+            Column {
+                Box(modifier = Modifier.size(38.dp).clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.18f)).clickable { onBack() },
+                    contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.ArrowBack, contentDescription = "Back",
+                        tint = Color.White, modifier = Modifier.size(20.dp))
+                }
+                Spacer(Modifier.height(20.dp))
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Box(modifier = Modifier.size(64.dp).clip(CircleShape).background(record.avatarColor),
+                        contentAlignment = Alignment.Center) {
+                        Text(record.initials, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(record.name, fontSize = 19.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Text("${record.area}, ${record.city}", fontSize = 12.sp, color = Color.White.copy(alpha = 0.75f))
+                        Spacer(Modifier.height(6.dp))
+                        Box(modifier = Modifier.clip(RoundedCornerShape(20.dp))
+                            .background(Color.White.copy(alpha = 0.2f)).padding(horizontal = 10.dp, vertical = 4.dp)) {
+                            Text(if (record.isVerified) "✅ Verified Employer" else "⏳ Unverified",
+                                fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        }
+                    }
+                }
+            }
+        }
+
+        Column(
+            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+
+            // ── Personal Details ───────────────────────────────────────────────
+            AdminDetailSection("Personal Details") {
+                AdminDetailRow("🪪", "CNIC", record.cnic)
+                AdminDetailRow("📞", "Phone Number", record.phone)
+                AdminDetailRow("🎂", "Date of Birth", record.dob)
+                AdminDetailRow("👤", "Gender", record.gender)
+                AdminDetailRow("🗓", "Member Since", record.joinedDate)
+            }
+
+            // ── Contact & Location ─────────────────────────────────────────────
+            AdminDetailSection("Contact & Location") {
+                AdminDetailRow("📧", "Email", record.email)
+                AdminDetailRow("📍", "City", record.city)
+                AdminDetailRow("🏘", "Area", record.area)
+                AdminDetailRow("🏠", "Permanent Address", record.address)
+            }
+
+            // ── Languages ──────────────────────────────────────────────────────
+            AdminDetailSection("Languages Spoken") {
+                @OptIn(ExperimentalLayoutApi::class)
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement   = Arrangement.spacedBy(8.dp)
+                ) {
+                    record.languages.forEach { lang ->
+                        Box(modifier = Modifier.clip(RoundedCornerShape(20.dp))
+                            .background(AdminPurpleLight)
+                            .padding(horizontal = 10.dp, vertical = 5.dp)) {
+                            Text("🗣 $lang", fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold, color = AdminPurple)
+                        }
+                    }
+                }
+            }
+
+            // ── About ──────────────────────────────────────────────────────────
+            if (record.bio.isNotBlank()) {
+                AdminDetailSection("About") {
+                    Text(record.bio, fontSize = 13.sp, color = NoorTextSecondary, lineHeight = 20.sp)
+                }
+            }
+
+            // ── Activity ───────────────────────────────────────────────────────
+            AdminDetailSection("Activity") {
+                AdminDetailRow("📋", "Total Proposals", "${record.proposalCount}")
+            }
+
+            // ── Proposals ─────────────────────────────────────────────────────
+            if (employerProposals.isNotEmpty()) {
+                AdminDetailSection("Proposals (${employerProposals.size})") {
+                    employerProposals.take(4).forEach { p ->
+                        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Box(modifier = Modifier.size(32.dp).clip(CircleShape).background(p.avatarColor),
+                                contentAlignment = Alignment.Center) {
+                                Text(p.workerInitials, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(p.workerName, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = NoorTextPrimary)
+                                Text("${p.jobTitle} · ${p.location}", fontSize = 10.sp, color = NoorTextHint)
+                            }
+                            val (sc, sl) = when (p.status) {
+                                AdminProposalStatus.PENDING  -> Pair(NoorOrange, "Pending")
+                                AdminProposalStatus.ACCEPTED -> Pair(NoorGreen,  "Accepted")
+                                AdminProposalStatus.DECLINED -> Pair(NoorRed,    "Declined")
+                            }
+                            Box(modifier = Modifier.clip(RoundedCornerShape(6.dp))
+                                .background(sc.copy(alpha = 0.12f)).padding(horizontal = 6.dp, vertical = 2.dp)) {
+                                Text(sl, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = sc)
+                            }
+                        }
+                        HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
+                    }
+                }
+            }
+
+            Button(
+                onClick = { onToggleVerify(record) },
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                shape  = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (record.isVerified) NoorRed else AdminPurple
+                )
+            ) {
+                Icon(if (record.isVerified) Icons.Default.Block else Icons.Default.Verified,
+                    contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(if (record.isVerified) "Revoke Verification" else "Verify Employer",
+                    fontWeight = FontWeight.SemiBold)
+            }
+
+            Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// VENDORS SCREEN
+// ═════════════════════════════════════════════════════════════════════════════
+
+@Composable
+fun AdminVendorsScreen() {
+    var query         by remember { mutableStateOf("") }
+    var filterStatus  by remember { mutableStateOf<VendorVerificationStatus?>(null) }
+    var selectedVendor by remember { mutableStateOf<AdminVendorRecord?>(null) }
+
+    if (selectedVendor != null) {
+        AdminVendorDetailScreen(
+            record = selectedVendor!!,
+            onBack = { selectedVendor = null },
+            onVerify = { r ->
+                val idx = sampleVendorRecords.indexOfFirst { it.id == r.id }
+                if (idx != -1) sampleVendorRecords[idx] = sampleVendorRecords[idx].copy(verificationStatus = VendorVerificationStatus.VERIFIED)
+                selectedVendor = null
+            },
+            onReject = { r ->
+                val idx = sampleVendorRecords.indexOfFirst { it.id == r.id }
+                if (idx != -1) sampleVendorRecords[idx] = sampleVendorRecords[idx].copy(verificationStatus = VendorVerificationStatus.REJECTED)
+                selectedVendor = null
+            }
+        )
+        return
+    }
+
+    val filtered = sampleVendorRecords.filter { v ->
+        val matchQuery  = query.isBlank() || v.businessName.contains(query, ignoreCase = true) || v.city.contains(query, ignoreCase = true)
+        val matchStatus = filterStatus == null || v.verificationStatus == filterStatus
+        matchQuery && matchStatus
+    }
+
+    Column(modifier = Modifier.fillMaxSize().background(NoorBackground)) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Brush.linearGradient(listOf(AdminPurple, AdminPurpleDark)))
+                .statusBarsPadding()
+                .padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 20.dp)
+        ) {
+            Column {
+                Text("Vendors", fontSize = 22.sp, fontWeight = FontWeight.Bold,
+                    color = Color.White, letterSpacing = (-0.3).sp)
+                Text("${sampleVendorRecords.size} registered · ${sampleVendorRecords.count { it.verificationStatus == VendorVerificationStatus.VERIFIED }} verified",
+                    fontSize = 12.sp, color = Color.White.copy(alpha = 0.72f))
+                Spacer(Modifier.height(14.dp))
+                OutlinedTextField(
+                    value = query, onValueChange = { query = it },
+                    placeholder = { Text("Search vendor name or city…", fontSize = 13.sp, color = NoorTextHint) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = NoorTextHint) },
+                    modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp), singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = NoorSurface, unfocusedContainerColor = NoorSurface,
+                        focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent,
+                        cursorColor = AdminPurple
+                    )
+                )
+            }
+        }
+
+        LazyRow(
+            modifier = Modifier.fillMaxWidth().background(NoorSurface),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            item { AdminFilterChip("All", filterStatus == null) { filterStatus = null } }
+            item { AdminFilterChip("✅ Verified", filterStatus == VendorVerificationStatus.VERIFIED) { filterStatus = VendorVerificationStatus.VERIFIED } }
+            item { AdminFilterChip("⏳ Pending", filterStatus == VendorVerificationStatus.PENDING) { filterStatus = VendorVerificationStatus.PENDING } }
+            item { AdminFilterChip("❌ Rejected", filterStatus == VendorVerificationStatus.REJECTED) { filterStatus = VendorVerificationStatus.REJECTED } }
+        }
+        HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
+
+        LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            item {
+                Text("${filtered.size} vendor${if (filtered.size != 1) "s" else ""} found",
+                    fontSize = 11.sp, color = NoorTextHint, fontWeight = FontWeight.SemiBold)
+            }
+            items(filtered, key = { it.id }) { record ->
+                AdminVendorCard(record = record, onClick = { selectedVendor = record })
+            }
+        }
+    }
+}
+
+@Composable
+private fun AdminVendorCard(record: AdminVendorRecord, onClick: () -> Unit) {
+    val (sc, sb, sl) = when (record.verificationStatus) {
+        VendorVerificationStatus.VERIFIED -> Triple(VendorTeal,  VendorTealLight,  "Verified")
+        VendorVerificationStatus.PENDING  -> Triple(NoorOrange,  NoorOrangeLight,  "Pending")
+        VendorVerificationStatus.REJECTED -> Triple(NoorRed,     NoorRedLight,     "Rejected")
+    }
+
+    Card(modifier = Modifier.fillMaxWidth().clickable { onClick() },
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = NoorSurface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
+        Row(modifier = Modifier.padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+
+            Box(modifier = Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)).background(record.avatarBg),
+                contentAlignment = Alignment.Center) {
+                Text("🏢", fontSize = 22.sp)
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(record.businessName, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = NoorTextPrimary,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                    Box(modifier = Modifier.clip(RoundedCornerShape(6.dp))
+                        .background(sb).padding(horizontal = 6.dp, vertical = 2.dp)) {
+                        Text(sl, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = sc)
+                    }
+                }
+                Text("${record.contactPerson} · ${record.city}", fontSize = 11.sp, color = NoorTextHint)
+                Spacer(Modifier.height(4.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(modifier = Modifier.clip(RoundedCornerShape(6.dp))
+                        .background(VendorTealLight).padding(horizontal = 6.dp, vertical = 2.dp)) {
+                        Text("🛠️ ${record.serviceCount} services", fontSize = 9.sp,
+                            fontWeight = FontWeight.SemiBold, color = VendorTeal)
+                    }
+                    Box(modifier = Modifier.clip(RoundedCornerShape(6.dp))
+                        .background(NoorBackground).padding(horizontal = 6.dp, vertical = 2.dp)) {
+                        Text("👥 ${record.workforce}", fontSize = 9.sp, color = NoorTextSecondary)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Vendor Detail Screen — COMPLETE with all required fields
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun AdminVendorDetailScreen(
+    record: AdminVendorRecord,
+    onBack: () -> Unit,
+    onVerify: (AdminVendorRecord) -> Unit,
+    onReject: (AdminVendorRecord) -> Unit
+) {
+    var showRejectDialog by remember { mutableStateOf(false) }
+
+    Column(modifier = Modifier.fillMaxSize().background(NoorBackground)) {
+        // Header
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Brush.linearGradient(listOf(AdminPurple, AdminPurpleDark)))
+                .statusBarsPadding()
+                .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 28.dp)
+        ) {
+            Column {
+                Box(modifier = Modifier.size(38.dp).clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.18f)).clickable { onBack() },
+                    contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.ArrowBack, contentDescription = "Back",
+                        tint = Color.White, modifier = Modifier.size(20.dp))
+                }
+                Spacer(Modifier.height(20.dp))
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Box(modifier = Modifier.size(60.dp).clip(RoundedCornerShape(14.dp)).background(record.avatarBg),
+                        contentAlignment = Alignment.Center) { Text("🏢", fontSize = 26.sp) }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(record.businessName, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Text("${record.contactPerson} · ${record.city}",
+                            fontSize = 12.sp, color = Color.White.copy(alpha = 0.75f))
+                        Spacer(Modifier.height(6.dp))
+                        val statusLabel = when (record.verificationStatus) {
+                            VendorVerificationStatus.VERIFIED -> "✅ Verified"
+                            VendorVerificationStatus.PENDING  -> "⏳ Pending Review"
+                            VendorVerificationStatus.REJECTED -> "❌ Rejected"
+                        }
+                        Box(modifier = Modifier.clip(RoundedCornerShape(20.dp))
+                            .background(Color.White.copy(alpha = 0.2f)).padding(horizontal = 10.dp, vertical = 4.dp)) {
+                            Text(statusLabel, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        }
+                    }
+                }
+            }
+        }
+
+        Column(
+            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+
+            // ── Quick stats ────────────────────────────────────────────────────
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                AdminInfoTile("🛠️", "Services",  "${record.serviceCount}", modifier = Modifier.weight(1f))
+                AdminInfoTile("👥", "Workforce", record.workforce,           modifier = Modifier.weight(1f))
+                AdminInfoTile("🗓", "Joined",    record.joinedDate,          modifier = Modifier.weight(1f))
+            }
+
+            // ── Business Name & Contact ────────────────────────────────────────
+            AdminDetailSection("Business Identity") {
+                AdminDetailRow("🏢", "Business Name",   record.businessName)
+                AdminDetailRow("👤", "Contact Person",  record.contactPerson)
+                AdminDetailRow("📞", "Phone Number",    record.phone)
+                AdminDetailRow("📧", "Business Email",  record.email)
+            }
+
+            // ── Legal & Registration ───────────────────────────────────────────
+            AdminDetailSection("Legal & Registration") {
+                AdminDetailRow("📄", "NTN Number",       record.ntn.ifBlank { "Not provided" })
+                AdminDetailRow("🗂", "Company Reg. No.", record.companyRegNo.ifBlank { "Not provided" })
+                AdminDetailRow("🗓", "Joined Platform",  record.joinedDate)
+            }
+
+            // ── Location ──────────────────────────────────────────────────────
+            AdminDetailSection("Location") {
+                AdminDetailRow("🏢", "Head Office",     record.headOffice)
+                AdminDetailRow("📍", "Address",         record.address)
+                // Cities of Operation chips
+                Spacer(Modifier.height(6.dp))
+                Text("🗺 Cities of Operation", fontSize = 11.sp,
+                    color = NoorTextHint, fontWeight = FontWeight.Medium)
+                Spacer(Modifier.height(8.dp))
+                @OptIn(ExperimentalLayoutApi::class)
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement   = Arrangement.spacedBy(8.dp)
+                ) {
+                    record.citiesOfOperation.forEach { cityName ->
+                        Box(modifier = Modifier.clip(RoundedCornerShape(20.dp))
+                            .background(NoorBackground)
+                            .border(1.dp, NoorBorder, RoundedCornerShape(20.dp))
+                            .padding(horizontal = 10.dp, vertical = 5.dp)) {
+                            Text("📍 $cityName", fontSize = 11.sp, color = NoorTextSecondary)
+                        }
+                    }
+                }
+            }
+
+            // ── About the Business ─────────────────────────────────────────────
+            AdminDetailSection("About the Business") {
+                Text(record.bio.ifBlank { "No description provided." },
+                    fontSize = 13.sp, color = NoorTextSecondary, lineHeight = 20.sp)
+            }
+
+            // ── Services Offered ───────────────────────────────────────────────
+            if (record.services.isNotEmpty()) {
+                AdminDetailSection("Services Offered") {
+                    record.services.forEachIndexed { idx, svc ->
+                        if (idx > 0) {
+                            Spacer(Modifier.height(10.dp))
+                            HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
+                            Spacer(Modifier.height(10.dp))
+                        }
+                        // Service header
+                        Row(verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Box(modifier = Modifier.size(32.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(VendorTealLight),
+                                contentAlignment = Alignment.Center) {
+                                Text(svc.emoji, fontSize = 16.sp)
+                            }
+                            Text(svc.categoryLabel, fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold, color = NoorTextPrimary)
+                        }
+                        Spacer(Modifier.height(8.dp))
+
+                        // Pricing model chip
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Box(modifier = Modifier.clip(RoundedCornerShape(6.dp))
+                                .background(VendorTealLight).padding(horizontal = 8.dp, vertical = 4.dp)) {
+                                Text("💰 ${svc.pricingModel}", fontSize = 10.sp,
+                                    fontWeight = FontWeight.SemiBold, color = VendorTeal)
+                            }
+                            Box(modifier = Modifier.clip(RoundedCornerShape(6.dp))
+                                .background(NoorBlueLight).padding(horizontal = 8.dp, vertical = 4.dp)) {
+                                Text("📅 Min: ${svc.minContract}", fontSize = 10.sp,
+                                    fontWeight = FontWeight.SemiBold, color = NoorBlue)
+                            }
+                        }
+                        Spacer(Modifier.height(6.dp))
+
+                        // Price range
+                        Row(verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text("Price Range:", fontSize = 11.sp, color = NoorTextHint,
+                                fontWeight = FontWeight.Medium)
+                            Text(svc.priceRange, fontSize = 11.sp, color = NoorTextPrimary,
+                                fontWeight = FontWeight.SemiBold)
+                        }
+                        Spacer(Modifier.height(6.dp))
+
+                        // Coverage areas
+                        Text("Coverage:", fontSize = 11.sp, color = NoorTextHint,
+                            fontWeight = FontWeight.Medium)
+                        Spacer(Modifier.height(4.dp))
+                        @OptIn(ExperimentalLayoutApi::class)
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            svc.coverageAreas.forEach { area ->
+                                Box(modifier = Modifier.clip(RoundedCornerShape(20.dp))
+                                    .background(NoorBackground)
+                                    .padding(horizontal = 8.dp, vertical = 3.dp)) {
+                                    Text("📍 $area", fontSize = 10.sp, color = NoorTextSecondary)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ── Business Capacity ──────────────────────────────────────────────
+            AdminDetailSection("Business Capacity") {
+                AdminDetailRow("👥", "Workforce Size", record.workforce)
+            }
+
+            // ── Quality & Credentials ──────────────────────────────────────────
+            AdminDetailSection("Quality & Credentials") {
+                // ISO certification
+                Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Row(verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("🏅", fontSize = 13.sp)
+                        Text("ISO Quality Certified", fontSize = 11.sp,
+                            color = NoorTextHint, fontWeight = FontWeight.Medium)
+                    }
+                    Box(modifier = Modifier.clip(RoundedCornerShape(20.dp))
+                        .background(if (record.isIsoCertified) NoorGreenLight else NoorBackground)
+                        .padding(horizontal = 10.dp, vertical = 4.dp)) {
+                        Text(if (record.isIsoCertified) "✅ Yes" else "❌ No",
+                            fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                            color = if (record.isIsoCertified) NoorGreen else NoorTextHint)
+                    }
+                }
+                HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
+
+                // Notable clients
+                Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Row(verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("🌟", fontSize = 13.sp)
+                        Text("Has Notable Clients", fontSize = 11.sp,
+                            color = NoorTextHint, fontWeight = FontWeight.Medium)
+                    }
+                    Box(modifier = Modifier.clip(RoundedCornerShape(20.dp))
+                        .background(if (record.hasNotableClients) NoorGreenLight else NoorBackground)
+                        .padding(horizontal = 10.dp, vertical = 4.dp)) {
+                        Text(if (record.hasNotableClients) "✅ Yes" else "❌ No",
+                            fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                            color = if (record.hasNotableClients) NoorGreen else NoorTextHint)
+                    }
+                }
+
+                if (record.hasNotableClients && record.notableClients.isNotBlank()) {
+                    HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
+                    Spacer(Modifier.height(6.dp))
+                    Text("Notable Clients:", fontSize = 11.sp,
+                        color = NoorTextHint, fontWeight = FontWeight.Medium)
+                    Spacer(Modifier.height(4.dp))
+                    Text(record.notableClients, fontSize = 12.sp,
+                        color = NoorTextSecondary, lineHeight = 18.sp,
+                        fontWeight = FontWeight.SemiBold)
+                }
+            }
+
+            // ── Admin Actions ──────────────────────────────────────────────────
+            when (record.verificationStatus) {
+                VendorVerificationStatus.PENDING -> {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Button(onClick = { onVerify(record) }, modifier = Modifier.weight(1f).height(50.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = VendorTeal)) {
+                            Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Verify Vendor", fontWeight = FontWeight.SemiBold)
+                        }
+                        OutlinedButton(onClick = { showRejectDialog = true }, modifier = Modifier.weight(1f).height(50.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = NoorRed)) {
+                            Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Reject", fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+                VendorVerificationStatus.VERIFIED -> {
+                    OutlinedButton(onClick = { showRejectDialog = true }, modifier = Modifier.fillMaxWidth().height(50.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = NoorRed)) {
+                        Icon(Icons.Default.Block, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Revoke Verification", fontWeight = FontWeight.SemiBold)
+                    }
+                }
+                VendorVerificationStatus.REJECTED -> {
+                    Button(onClick = { onVerify(record) }, modifier = Modifier.fillMaxWidth().height(50.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = VendorTeal)) {
+                        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Re-verify Vendor", fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+        }
+    }
+
+    if (showRejectDialog) {
+        AlertDialog(
+            onDismissRequest = { showRejectDialog = false },
+            shape = RoundedCornerShape(20.dp),
+            title = { Text(if (record.verificationStatus == VendorVerificationStatus.VERIFIED) "Revoke Verification?" else "Reject Vendor?",
+                fontWeight = FontWeight.Bold, color = NoorRed) },
+            text  = { Text("${record.businessName} will be ${if (record.verificationStatus == VendorVerificationStatus.VERIFIED) "unverified" else "rejected"}.",
+                fontSize = 13.sp, color = NoorTextSecondary) },
+            confirmButton = {
+                TextButton(onClick = { showRejectDialog = false; onReject(record) }) {
+                    Text("Confirm", color = NoorRed, fontWeight = FontWeight.SemiBold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRejectDialog = false }) {
+                    Text("Cancel", color = NoorTextHint)
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun AdminFilterChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(if (selected) AdminPurple else NoorBackground)
+            .border(1.dp, if (selected) AdminPurple else NoorBorder, RoundedCornerShape(20.dp))
+            .clickable { onClick() }
+            .padding(horizontal = 14.dp, vertical = 7.dp)
+    ) {
+        Text(label, fontSize = 12.sp,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+            color = if (selected) Color.White else NoorTextSecondary)
+    }
+}
+
+@Composable
+fun AdminInfoTile(emoji: String, label: String, value: String, modifier: Modifier = Modifier) {
+    Card(modifier = modifier, shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = NoorSurface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
+        Column(modifier = Modifier.fillMaxWidth().padding(10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(emoji, fontSize = 18.sp)
+            Text(value, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = NoorTextPrimary)
+            Text(label, fontSize = 9.sp, color = NoorTextHint, fontWeight = FontWeight.Medium)
+        }
+    }
+}
+
+@Composable
+fun AdminDetailSection(title: String, content: @Composable ColumnScope.() -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = NoorSurface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                color = AdminPurple, letterSpacing = 0.3.sp)
+            content()
+        }
+    }
+}
+
+@Composable
+fun AdminDetailRow(emoji: String, label: String, value: String) {
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.weight(0.4f)) {
+            Text(emoji, fontSize = 13.sp)
+            Text(label, fontSize = 11.sp, color = NoorTextHint, fontWeight = FontWeight.Medium)
+        }
+        Text(value, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+            color = NoorTextPrimary, modifier = Modifier.weight(0.6f))
+    }
+    HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
+}
