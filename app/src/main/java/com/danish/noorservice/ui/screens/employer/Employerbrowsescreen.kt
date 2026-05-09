@@ -28,8 +28,10 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.danish.noorservice.ui.screens.employee.allServiceCategories
 import com.danish.noorservice.ui.theme.*
+import com.danish.noorservice.viewmodel.employer.EmployerBrowseViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -245,11 +247,18 @@ val sampleWorkers = listOf(
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-fun EmployerBrowseScreen() {
+fun EmployerBrowseScreen(
+    viewModel: EmployerBrowseViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
     var openWorker    by remember { mutableStateOf<WorkerProfile?>(null) }
     var query         by remember { mutableStateOf("") }
     var selectedCatId by remember { mutableStateOf<String?>(null) }
     var showAvailOnly by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        viewModel.loadEmployees()
+    }
 
     if (openWorker != null) {
         EmployerWorkerDetailScreen(worker = openWorker!!, onBack = { openWorker = null })

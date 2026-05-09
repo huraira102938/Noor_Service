@@ -1,5 +1,3 @@
-
-
 package com.danish.noorservice.ui.screens.auth
 
 import android.net.Uri
@@ -29,35 +27,48 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
 import com.danish.noorservice.ui.components.NoorPrimaryButton
 import com.danish.noorservice.ui.components.NoorSectionCard
 import com.danish.noorservice.ui.components.NoorTextField
 import com.danish.noorservice.ui.theme.*
+import com.danish.noorservice.viewmodel.employer.EmployerRegistrationEvent
+import com.danish.noorservice.viewmodel.employer.EmployerRegistrationViewModel
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Employer Registration Screen
-// Shown after user selects "I want to Hire" on RoleSelectionScreen
+// Shown after user selects "I want to Hire" on the sign-up screen.
+//
+// FIX: The screen now uses EmployerRegistrationViewModel so that data is
+// persisted to Firestore and isProfileComplete is set to true.  Previously
+// the button called onRegistered() directly without saving anything, which
+// caused the employer to land back on this screen every time the app was
+// reopened.
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 fun EmployerRegistrationScreen(
     onBack: () -> Unit,
-    onRegistered: () -> Unit
+    onRegistered: () -> Unit,
+    // ✅ FIX: Accept (or create) the ViewModel so we can save data
+    viewModel: EmployerRegistrationViewModel = hiltViewModel()
 ) {
-    var fullName  by remember { mutableStateOf("") }
-    var email     by remember { mutableStateOf("") }
-    var city      by remember { mutableStateOf("") }
-    var area      by remember { mutableStateOf("") }
-    var address   by remember { mutableStateOf("") }
-    var about     by remember { mutableStateOf("") }
-    var photoUri  by remember { mutableStateOf<Uri?>(null) }
+    val uiState by viewModel.uiState.collectAsState()
+
+    // ✅ FIX: Listen for success/error events from the ViewModel
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is EmployerRegistrationEvent.Success -> onRegistered()
+                is EmployerRegistrationEvent.Error   -> { /* error shown in UI via uiState.error */ }
+            }
+        }
+    }
 
     val galleryLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
-    ) { uri -> uri?.let { photoUri = it } }
-
-    val isFormValid = fullName.isNotBlank() && city.isNotBlank()
+    ) { uri -> uri?.let { viewModel.setPhotoUri(it) } }
 
     Column(
         modifier = Modifier
@@ -107,9 +118,9 @@ fun EmployerRegistrationScreen(
                                 .border(2.dp, Color.White.copy(alpha = 0.5f), CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
-                            if (photoUri != null) {
+                            if (uiState.photoUri != null) {
                                 AsyncImage(
-                                    model = photoUri,
+                                    model = uiState.photoUri,
                                     contentDescription = "Profile photo",
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier
@@ -117,10 +128,7 @@ fun EmployerRegistrationScreen(
                                         .clip(CircleShape)
                                 )
                             } else {
-                                Text(
-                                    "📷",
-                                    fontSize = 28.sp
-                                )
+                                Text("📷", fontSize = 28.sp)
                             }
                         }
                         // Camera badge
@@ -176,18 +184,18 @@ fun EmployerRegistrationScreen(
                 Spacer(Modifier.height(14.dp))
 
                 NoorTextField(
-                    value = fullName,
-                    onValueChange = { fullName = it },
-                    label = "Full Name *",
-                    placeholder = "Your full name"
+                    value         = uiState.fullName,
+                    onValueChange = { viewModel.updateFullName(it) },
+                    label         = "Full Name *",
+                    placeholder   = "Your full name"
                 )
                 Spacer(Modifier.height(12.dp))
 
                 NoorTextField(
-                    value = email,
-                    onValueChange = { email = it },
-                    label = "Email",
-                    placeholder = "you@email.com",
+                    value           = uiState.email,
+                    onValueChange   = { viewModel.updateEmail(it) },
+                    label           = "Email",
+                    placeholder     = "you@email.com",
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
                 )
             }
@@ -198,28 +206,28 @@ fun EmployerRegistrationScreen(
                 Spacer(Modifier.height(12.dp))
 
                 NoorTextField(
-                    value = city,
-                    onValueChange = { city = it },
-                    label = "City *",
-                    placeholder = "e.g. Lahore"
+                    value         = uiState.city,
+                    onValueChange = { viewModel.updateCity(it) },
+                    label         = "City *",
+                    placeholder   = "e.g. Lahore"
                 )
                 Spacer(Modifier.height(12.dp))
 
                 NoorTextField(
-                    value = area,
-                    onValueChange = { area = it },
-                    label = "Area / Sector",
-                    placeholder = "e.g. DHA Phase 3"
+                    value         = uiState.area,
+                    onValueChange = { viewModel.updateArea(it) },
+                    label         = "Area / Sector",
+                    placeholder   = "e.g. DHA Phase 3"
                 )
                 Spacer(Modifier.height(12.dp))
 
                 NoorTextField(
-                    value = address,
-                    onValueChange = { address = it },
-                    label = "Full Address",
-                    placeholder = "Street, House No…",
-                    singleLine = false,
-                    maxLines = 3
+                    value         = uiState.address,
+                    onValueChange = { viewModel.updateAddress(it) },
+                    label         = "Full Address",
+                    placeholder   = "Street, House No…",
+                    singleLine    = false,
+                    maxLines      = 3
                 )
             }
 
@@ -229,33 +237,45 @@ fun EmployerRegistrationScreen(
                 Spacer(Modifier.height(12.dp))
 
                 NoorTextField(
-                    value = about,
-                    onValueChange = { if (it.length <= 200) about = it },
-                    label = "Short Bio (optional)",
-                    placeholder = "Tell workers about your household needs…",
-                    singleLine = false,
-                    maxLines = 4
+                    value         = uiState.about,
+                    onValueChange = { viewModel.updateAbout(it) },
+                    label         = "Short Bio (optional)",
+                    placeholder   = "Tell workers about your household needs…",
+                    singleLine    = false,
+                    maxLines      = 4
                 )
                 Text(
-                    "${about.length}/200 characters",
+                    "${uiState.about.length}/200 characters",
                     fontSize = 10.sp,
-                    color = if (about.length > 190) NoorOrange else NoorTextHint,
+                    color    = if (uiState.about.length > 190) NoorOrange else NoorTextHint,
                     modifier = Modifier.align(Alignment.End)
                 )
             }
 
-            // CTA
+            // Error banner
+            uiState.error?.let { errorMsg ->
+                Text(
+                    text     = "⚠️ $errorMsg",
+                    color    = NoorRed,
+                    fontSize = 12.sp,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            // ✅ FIX: Call viewModel.saveEmployerProfile() instead of onRegistered() directly.
+            // The ViewModel will save the employer document, mark isProfileComplete = true in
+            // Firestore, then emit Success which triggers onRegistered() via LaunchedEffect above.
             NoorPrimaryButton(
-                text = "Create Account & Continue",
-                enabled = isFormValid,
-                onClick = onRegistered,
+                text    = if (uiState.isLoading) "Saving…" else "Create Account & Continue",
+                enabled = viewModel.isFormValid() && !uiState.isLoading,
+                onClick = { viewModel.saveEmployerProfile() },
                 modifier = Modifier.padding(top = 4.dp)
             )
 
             Text(
                 "* Required fields",
                 fontSize = 11.sp,
-                color = NoorTextHint,
+                color    = NoorTextHint,
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             )
 
@@ -267,10 +287,10 @@ fun EmployerRegistrationScreen(
 @Composable
 private fun EmployerRegSectionLabel(text: String) {
     Text(
-        text = text,
-        fontSize = 13.sp,
-        fontWeight = FontWeight.SemiBold,
-        color = NoorBlue,
+        text          = text,
+        fontSize      = 13.sp,
+        fontWeight    = FontWeight.SemiBold,
+        color         = NoorBlue,
         letterSpacing = 0.3.sp
     )
 }

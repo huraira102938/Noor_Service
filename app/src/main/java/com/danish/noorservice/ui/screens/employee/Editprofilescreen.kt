@@ -1,5 +1,6 @@
 package com.danish.noorservice.ui.screens.employee
 
+import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -15,9 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,21 +25,23 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
-
+import coil3.imageLoader
+import com.danish.noorservice.data.model.EmployeeService
+import com.danish.noorservice.ui.components.EditProfileShimmer
 import com.danish.noorservice.ui.components.NoorPrimaryButton
 import com.danish.noorservice.ui.components.NoorSectionCard
 import com.danish.noorservice.ui.components.NoorSelectableChip
 import com.danish.noorservice.ui.components.NoorTextField
 import com.danish.noorservice.ui.theme.*
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Static data (mirrors ServiceDetailScreen exactly)
-// ─────────────────────────────────────────────────────────────────────────────
+import com.danish.noorservice.viewmodel.employee.EmployeeSettingsViewModel
 
 private val editServiceSkillOptions = mapOf(
     "driver"     to listOf("City Driving", "Highway", "Heavy Vehicle", "Motorcycle", "Car Maintenance"),
@@ -59,46 +60,113 @@ private val editDaysOfWeek        = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "S
 private val editTimeSlots         = listOf("Full Day", "Morning", "Evening", "Night", "Flexible")
 private val editExperienceOptions = listOf("< 1 year", "1–2 yrs", "3–5 yrs", "6–10 yrs", "10+ yrs")
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Edit Profile Screen
-// ─────────────────────────────────────────────────────────────────────────────
-
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun EditProfileScreen(
+    userId: String,
     onBack: () -> Unit,
-    onSaved: () -> Unit = {}
+    onSaved: () -> Unit = {},
+    // ✅ FIX: Receives the already-loaded EmployeeSettingsViewModel from
+    // EmployeeSettingsScreen so we NEVER trigger a second Firestore fetch.
+    // hiltViewModel() is kept as a fallback for standalone preview/testing only.
+    viewModel: EmployeeSettingsViewModel = hiltViewModel()
 ) {
-    // ── Profile fields ────────────────────────────────────────────────────────
-    var fullName by remember { mutableStateOf("Muhammad Ali") }
-    var email    by remember { mutableStateOf("m.ali@email.com") }
-    var phone    by remember { mutableStateOf("0312-3456789") }
-    var cnic     by remember { mutableStateOf("35202-1234567-9") }
-    var city     by remember { mutableStateOf("Lahore") }
-    var address  by remember { mutableStateOf("House 12, Street 5, DHA Phase 3") }
-    var gender   by remember { mutableStateOf("Male") }
-    var dob      by remember { mutableStateOf("15/03/1992") }
-    var bio      by remember { mutableStateOf("Experienced professional driver with 5+ years in DHA & Gulberg area.") }
+    val context = LocalContext.current
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    // ── Pricing fields ────────────────────────────────────────────────────────
-    var dailyRate   by remember { mutableStateOf("1,200") }
-    var hourlyRate  by remember { mutableStateOf("") }
-    var monthlyRate by remember { mutableStateOf("") }
+    // ✅ FIX: REMOVED the LaunchedEffect { viewModel.loadProfile(userId) } that
+    // was here before. The profile is already loaded by EmployeeSettingsScreen
+    // before it navigates here, so calling loadProfile again caused:
+    //   1. A redundant Firestore read
+    //   2. A brief isLoading = true flash that wiped the form fields
+    // The hasLoaded guard in the VM would have caught most cases, but removing
+    // this call entirely is the cleanest and most reliable fix.
 
-    // ── Photo ─────────────────────────────────────────────────────────────────
+    // Navigate away after a successful save
+    LaunchedEffect(uiState.saveSuccess) {
+        if (uiState.saveSuccess) {
+            context.imageLoader.memoryCache?.clear()
+            viewModel.clearSaveSuccess()
+            onSaved()
+        }
+    }
+
+    val profile  = uiState.profile
+    val services = uiState.services
+
+    // ✅ FIX: Show shimmer on initial load instead of a blocking spinner.
+    // This can only happen if this screen is ever opened without going through
+    // EmployeeSettingsScreen (e.g. deep-link or direct navigation in future).
+    if (uiState.isLoading && !uiState.hasLoaded) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(NoorBackground)
+        ) {
+            // Keep the gradient header visible during shimmer
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Brush.linearGradient(listOf(NoorBlue, NoorBlueDark)))
+                    .statusBarsPadding()
+                    .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 28.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.18f))
+                        .clickable { onBack() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.ArrowBack, contentDescription = "Back",
+                        tint = Color.White, modifier = Modifier.size(20.dp))
+                }
+            }
+            EditProfileShimmer()
+        }
+        return
+    }
+
+    var fullName    by remember(profile) { mutableStateOf(profile?.fullName    ?: "") }
+    var email       by remember(profile) { mutableStateOf(profile?.email       ?: "") }
+    var phone       by remember(profile) { mutableStateOf(profile?.phone       ?: "") }
+    var cnic        by remember(profile) { mutableStateOf(profile?.cnic        ?: "") }
+    var city        by remember(profile) { mutableStateOf(profile?.city        ?: "") }
+    var address     by remember(profile) { mutableStateOf(profile?.address     ?: "") }
+    var gender      by remember(profile) { mutableStateOf(profile?.gender      ?: "") }
+    var dob         by remember(profile) { mutableStateOf(profile?.dob         ?: "") }
+    var bio         by remember(profile) { mutableStateOf(profile?.bio         ?: "") }
+    var dailyRate   by remember(profile) { mutableStateOf(profile?.dailyRate   ?: "") }
+    var hourlyRate  by remember(profile) { mutableStateOf(profile?.hourlyRate  ?: "") }
+    var monthlyRate by remember(profile) { mutableStateOf(profile?.monthlyRate ?: "") }
+
     var photoUri by remember { mutableStateOf<Uri?>(null) }
 
-    // ── Language / service selection ──────────────────────────────────────────
     val languages         = listOf("Urdu", "Punjabi", "English", "Pashto", "Sindhi", "Saraiki")
-    val selectedLanguages = remember { mutableStateListOf("Urdu", "Punjabi") }
+    val selectedLanguages = remember(profile) {
+        mutableStateListOf<String>().apply {
+            addAll(profile?.languages ?: listOf("Urdu"))
+        }
+    }
 
-    val existingServiceIds = remember { mutableStateListOf("driver", "houseBoy") }
-    val selectedServices   = remember { mutableStateListOf("driver", "houseBoy") }
-
-    val serviceDetailStates = remember {
+    val existingServiceIds = remember(services) {
+        mutableStateListOf<String>().apply { addAll(services.map { it.serviceId }) }
+    }
+    val selectedServices = remember(services) {
+        mutableStateListOf<String>().apply { addAll(services.map { it.serviceId }) }
+    }
+    val serviceDetailStates = remember(services) {
         mutableStateMapOf<String, ServiceDetailState>().also { map ->
-            existingServiceIds.forEach { id ->
-                map[id] = ServiceDetailState(id).applyMockData(id)
+            services.forEach { svc ->
+                map[svc.serviceId] = ServiceDetailState(svc.serviceId).apply {
+                    experience = svc.experience
+                    timeSlot   = svc.availabilityTime
+                    note       = svc.additionalNote
+                    selectedDays.addAll(svc.availabilityDays)
+                    selectedSkills.addAll(svc.skills)
+                    if (svc.serviceId == "driver") licenceType = svc.additionalNote
+                }
             }
         }
     }
@@ -107,14 +175,19 @@ fun EditProfileScreen(
         derivedStateOf { selectedServices.filter { it !in existingServiceIds } }
     }
 
-    // ── Gallery picker ─────────────────────────────────────────────────────────
     val galleryLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.GetContent()
+        ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
-        uri?.let { photoUri = it }
+        uri?.let {
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    it, Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (_: SecurityException) {}
+            photoUri = it
+        }
     }
 
-    // ── Validation ────────────────────────────────────────────────────────────
     val newServicesValid by remember {
         derivedStateOf {
             newlyAddedIds.all { id ->
@@ -124,21 +197,25 @@ fun EditProfileScreen(
             }
         }
     }
-    val isFormValid = fullName.isNotBlank() && phone.isNotBlank() &&
-            city.isNotBlank() && newServicesValid
 
-    var showSavedSnackbar by remember { mutableStateOf(false) }
+    val isFormValid = fullName.isNotBlank() && phone.isNotBlank() &&
+            city.isNotBlank() && newServicesValid && !uiState.isSaving
+
     val genderOptions = listOf("Male", "Female")
 
-    // ─────────────────────────────────────────────────────────────────────────
+    val initials = fullName
+        .split(" ").filter { it.isNotBlank() }.take(2)
+        .joinToString("") { it.first().uppercaseChar().toString() }
+        .ifEmpty { "?" }
+
     Box(modifier = Modifier.fillMaxSize()) {
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .background(NoorBackground)
         ) {
-
-            // ── Gradient Header ───────────────────────────────────────────────
+            // Gradient Header
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -158,15 +235,14 @@ fun EditProfileScreen(
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back",
                             tint = Color.White, modifier = Modifier.size(20.dp))
                     }
-
                     Spacer(Modifier.height(20.dp))
-
-                    // ── Avatar row ────────────────────────────────────────────
                     Row(
                         verticalAlignment     = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Box(modifier = Modifier.clickable { galleryLauncher.launch("image/*") }) {
+                        Box(modifier = Modifier.clickable {
+                            galleryLauncher.launch(arrayOf("image/*"))
+                        }) {
                             Box(
                                 modifier = Modifier
                                     .size(76.dp)
@@ -175,22 +251,29 @@ fun EditProfileScreen(
                                     .border(2.dp, Color.White.copy(alpha = 0.5f), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
-                                if (photoUri != null) {
-                                    AsyncImage(
-                                        model              = photoUri,
-                                        contentDescription = "Profile photo",
-                                        contentScale       = ContentScale.Crop,
-                                        modifier           = Modifier.size(76.dp).clip(CircleShape)
-                                    )
-                                } else {
-                                    Text("MA", fontSize = 28.sp,
-                                        fontWeight = FontWeight.ExtraBold, color = Color.White)
+                                when {
+                                    photoUri != null ->
+                                        AsyncImage(
+                                            model = photoUri,
+                                            contentDescription = "Profile photo",
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.size(76.dp).clip(CircleShape)
+                                        )
+                                    !profile?.photoUrl.isNullOrBlank() ->
+                                        AsyncImage(
+                                            model = profile!!.photoUrl,
+                                            contentDescription = "Profile photo",
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.size(76.dp).clip(CircleShape)
+                                        )
+                                    else ->
+                                        Text(initials, fontSize = 28.sp,
+                                            fontWeight = FontWeight.ExtraBold, color = Color.White)
                                 }
                             }
                             Box(
                                 modifier = Modifier
-                                    .size(26.dp)
-                                    .clip(CircleShape)
+                                    .size(26.dp).clip(CircleShape)
                                     .background(NoorOrange)
                                     .border(2.dp, NoorBlueDark, CircleShape)
                                     .align(Alignment.BottomEnd),
@@ -200,7 +283,6 @@ fun EditProfileScreen(
                                     tint = Color.White, modifier = Modifier.size(14.dp))
                             }
                         }
-
                         Column {
                             Text("Edit Profile", fontSize = 20.sp, fontWeight = FontWeight.Bold,
                                 color = Color.White, letterSpacing = (-0.3).sp)
@@ -211,7 +293,7 @@ fun EditProfileScreen(
                 }
             }
 
-            // ── Scrollable form ───────────────────────────────────────────────
+            // Scrollable form
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -219,8 +301,6 @@ fun EditProfileScreen(
                     .padding(horizontal = 16.dp, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-
-                // ── Basic Information ─────────────────────────────────────────
                 NoorSectionCard {
                     ProfileSectionLabel("Basic Information")
                     Spacer(Modifier.height(14.dp))
@@ -251,7 +331,6 @@ fun EditProfileScreen(
                         label = "Date of Birth", placeholder = "DD/MM/YYYY")
                 }
 
-                // ── About You ─────────────────────────────────────────────────
                 NoorSectionCard {
                     ProfileSectionLabel("About You")
                     Spacer(Modifier.height(12.dp))
@@ -265,7 +344,6 @@ fun EditProfileScreen(
                         modifier = Modifier.align(Alignment.End))
                 }
 
-                // ── Location ──────────────────────────────────────────────────
                 NoorSectionCard {
                     ProfileSectionLabel("Location")
                     Spacer(Modifier.height(12.dp))
@@ -277,7 +355,6 @@ fun EditProfileScreen(
                         singleLine = false, maxLines = 3)
                 }
 
-                // ── Identity ──────────────────────────────────────────────────
                 NoorSectionCard {
                     ProfileSectionLabel("Identity")
                     Spacer(Modifier.height(12.dp))
@@ -286,7 +363,6 @@ fun EditProfileScreen(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
                 }
 
-                // ── Languages ─────────────────────────────────────────────────
                 NoorSectionCard {
                     ProfileSectionLabel("Languages Spoken")
                     Spacer(Modifier.height(12.dp))
@@ -309,141 +385,57 @@ fun EditProfileScreen(
                     }
                 }
 
-                // ── 💰 Pricing ────────────────────────────────────────────────
                 NoorSectionCard {
                     ProfileSectionLabel("My Rates (PKR)")
                     Spacer(Modifier.height(4.dp))
-                    Text(
-                        "Set your pricing so employers know what to expect. Leave blank if not applicable.",
-                        fontSize   = 11.sp,
-                        color      = NoorTextHint,
-                        lineHeight = 16.sp
-                    )
+                    Text("Set your pricing so employers know what to expect.",
+                        fontSize = 11.sp, color = NoorTextHint, lineHeight = 16.sp)
                     Spacer(Modifier.height(14.dp))
-
-                    // Daily rate row
-                    Row(
-                        modifier              = Modifier.fillMaxWidth(),
+                    Row(modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalAlignment     = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(38.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(NoorGreenLight),
-                            contentAlignment = Alignment.Center
-                        ) { Text("📅", fontSize = 18.sp) }
-                        NoorTextField(
-                            value           = dailyRate,
-                            onValueChange   = { dailyRate = it },
-                            label           = "Daily Rate",
-                            placeholder     = "e.g. 1,200",
-                            modifier        = Modifier.weight(1f),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                        )
-                        Text(
-                            "/ day",
-                            fontSize   = 12.sp,
-                            color      = NoorTextHint,
-                            fontWeight = FontWeight.Medium
-                        )
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Box(modifier = Modifier.size(38.dp).clip(RoundedCornerShape(10.dp))
+                            .background(NoorGreenLight), contentAlignment = Alignment.Center) {
+                            Text("📅", fontSize = 18.sp) }
+                        NoorTextField(value = dailyRate, onValueChange = { dailyRate = it },
+                            label = "Daily Rate", placeholder = "e.g. 1,200",
+                            modifier = Modifier.weight(1f),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                        Text("/ day", fontSize = 12.sp, color = NoorTextHint)
                     }
-
                     Spacer(Modifier.height(12.dp))
-
-                    // Hourly rate row
-                    Row(
-                        modifier              = Modifier.fillMaxWidth(),
+                    Row(modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalAlignment     = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(38.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(NoorBlueLight),
-                            contentAlignment = Alignment.Center
-                        ) { Text("⏱️", fontSize = 18.sp) }
-                        NoorTextField(
-                            value           = hourlyRate,
-                            onValueChange   = { hourlyRate = it },
-                            label           = "Hourly Rate (optional)",
-                            placeholder     = "e.g. 150",
-                            modifier        = Modifier.weight(1f),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                        )
-                        Text(
-                            "/ hr",
-                            fontSize   = 12.sp,
-                            color      = NoorTextHint,
-                            fontWeight = FontWeight.Medium
-                        )
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Box(modifier = Modifier.size(38.dp).clip(RoundedCornerShape(10.dp))
+                            .background(NoorBlueLight), contentAlignment = Alignment.Center) {
+                            Text("⏱️", fontSize = 18.sp) }
+                        NoorTextField(value = hourlyRate, onValueChange = { hourlyRate = it },
+                            label = "Hourly Rate (optional)", placeholder = "e.g. 150",
+                            modifier = Modifier.weight(1f),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                        Text("/ hr", fontSize = 12.sp, color = NoorTextHint)
                     }
-
                     Spacer(Modifier.height(12.dp))
-
-                    // Monthly rate row
-                    Row(
-                        modifier              = Modifier.fillMaxWidth(),
+                    Row(modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalAlignment     = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(38.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(NoorOrangeLight),
-                            contentAlignment = Alignment.Center
-                        ) { Text("🗓️", fontSize = 18.sp) }
-                        NoorTextField(
-                            value           = monthlyRate,
-                            onValueChange   = { monthlyRate = it },
-                            label           = "Monthly Rate (optional)",
-                            placeholder     = "e.g. 25,000",
-                            modifier        = Modifier.weight(1f),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                        )
-                        Text(
-                            "/ mo",
-                            fontSize   = 12.sp,
-                            color      = NoorTextHint,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-
-                    // Info tip
-                    Spacer(Modifier.height(12.dp))
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(NoorBlueLight)
-                            .padding(horizontal = 12.dp, vertical = 9.dp)
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment     = Alignment.CenterVertically
-                        ) {
-                            Text("💡", fontSize = 13.sp)
-                            Text(
-                                "Employers see your daily rate on your profile card. Your rates help them decide faster.",
-                                fontSize   = 11.sp,
-                                color      = NoorBlueDark,
-                                lineHeight = 16.sp
-                            )
-                        }
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Box(modifier = Modifier.size(38.dp).clip(RoundedCornerShape(10.dp))
+                            .background(NoorOrangeLight), contentAlignment = Alignment.Center) {
+                            Text("🗓️", fontSize = 18.sp) }
+                        NoorTextField(value = monthlyRate, onValueChange = { monthlyRate = it },
+                            label = "Monthly Rate (optional)", placeholder = "e.g. 25,000",
+                            modifier = Modifier.weight(1f),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                        Text("/ mo", fontSize = 12.sp, color = NoorTextHint)
                     }
                 }
 
-                // ── Services Offered ──────────────────────────────────────────
                 NoorSectionCard {
                     ProfileSectionLabel("Services Offered")
                     Spacer(Modifier.height(6.dp))
-                    Text(
-                        "Tap ✨ to add a new service — you'll need to fill in its details below.",
-                        fontSize = 11.sp, color = NoorTextHint, lineHeight = 16.sp
-                    )
+                    Text("Your current services are shown selected. Tap to add or remove.",
+                        fontSize = 11.sp, color = NoorTextHint, lineHeight = 16.sp)
                     Spacer(Modifier.height(12.dp))
                     FlowRow(modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -458,8 +450,7 @@ fun EditProfileScreen(
                                 onClick  = {
                                     if (isSelected) {
                                         selectedServices.remove(svc.id)
-                                        if (svc.id !in existingServiceIds)
-                                            serviceDetailStates.remove(svc.id)
+                                        serviceDetailStates.remove(svc.id)
                                     } else {
                                         selectedServices.add(svc.id)
                                         if (svc.id !in existingServiceIds)
@@ -470,38 +461,42 @@ fun EditProfileScreen(
                     }
                 }
 
-                // ── Inline detail cards for NEWLY added services ───────────────
-                if (newlyAddedIds.isNotEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(NoorBlueLight)
-                            .padding(horizontal = 14.dp, vertical = 10.dp)
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment     = Alignment.CenterVertically
-                        ) {
-                            Text("ℹ️", fontSize = 14.sp)
-                            Text(
-                                "Fill in the required details for your newly added service(s) to enable saving.",
-                                fontSize   = 12.sp,
-                                color      = NoorBlueDark,
-                                fontWeight = FontWeight.Medium,
-                                lineHeight = 17.sp
+                if (existingServiceIds.isNotEmpty()) {
+                    Text("YOUR SERVICES", fontSize = 10.sp, fontWeight = FontWeight.Bold,
+                        color = NoorTextHint, letterSpacing = 0.8.sp,
+                        modifier = Modifier.padding(start = 4.dp))
+                    existingServiceIds
+                        .filter { selectedServices.contains(it) }
+                        .forEach { svcId ->
+                            val state    = serviceDetailStates[svcId] ?: return@forEach
+                            val category = allServiceCategories.find { it.id == svcId }
+                            EditableServiceCard(
+                                category   = category?.label ?: svcId,
+                                emoji      = category?.emoji  ?: "💼",
+                                state      = state,
+                                isExisting = true
                             )
                         }
-                    }
+                }
 
+                if (newlyAddedIds.isNotEmpty()) {
+                    Box(modifier = Modifier.fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(NoorBlueLight)
+                        .padding(horizontal = 14.dp, vertical = 10.dp)) {
+                        Text("ℹ️ Fill in the required details for your new service(s) to enable saving.",
+                            fontSize = 12.sp, color = NoorBlueDark,
+                            fontWeight = FontWeight.Medium, lineHeight = 17.sp)
+                    }
                     newlyAddedIds.forEach { svcId ->
                         val state    = serviceDetailStates[svcId] ?: return@forEach
                         val category = allServiceCategories.find { it.id == svcId }
-                        ProfileServiceDetailCard(
-                            category = category?.label ?: svcId,
-                            emoji    = category?.emoji  ?: "💼",
-                            state    = state,
-                            onRemove = {
+                        EditableServiceCard(
+                            category   = category?.label ?: svcId,
+                            emoji      = category?.emoji  ?: "💼",
+                            state      = state,
+                            isExisting = false,
+                            onRemove   = {
                                 selectedServices.remove(svcId)
                                 serviceDetailStates.remove(svcId)
                             }
@@ -509,45 +504,70 @@ fun EditProfileScreen(
                     }
                 }
 
-                // ── Save Button ───────────────────────────────────────────────
+                if (uiState.error != null) {
+                    Box(modifier = Modifier.fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(NoorRedLight)
+                        .padding(horizontal = 14.dp, vertical = 10.dp)) {
+                        Text("⚠️ ${uiState.error}", fontSize = 12.sp, color = NoorRed)
+                    }
+                }
+
                 NoorPrimaryButton(
-                    text    = "Save Changes",
+                    text    = if (uiState.isSaving) "Saving…" else "Save Changes",
                     enabled = isFormValid,
-                    onClick = { showSavedSnackbar = true; onSaved() }
+                    onClick = {
+                        val updatedServices = selectedServices.mapNotNull { svcId ->
+                            val s = serviceDetailStates[svcId] ?: return@mapNotNull null
+                            EmployeeService(
+                                serviceId        = svcId,
+                                skills           = s.selectedSkills.toList(),
+                                experience       = s.experience,
+                                availabilityDays = s.selectedDays.toList(),
+                                availabilityTime = s.timeSlot,
+                                additionalNote   = s.note,
+                                dailyRate        = dailyRate
+                            )
+                        }
+                        viewModel.saveProfile(
+                            userId          = userId,
+                            fullName        = fullName,
+                            email           = email,
+                            phone           = phone,
+                            cnic            = cnic,
+                            city            = city,
+                            address         = address,
+                            gender          = gender,
+                            dob             = dob,
+                            bio             = bio,
+                            languages       = selectedLanguages.toList(),
+                            dailyRate       = dailyRate,
+                            hourlyRate      = hourlyRate,
+                            monthlyRate     = monthlyRate,
+                            serviceIds      = selectedServices.toList(),
+                            updatedServices = updatedServices,
+                            photoUri        = photoUri
+                        )
+                    }
                 )
 
                 Spacer(Modifier.height(16.dp))
             }
         }
 
-        // ── Success Snackbar ──────────────────────────────────────────────────
-        if (showSavedSnackbar) {
-            LaunchedEffect(Unit) {
-                kotlinx.coroutines.delay(2000)
-                showSavedSnackbar = false
-            }
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
-                    .padding(16.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(NoorTextPrimary)
-                        .padding(horizontal = 18.dp, vertical = 14.dp)
-                ) {
+        // Saving overlay
+        if (uiState.isSaving) {
+            Box(modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter)
+                .navigationBarsPadding().padding(16.dp)) {
+                Box(modifier = Modifier.fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(NoorTextPrimary)
+                    .padding(horizontal = 18.dp, vertical = 14.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Box(modifier = Modifier.size(24.dp).clip(CircleShape).background(NoorGreen),
-                            contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.Check, contentDescription = null,
-                                tint = Color.White, modifier = Modifier.size(14.dp))
-                        }
-                        Text("Profile updated successfully!", fontSize = 13.sp,
+                        CircularProgressIndicator(color = Color.White,
+                            modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                        Text("Saving profile…", fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold, color = Color.White)
                     }
                 }
@@ -556,45 +576,43 @@ fun EditProfileScreen(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Inline service detail card — shown for NEWLY added services only
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Editable service card ─────────────────────────────────────────────────────
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ProfileServiceDetailCard(
+private fun EditableServiceCard(
     category: String,
     emoji: String,
     state: ServiceDetailState,
-    onRemove: () -> Unit
+    isExisting: Boolean,
+    onRemove: (() -> Unit)? = null
 ) {
     NoorSectionCard {
-        Row(
-            modifier             = Modifier.fillMaxWidth().padding(bottom = 14.dp),
-            verticalAlignment    = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Box(
-                modifier = Modifier.size(40.dp).background(NoorBlueLight, RoundedCornerShape(10.dp)),
-                contentAlignment = Alignment.Center
-            ) { Text(emoji, fontSize = 20.sp) }
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(category, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = NoorTextPrimary)
-                Text("New service — fill in required details",
-                    fontSize = 10.sp, color = NoorOrange, fontWeight = FontWeight.SemiBold)
+        Row(modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Box(modifier = Modifier.size(40.dp)
+                .background(NoorBlueLight, RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center) {
+                Text(emoji, fontSize = 20.sp)
             }
-
-            Box(
-                modifier = Modifier
-                    .size(30.dp)
-                    .clip(CircleShape)
-                    .background(NoorRedLight)
-                    .clickable { onRemove() },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Default.Close, contentDescription = "Remove",
-                    tint = NoorRed, modifier = Modifier.size(15.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(category, fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold, color = NoorTextPrimary)
+                Text(
+                    if (isExisting) "Tap to edit your details" else "New — fill in required details",
+                    fontSize   = 10.sp,
+                    color      = if (isExisting) NoorTextHint else NoorOrange,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            if (!isExisting && onRemove != null) {
+                Box(modifier = Modifier.size(30.dp).clip(CircleShape)
+                    .background(NoorRedLight).clickable { onRemove() },
+                    contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.Close, contentDescription = "Remove",
+                        tint = NoorRed, modifier = Modifier.size(15.dp))
+                }
             }
         }
 
@@ -603,14 +621,13 @@ private fun ProfileServiceDetailCard(
 
         val skillOptions = editServiceSkillOptions[state.serviceId] ?: emptyList()
         if (skillOptions.isNotEmpty()) {
-            DetailSubLabel("Skills")
+            EditSubLabel("Skills")
             Spacer(Modifier.height(10.dp))
             FlowRow(modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement   = Arrangement.spacedBy(12.dp)) {
                 skillOptions.forEach { skill ->
-                    NoorSelectableChip(
-                        label    = skill,
+                    NoorSelectableChip(label = skill,
                         icon     = if (state.selectedSkills.contains(skill)) "✓" else "·",
                         selected = state.selectedSkills.contains(skill),
                         onClick  = {
@@ -623,14 +640,14 @@ private fun ProfileServiceDetailCard(
         }
 
         if (state.serviceId == "driver") {
-            DetailSubLabel("Licence Type")
+            EditSubLabel("Licence Type")
             Spacer(Modifier.height(10.dp))
             NoorTextField(value = state.licenceType, onValueChange = { state.licenceType = it },
                 label = "Licence Type", placeholder = "e.g. LTV, HTV, Motorcycle")
             Spacer(Modifier.height(16.dp))
         }
 
-        DetailSubLabel("Experience *")
+        EditSubLabel("Experience *")
         Spacer(Modifier.height(10.dp))
         FlowRow(modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -643,24 +660,19 @@ private fun ProfileServiceDetailCard(
         }
         Spacer(Modifier.height(16.dp))
 
-        DetailSubLabel("Available Days *")
+        EditSubLabel("Available Days *")
         Spacer(Modifier.height(10.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             editDaysOfWeek.forEach { day ->
                 val selected = state.selectedDays.contains(day)
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(if (selected) NoorBlue else NoorBackground)
-                        .border(1.dp, if (selected) NoorBlue else NoorBorder, RoundedCornerShape(8.dp))
-                        .clickable {
-                            if (selected) state.selectedDays.remove(day)
-                            else state.selectedDays.add(day)
-                        }
-                        .padding(vertical = 8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
+                    .background(if (selected) NoorBlue else NoorBackground)
+                    .border(1.dp, if (selected) NoorBlue else NoorBorder, RoundedCornerShape(8.dp))
+                    .clickable {
+                        if (selected) state.selectedDays.remove(day)
+                        else state.selectedDays.add(day)
+                    }.padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center) {
                     Text(day, fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
                         color = if (selected) Color.White else NoorTextSecondary)
                 }
@@ -668,7 +680,7 @@ private fun ProfileServiceDetailCard(
         }
         Spacer(Modifier.height(16.dp))
 
-        DetailSubLabel("Preferred Time Slot *")
+        EditSubLabel("Preferred Time Slot *")
         Spacer(Modifier.height(10.dp))
         FlowRow(modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -688,10 +700,6 @@ private fun ProfileServiceDetailCard(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────────────────────
-
 @Composable
 private fun ProfileSectionLabel(text: String) {
     Text(text = text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
@@ -699,18 +707,7 @@ private fun ProfileSectionLabel(text: String) {
 }
 
 @Composable
-private fun DetailSubLabel(text: String) {
+private fun EditSubLabel(text: String) {
     Text(text = text, fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
         color = NoorTextHint, letterSpacing = 0.5.sp)
-}
-
-private fun ServiceDetailState.applyMockData(id: String): ServiceDetailState {
-    experience = "3–5 yrs"
-    selectedDays.addAll(listOf("Mon", "Tue", "Wed", "Thu", "Fri"))
-    timeSlot = "Full Day"
-    when (id) {
-        "driver"   -> { selectedSkills.addAll(listOf("City Driving", "Highway")); licenceType = "LTV" }
-        "houseBoy" -> { selectedSkills.addAll(listOf("Cleaning", "Laundry", "Ironing")) }
-    }
-    return this
 }

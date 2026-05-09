@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,34 +17,50 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.compose.AsyncImage
+import com.danish.noorservice.ui.components.SettingsScreenShimmer
 import com.danish.noorservice.ui.theme.*
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Sub-screen routing enum
-// ─────────────────────────────────────────────────────────────────────────────
+import com.danish.noorservice.viewmodel.employee.EmployeeSettingsViewModel
 
 private enum class SettingsSubScreen {
     NONE, EDIT_PROFILE, CHANGE_PASSWORD, NOTIFICATIONS
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Settings Screen
-// ─────────────────────────────────────────────────────────────────────────────
-
 @Composable
 fun EmployeeSettingsScreen(
-    onLogout: () -> Unit = {}
+    userId: String,
+    onLogout: () -> Unit = {},
+    onProfileSaved: () -> Unit = {},
+    viewModel: EmployeeSettingsViewModel = hiltViewModel()
 ) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var subScreen by remember { mutableStateOf(SettingsSubScreen.NONE) }
+
+    // ✅ FIX: The hasLoaded guard inside loadProfile() ensures this only
+    // triggers a real Firestore fetch on the very first call. Switching tabs
+    // and returning will NOT re-fetch — the guard short-circuits immediately.
+    LaunchedEffect(userId) {
+        viewModel.loadProfile(userId)
+    }
 
     when (subScreen) {
         SettingsSubScreen.EDIT_PROFILE -> {
+            // ✅ FIX: Pass the SAME viewModel instance so EditProfileScreen
+            // reads the already-loaded profile without firing another fetch.
             EditProfileScreen(
-                onBack  = { subScreen = SettingsSubScreen.NONE },
-                onSaved = { subScreen = SettingsSubScreen.NONE }
+                userId    = userId,
+                onBack    = { subScreen = SettingsSubScreen.NONE },
+                onSaved   = {
+                    subScreen = SettingsSubScreen.NONE
+                    onProfileSaved()
+                },
+                viewModel = viewModel
             )
             return
         }
@@ -56,17 +73,24 @@ fun EmployeeSettingsScreen(
         }
         SettingsSubScreen.NOTIFICATIONS -> {
             NotificationsScreen(
+                userId = userId,
                 onBack = { subScreen = SettingsSubScreen.NONE }
             )
             return
         }
-        SettingsSubScreen.NONE -> { /* fall through to main settings UI */ }
+        SettingsSubScreen.NONE -> { /* fall through */ }
     }
 
-    // ── Main settings UI ──────────────────────────────────────────────────────
-    var pushNotifications by remember { mutableStateOf(true)  }
-    var showDeleteDialog  by remember { mutableStateOf(false) }
-    var showLogoutDialog  by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
+
+    val profile = uiState.profile
+    val initials = profile?.fullName
+        ?.split(" ")
+        ?.filter { it.isNotBlank() }
+        ?.take(2)
+        ?.joinToString("") { it.first().uppercaseChar().toString() }
+        ?: "?"
 
     Column(
         modifier = Modifier
@@ -81,20 +105,51 @@ fun EmployeeSettingsScreen(
                 .statusBarsPadding()
                 .padding(horizontal = 20.dp, vertical = 18.dp)
         ) {
-            Column {
-                Text(
-                    "Settings",
-                    fontSize      = 22.sp,
-                    fontWeight    = FontWeight.Bold,
-                    color         = Color.White,
-                    letterSpacing = (-0.3).sp
-                )
-                Text(
-                    "Manage your preferences",
-                    fontSize = 12.sp,
-                    color    = Color.White.copy(alpha = 0.72f)
-                )
+            Row(
+                modifier              = Modifier.fillMaxWidth(),
+                verticalAlignment     = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text(
+                        "Settings",
+                        fontSize   = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        color      = Color.White,
+                        letterSpacing = (-0.3).sp
+                    )
+                    Text(
+                        "Manage your preferences",
+                        fontSize = 12.sp,
+                        color    = Color.White.copy(alpha = 0.72f)
+                    )
+                }
+                // ✅ Manual refresh button — visible only when data is loaded
+                if (uiState.hasLoaded) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.18f))
+                            .clickable { viewModel.loadProfile(userId, forceRefresh = true) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.Refresh,
+                            contentDescription = "Refresh",
+                            tint     = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
             }
+        }
+
+        // ✅ FIX: Show shimmer instead of a spinner — and only on the very
+        // first load (hasLoaded = false). Once loaded, we never block the UI.
+        if (uiState.isLoading && !uiState.hasLoaded) {
+            SettingsScreenShimmer()
+            return@Column
         }
 
         Column(
@@ -114,10 +169,12 @@ fun EmployeeSettingsScreen(
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Row(
-                    modifier             = Modifier.padding(16.dp),
-                    verticalAlignment    = Alignment.CenterVertically,
+                    modifier  = Modifier.padding(16.dp),
+                    verticalAlignment     = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
+                    // ✅ FIX: Show actual profile photo when available.
+                    // Falls back to initials avatar when no photo is set.
                     Box(
                         modifier = Modifier
                             .size(56.dp)
@@ -125,32 +182,71 @@ fun EmployeeSettingsScreen(
                             .background(NoorBlue),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("MA", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Muhammad Ali", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = NoorTextPrimary)
-                        Spacer(Modifier.height(2.dp))
-                        Text("m.ali@email.com", fontSize = 12.sp, color = NoorTextHint)
-                        Spacer(Modifier.height(6.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            MiniTag("🚗 Driver", NoorBlueLight, NoorBlue)
-                            MiniTag("🧹 House Boy", NoorBlueLight, NoorBlue)
+                        if (!profile?.photoUrl.isNullOrBlank()) {
+                            AsyncImage(
+                                model              = profile!!.photoUrl,
+                                contentDescription = "Profile photo",
+                                contentScale       = ContentScale.Crop,
+                                modifier           = Modifier
+                                    .size(56.dp)
+                                    .clip(CircleShape)
+                            )
+                        } else {
+                            Text(
+                                initials,
+                                fontSize   = 20.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color      = Color.White
+                            )
                         }
                     }
-                    Icon(Icons.Default.ChevronRight, contentDescription = null,
-                        tint = NoorTextHint, modifier = Modifier.size(20.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            profile?.fullName ?: "—",
+                            fontSize   = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color      = NoorTextPrimary
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        if (!profile?.email.isNullOrBlank()) {
+                            Text(profile!!.email, fontSize = 12.sp, color = NoorTextHint)
+                        }
+                        if (!profile?.city.isNullOrBlank()) {
+                            Text("📍 ${profile!!.city}", fontSize = 11.sp, color = NoorTextHint)
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        val isApproved = profile?.isProfileApproved ?: false
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = if (isApproved) NoorGreenLight else NoorOrangeLight
+                        ) {
+                            Text(
+                                if (isApproved) "✅ Approved" else "⏳ Pending Review",
+                                fontSize   = 10.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color      = if (isApproved) NoorGreen else NoorOrange,
+                                modifier   = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
+                    Icon(
+                        Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint     = NoorTextHint,
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
             }
 
             // ── Availability ──────────────────────────────────────────────────
             SettingsGroup(title = "Availability") {
-                var isAvailable by remember { mutableStateOf(true) }
                 SettingsToggleItem(
-                    emoji    = "🟢",
-                    emojiBg  = NoorGreenLight,
-                    title    = "Available for Work",
-                    checked  = isAvailable,
-                    onToggle = { isAvailable = it }
+                    emoji   = "🟢",
+                    emojiBg = NoorGreenLight,
+                    title   = "Available for Work",
+                    checked = uiState.isActive,
+                    onToggle = { viewModel.updateAvailability(userId, it) }
                 )
             }
 
@@ -162,16 +258,6 @@ fun EmployeeSettingsScreen(
                     title   = "View Notifications",
                     onClick = { subScreen = SettingsSubScreen.NOTIFICATIONS }
                 )
-                HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
-                SettingsToggleItem(
-                    emoji    = "🔔",
-                    emojiBg  = NoorBlueLight,
-                    title    = "Push Notifications",
-                    checked  = pushNotifications,
-                    onToggle = { pushNotifications = it }
-                )
-                HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
-
             }
 
             // ── Account ───────────────────────────────────────────────────────
@@ -217,19 +303,21 @@ fun EmployeeSettingsScreen(
         }
     }
 
-    // ── Logout dialog ─────────────────────────────────────────────────────────
     if (showLogoutDialog) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
-            shape            = RoundedCornerShape(20.dp),
-            title            = { Text("Log Out", fontWeight = FontWeight.Bold, fontSize = 16.sp) },
-            text             = { Text("Are you sure you want to log out?", fontSize = 13.sp, color = NoorTextSecondary) },
-            confirmButton    = {
-                TextButton(onClick = { showLogoutDialog = false; onLogout() }) {
+            shape = RoundedCornerShape(20.dp),
+            title = { Text("Log Out", fontWeight = FontWeight.Bold, fontSize = 16.sp) },
+            text  = { Text("Are you sure you want to log out?", fontSize = 13.sp, color = NoorTextSecondary) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showLogoutDialog = false
+                    onLogout()
+                }) {
                     Text("Log Out", color = NoorBlue, fontWeight = FontWeight.SemiBold)
                 }
             },
-            dismissButton    = {
+            dismissButton = {
                 TextButton(onClick = { showLogoutDialog = false }) {
                     Text("Cancel", color = NoorTextHint)
                 }
@@ -237,16 +325,23 @@ fun EmployeeSettingsScreen(
         )
     }
 
-    // ── Delete account dialog ─────────────────────────────────────────────────
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            shape            = RoundedCornerShape(20.dp),
-            title            = { Text("Delete Account", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = NoorRed) },
-            text             = {
+            shape = RoundedCornerShape(20.dp),
+            title = {
+                Text(
+                    "Delete Account",
+                    fontWeight = FontWeight.Bold,
+                    fontSize   = 16.sp,
+                    color      = NoorRed
+                )
+            },
+            text = {
                 Text(
                     "This will permanently delete your account and all data. This action cannot be undone.",
-                    fontSize = 13.sp, color = NoorTextSecondary
+                    fontSize = 13.sp,
+                    color    = NoorTextSecondary
                 )
             },
             confirmButton = {
@@ -300,10 +395,10 @@ private fun SettingsToggleItem(
     onToggle: (Boolean) -> Unit
 ) {
     Row(
-        modifier             = Modifier
+        modifier  = Modifier
             .fillMaxWidth()
             .padding(horizontal = 14.dp, vertical = 13.dp),
-        verticalAlignment    = Alignment.CenterVertically,
+        verticalAlignment     = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Box(
@@ -344,11 +439,11 @@ private fun SettingsNavItem(
     onClick: () -> Unit
 ) {
     Row(
-        modifier             = Modifier
+        modifier  = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
             .padding(horizontal = 14.dp, vertical = 13.dp),
-        verticalAlignment    = Alignment.CenterVertically,
+        verticalAlignment     = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Box(
@@ -373,17 +468,5 @@ private fun SettingsNavItem(
             tint     = if (titleColor == NoorRed) NoorRed else NoorTextHint,
             modifier = Modifier.size(18.dp)
         )
-    }
-}
-
-@Composable
-private fun MiniTag(label: String, bg: Color, textColor: Color) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(bg)
-            .padding(horizontal = 8.dp, vertical = 3.dp)
-    ) {
-        Text(label, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = textColor)
     }
 }

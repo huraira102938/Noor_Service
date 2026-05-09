@@ -14,34 +14,31 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.danish.noorservice.ui.components.*
 import com.danish.noorservice.ui.theme.*
+import com.danish.noorservice.viewmodel.employee.EmployeeRegistrationViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PersonalInfoScreen(
+    viewModel: EmployeeRegistrationViewModel,
     onNext: () -> Unit,
     onBack: (() -> Unit)? = null
 ) {
-    var fullName by remember { mutableStateOf("") }
-    var gender   by remember { mutableStateOf("") }
-    var email    by remember { mutableStateOf("") }
-    var cnic     by remember { mutableStateOf("") }
-    var dob      by remember { mutableStateOf("") }
-    var city     by remember { mutableStateOf("") }
-    var address  by remember { mutableStateOf("") }
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
+    var gender by remember { mutableStateOf(uiState.gender) }
     val languages         = listOf("Urdu", "Punjabi", "English", "Pashto", "Sindhi", "Saraiki")
-    val selectedLanguages = remember { mutableStateListOf("Urdu") }
+    val selectedLanguages = remember { mutableStateListOf<String>().apply { addAll(uiState.languages) } }
     val genderOptions     = listOf("Male", "Female")
 
-    val isFormValid = fullName.isNotBlank() && gender.isNotBlank() &&
-            cnic.isNotBlank() && city.isNotBlank() && selectedLanguages.isNotEmpty()
+    val isFormValid = uiState.fullName.isNotBlank() && gender.isNotBlank() &&
+            uiState.cnic.isNotBlank() && uiState.city.isNotBlank() && selectedLanguages.isNotEmpty()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(NoorBackground)
     ) {
-        // Header — statusBarsPadding is applied inside NoorScreenHeader (fix #2)
         NoorScreenHeader(
             title       = "Personal Information",
             subtitle    = "Tell us about yourself",
@@ -57,22 +54,19 @@ fun PersonalInfoScreen(
                 .padding(horizontal = 16.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-
-            // ── Basic Details ────────────────────────────────────────────────
             NoorSectionCard {
                 SectionLabel("Basic Details")
                 Spacer(Modifier.height(12.dp))
 
                 NoorTextField(
-                    value         = fullName,
-                    onValueChange = { fullName = it },
+                    value         = uiState.fullName,
+                    onValueChange = viewModel::updateFullName,
                     label         = "Full Name *",
                     placeholder   = "As on CNIC"
                 )
 
                 Spacer(Modifier.height(14.dp))
 
-                // Gender label + chips
                 Text(
                     text          = "Gender *",
                     fontSize      = 11.sp,
@@ -87,7 +81,10 @@ fun PersonalInfoScreen(
                             label    = opt,
                             icon     = if (opt == "Male") "👨" else "👩",
                             selected = gender == opt,
-                            onClick  = { gender = opt }
+                            onClick  = {
+                                gender = opt
+                                viewModel.updateGender(opt)
+                            }
                         )
                     }
                 }
@@ -95,31 +92,30 @@ fun PersonalInfoScreen(
                 Spacer(Modifier.height(14.dp))
 
                 NoorTextField(
-                    value           = email,
-                    onValueChange   = { email = it },
+                    value           = uiState.email,
+                    onValueChange   = viewModel::updateEmail,
                     label           = "Email (optional)",
                     placeholder     = "you@email.com",
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
                 )
             }
 
-            // ── Identity & Location ──────────────────────────────────────────
             NoorSectionCard {
                 SectionLabel("Identity & Location")
                 Spacer(Modifier.height(12.dp))
 
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     NoorTextField(
-                        value           = cnic,
-                        onValueChange   = { cnic = it },
+                        value           = uiState.cnic,
+                        onValueChange   = viewModel::updateCnic,
                         label           = "CNIC *",
                         placeholder     = "XXXXX-XXXXXXX-X",
                         modifier        = Modifier.weight(1f),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                     )
                     NoorTextField(
-                        value         = dob,
-                        onValueChange = { dob = it },
+                        value         = uiState.dob,
+                        onValueChange = viewModel::updateDob,
                         label         = "Date of Birth",
                         placeholder   = "DD/MM/YYYY",
                         modifier      = Modifier.weight(1f)
@@ -129,8 +125,8 @@ fun PersonalInfoScreen(
                 Spacer(Modifier.height(12.dp))
 
                 NoorTextField(
-                    value         = city,
-                    onValueChange = { city = it },
+                    value         = uiState.city,
+                    onValueChange = viewModel::updateCity,
                     label         = "City *",
                     placeholder   = "e.g. Lahore"
                 )
@@ -138,8 +134,8 @@ fun PersonalInfoScreen(
                 Spacer(Modifier.height(12.dp))
 
                 NoorTextField(
-                    value         = address,
-                    onValueChange = { address = it },
+                    value         = uiState.address,
+                    onValueChange = viewModel::updateAddress,
                     label         = "Permanent Address",
                     placeholder   = "Street, Area, City",
                     singleLine    = false,
@@ -147,17 +143,13 @@ fun PersonalInfoScreen(
                 )
             }
 
-            // ── Languages Spoken ─────────────────────────────────────────────
             NoorSectionCard {
                 SectionLabel("Languages Spoken *")
                 Spacer(Modifier.height(12.dp))
-
-                // Fix #3: verticalArrangement = spacedBy(12.dp) gives proper
-                // vertical breathing room between wrapped rows of chips.
                 FlowRow(
                     modifier              = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement   = Arrangement.spacedBy(12.dp)  // ← key fix
+                    verticalArrangement   = Arrangement.spacedBy(12.dp)
                 ) {
                     languages.forEach { lang ->
                         val emoji = when (lang) {
@@ -178,16 +170,19 @@ fun PersonalInfoScreen(
                                     selectedLanguages.remove(lang)
                                 else
                                     selectedLanguages.add(lang)
+                                viewModel.updateLanguages(selectedLanguages.toList())
                             }
                         )
                     }
                 }
             }
 
-            // ── Continue ─────────────────────────────────────────────────────
             NoorPrimaryButton(
                 text    = "Continue  →",
-                onClick = onNext,
+                onClick = {
+                    viewModel.goToStep2()
+                    onNext()
+                },
                 enabled = isFormValid
             )
 

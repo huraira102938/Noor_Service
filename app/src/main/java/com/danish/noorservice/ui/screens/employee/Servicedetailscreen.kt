@@ -18,24 +18,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.danish.noorservice.ui.components.*
 import com.danish.noorservice.ui.theme.*
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Data model
-// ─────────────────────────────────────────────────────────────────────────────
-
-data class ServiceDetail(
-    val serviceId: String,
-    val skills: List<String>,
-    val experienceYears: String,
-    val availabilityDays: List<String>,
-    val availabilityTime: String,
-    val additionalNote: String,
-    val licenceType: String = ""
-)
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Static data
-// ─────────────────────────────────────────────────────────────────────────────
+import com.danish.noorservice.viewmodel.employee.EmployeeRegistrationViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.flow.collectLatest
 
 private val serviceSkillOptions = mapOf(
     "driver"     to listOf("City Driving", "Highway", "Heavy Vehicle", "Motorcycle", "Car Maintenance"),
@@ -64,41 +49,47 @@ private val experienceOptions = listOf(
     "< 1 year", "1–2 yrs", "3–5 yrs", "6–10 yrs", "10+ yrs"
 )
 
-// ─────────────────────────────────────────────────────────────────────────────
-// State holder (one per selected service)
-// ─────────────────────────────────────────────────────────────────────────────
-
 class ServiceDetailState(val serviceId: String) {
     var selectedSkills = mutableStateListOf<String>()
     var experience     by mutableStateOf("")
     var selectedDays   = mutableStateListOf<String>()
-    var timeSlot       by mutableStateOf("")   // Fix #6: now tracked and required
+    var timeSlot       by mutableStateOf("")
     var note           by mutableStateOf("")
     var licenceType    by mutableStateOf("")
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Main screen
-// ─────────────────────────────────────────────────────────────────────────────
-
 @Composable
 fun ServiceDetailScreen(
+    viewModel: EmployeeRegistrationViewModel,
     selectedServiceIds: List<String>,
-    onNext: (details: List<ServiceDetail>) -> Unit,
+    onSuccess: () -> Unit,
     onBack: () -> Unit
 ) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
     val detailStates = remember {
         selectedServiceIds.associateWith { ServiceDetailState(it) }.toMutableMap()
     }
 
-    // Fix #6: Finish button enabled only when every service has
-    //         experience + at least one day + a time slot selected.
     val allValid by remember {
         derivedStateOf {
             detailStates.values.all { s ->
                 s.experience.isNotEmpty() &&
                         s.selectedDays.isNotEmpty() &&
-                        s.timeSlot.isNotEmpty()        // ← time slot now required
+                        s.timeSlot.isNotEmpty()
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.events.collectLatest { event ->
+            when (event) {
+                is com.danish.noorservice.viewmodel.employee.EmployeeRegistrationEvent.Success -> {
+                    onSuccess()
+                }
+                is com.danish.noorservice.viewmodel.employee.EmployeeRegistrationEvent.Error -> {
+                    // Handle error - could show a snackbar
+                }
             }
         }
     }
@@ -108,7 +99,6 @@ fun ServiceDetailScreen(
             .fillMaxSize()
             .background(NoorBackground)
     ) {
-        // Header — back arrow fix applied inside NoorScreenHeader (fix #5)
         NoorScreenHeader(
             title       = "Service Details",
             subtitle    = "Add your skills & availability",
@@ -125,31 +115,55 @@ fun ServiceDetailScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             selectedServiceIds.forEach { svcId ->
-                val state    = detailStates[svcId] ?: return@forEach
+                val state = detailStates[svcId] ?: return@forEach
                 val category = allServiceCategories.find { it.id == svcId }
                 ServiceDetailCard(
                     category = category?.label ?: svcId,
                     emoji    = category?.emoji  ?: "💼",
-                    state    = state
+                    state    = state,
+                    onSkillsSelected = { skills ->
+                        state.selectedSkills.clear()
+                        state.selectedSkills.addAll(skills)
+                    },
+                    onDetailUpdate = { key, value ->
+                        when (key) {
+                            "experience" -> state.experience = value
+                            "timeSlot" -> state.timeSlot = value
+                            "note" -> state.note = value
+                            "licenceType" -> state.licenceType = value
+                            "availabilityDays" -> {
+                                state.selectedDays.clear()
+                                state.selectedDays.addAll(value.split(","))
+                            }
+                        }
+                    }
+                )
+            }
+
+            if (uiState.isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
                 )
             }
 
             NoorPrimaryButton(
                 text    = "Finish Registration  ✓",
-                enabled = allValid,
+                enabled = allValid && !uiState.isLoading,
                 onClick = {
-                    val details = detailStates.values.map { s ->
-                        ServiceDetail(
-                            serviceId        = s.serviceId,
-                            skills           = s.selectedSkills.toList(),
-                            experienceYears  = s.experience,
-                            availabilityDays = s.selectedDays.toList(),
-                            availabilityTime = s.timeSlot,
-                            additionalNote   = s.note,
-                            licenceType      = s.licenceType
+                    detailStates.values.forEach { s ->
+                        viewModel.updateServiceDetail(
+                            s.serviceId,
+                            com.danish.noorservice.viewmodel.employee.ServiceDetailInput(
+                                skills = s.selectedSkills.toList(),
+                                experience = s.experience,
+                                availabilityDays = s.selectedDays.toList(),
+                                availabilityTime = s.timeSlot,
+                                additionalNote = s.note,
+                                dailyRate = ""
+                            )
                         )
                     }
-                    onNext(details)
+                    viewModel.saveEmployeeProfile()
                 }
             )
 
@@ -158,20 +172,17 @@ fun ServiceDetailScreen(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Per-service card
-// ─────────────────────────────────────────────────────────────────────────────
-
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ServiceDetailCard(
     category: String,
     emoji: String,
-    state: ServiceDetailState
+    state: ServiceDetailState,
+    onSkillsSelected: (List<String>) -> Unit,
+    onDetailUpdate: (String, String) -> Unit
 ) {
     NoorSectionCard {
 
-        // Card header
         Row(
             modifier              = Modifier.padding(bottom = 14.dp),
             verticalAlignment     = Alignment.CenterVertically,
@@ -194,16 +205,14 @@ private fun ServiceDetailCard(
         HorizontalDivider(color = NoorDivider, thickness = 0.8.dp)
         Spacer(Modifier.height(16.dp))
 
-        // ── Skills ───────────────────────────────────────────────────────────
         val skillOptions = serviceSkillOptions[state.serviceId] ?: emptyList()
         if (skillOptions.isNotEmpty()) {
             SubLabel("Skills")
             Spacer(Modifier.height(10.dp))
-            // Fix #5: verticalArrangement gives proper row gap between wrapped lines
             FlowRow(
                 modifier              = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement   = Arrangement.spacedBy(12.dp)  // ← key fix
+                verticalArrangement   = Arrangement.spacedBy(12.dp)
             ) {
                 skillOptions.forEach { skill ->
                     NoorSelectableChip(
@@ -215,6 +224,7 @@ private fun ServiceDetailCard(
                                 state.selectedSkills.remove(skill)
                             else
                                 state.selectedSkills.add(skill)
+                            onSkillsSelected(state.selectedSkills.toList())
                         }
                     )
                 }
@@ -222,40 +232,36 @@ private fun ServiceDetailCard(
             Spacer(Modifier.height(16.dp))
         }
 
-        // ── Driver: Licence type ──────────────────────────────────────────────
         if (state.serviceId == "driver") {
             SubLabel("Licence Type")
             Spacer(Modifier.height(10.dp))
             NoorTextField(
                 value         = state.licenceType,
-                onValueChange = { state.licenceType = it },
+                onValueChange = { onDetailUpdate("licenceType", it) },
                 label         = "Licence Type",
                 placeholder   = "e.g. LTV, HTV, Motorcycle"
             )
             Spacer(Modifier.height(16.dp))
         }
 
-        // ── Experience ────────────────────────────────────────────────────────
         SubLabel("Experience *")
         Spacer(Modifier.height(10.dp))
-        // Fix #5: verticalArrangement gives proper row gap
         FlowRow(
             modifier              = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement   = Arrangement.spacedBy(12.dp)  // ← key fix
+            verticalArrangement   = Arrangement.spacedBy(12.dp)
         ) {
             experienceOptions.forEach { opt ->
                 NoorSelectableChip(
                     label    = opt,
                     icon     = "⏱",
                     selected = state.experience == opt,
-                    onClick  = { state.experience = opt }
+                    onClick  = { onDetailUpdate("experience", opt) }
                 )
             }
         }
         Spacer(Modifier.height(16.dp))
 
-        // ── Available Days ────────────────────────────────────────────────────
         SubLabel("Available Days *")
         Spacer(Modifier.height(10.dp))
         Row(
@@ -277,6 +283,7 @@ private fun ServiceDetailCard(
                         .clickable {
                             if (selected) state.selectedDays.remove(day)
                             else state.selectedDays.add(day)
+                            onDetailUpdate("availabilityDays", state.selectedDays.joinToString(","))
                         }
                         .padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center
@@ -292,31 +299,27 @@ private fun ServiceDetailCard(
         }
         Spacer(Modifier.height(16.dp))
 
-        // ── Preferred Time Slot ───────────────────────────────────────────────
-        // Fix #5: verticalArrangement for row gap
-        // Fix #6: timeSlot selection is now REQUIRED (tracked in allValid)
         SubLabel("Preferred Time Slot *")
         Spacer(Modifier.height(10.dp))
         FlowRow(
             modifier              = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement   = Arrangement.spacedBy(12.dp)  // ← key fix
+            verticalArrangement   = Arrangement.spacedBy(12.dp)
         ) {
             timeSlots.forEach { slot ->
                 NoorSelectableChip(
                     label    = slot,
                     icon     = "🕐",
                     selected = state.timeSlot == slot,
-                    onClick  = { state.timeSlot = slot }
+                    onClick  = { onDetailUpdate("timeSlot", slot) }
                 )
             }
         }
         Spacer(Modifier.height(16.dp))
 
-        // ── Additional Notes ──────────────────────────────────────────────────
         NoorTextField(
             value         = state.note,
-            onValueChange = { state.note = it },
+            onValueChange = { onDetailUpdate("note", it) },
             label         = "Additional Notes (optional)",
             placeholder   = "Any extra info about this service…",
             singleLine    = false,

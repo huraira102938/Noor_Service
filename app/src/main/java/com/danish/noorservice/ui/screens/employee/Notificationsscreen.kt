@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.DoneAll
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,100 +21,32 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.danish.noorservice.data.model.Announcement
+import com.danish.noorservice.data.model.UserAnnouncement
+import com.danish.noorservice.ui.components.NotificationsShimmer
 import com.danish.noorservice.ui.theme.*
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Data model
-// ─────────────────────────────────────────────────────────────────────────────
-
-enum class NotificationType { PROPOSAL, MESSAGE, SYSTEM, PAYMENT }
-
-data class NotificationItem(
-    val id: String,
-    val type: NotificationType,
-    val title: String,
-    val body: String,
-    val time: String,
-    val isRead: Boolean = false
-)
-
-private val sampleNotifications = mutableListOf(
-    NotificationItem(
-        id    = "1",
-        type  = NotificationType.PROPOSAL,
-        title = "New Proposal Received",
-        body  = "Farhan Ahmed has sent you a driver job proposal for DHA Phase 5, Mon–Fri.",
-        time  = "Just now",
-        isRead = false
-    ),
-    NotificationItem(
-        id    = "2",
-        type  = NotificationType.MESSAGE,
-        title = "New Message",
-        body  = "Sara Khan: \"Please confirm your availability for this weekend.\"",
-        time  = "10 min ago",
-        isRead = false
-    ),
-    NotificationItem(
-        id    = "3",
-        type  = NotificationType.PROPOSAL,
-        title = "Proposal Accepted",
-        body  = "Nadia Baig accepted your counter-proposal for House Boy service in Gulberg II.",
-        time  = "1 hr ago",
-        isRead = false
-    ),
-    NotificationItem(
-        id    = "4",
-        type  = NotificationType.SYSTEM,
-        title = "Profile Under Review",
-        body  = "Our team is reviewing your updated profile. You'll be notified once approved.",
-        time  = "Yesterday",
-        isRead = true
-    ),
-    NotificationItem(
-        id    = "5",
-        type  = NotificationType.MESSAGE,
-        title = "New Message",
-        body  = "Asad Malik: \"Great work today! We'd like you to continue next week as well.\"",
-        time  = "Yesterday",
-        isRead = true
-    ),
-    NotificationItem(
-        id    = "6",
-        type  = NotificationType.PROPOSAL,
-        title = "Proposal Declined",
-        body  = "Hina Tariq has declined your application for the Bahria Town driver position.",
-        time  = "Mon",
-        isRead = true
-    ),
-    NotificationItem(
-        id    = "7",
-        type  = NotificationType.SYSTEM,
-        title = "Welcome to Noor Services!",
-        body  = "Your account has been successfully created. Complete your profile to start receiving job proposals.",
-        time  = "Mar 28",
-        isRead = true
-    ),
-    NotificationItem(
-        id    = "8",
-        type  = NotificationType.PROPOSAL,
-        title = "New Proposal Received",
-        body  = "Bilal Raza has sent you a House Boy proposal for Johar Town, Mon/Wed/Fri mornings.",
-        time  = "Mar 27",
-        isRead = true
-    ),
-)
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Screen
-// ─────────────────────────────────────────────────────────────────────────────
+import com.danish.noorservice.viewmodel.employee.EmployeeNotificationsViewModel
+import java.text.SimpleDateFormat
+import java.util.*
 
 @Composable
 fun NotificationsScreen(
-    onBack: () -> Unit
+    userId: String,
+    onBack: () -> Unit,
+    viewModel: EmployeeNotificationsViewModel = hiltViewModel()
 ) {
-    val notifications = remember { mutableStateListOf(*sampleNotifications.toTypedArray()) }
-    val unreadCount   = notifications.count { !it.isRead }
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    // ✅ Only load once — subsequent visits use cached state in the VM.
+    // The VM doesn't have a hasLoaded guard here because notifications are
+    // relatively cheap to reload and benefit from fresh data on each visit.
+    // If you want the same "load once" behaviour, add hasLoaded to
+    // EmployeeNotificationsState and guard loadNotifications the same way.
+    LaunchedEffect(userId) {
+        viewModel.loadNotifications(userId)
+    }
 
     Column(
         modifier = Modifier
@@ -130,15 +63,14 @@ fun NotificationsScreen(
         ) {
             Column {
                 Row(
-                    modifier             = Modifier.fillMaxWidth(),
-                    verticalAlignment    = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment     = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Row(
                         verticalAlignment     = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        // Back button
                         Box(
                             modifier = Modifier
                                 .size(38.dp)
@@ -147,12 +79,8 @@ fun NotificationsScreen(
                                 .clickable { onBack() },
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                Icons.Default.ArrowBack,
-                                contentDescription = "Back",
-                                tint     = Color.White,
-                                modifier = Modifier.size(20.dp)
-                            )
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Back",
+                                tint = Color.White, modifier = Modifier.size(20.dp))
                         }
 
                         Column {
@@ -160,14 +88,10 @@ fun NotificationsScreen(
                                 verticalAlignment     = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Text(
-                                    "Notifications",
-                                    fontSize      = 20.sp,
-                                    fontWeight    = FontWeight.Bold,
-                                    color         = Color.White,
-                                    letterSpacing = (-0.3).sp
-                                )
-                                if (unreadCount > 0) {
+                                Text("Notifications", fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold, color = Color.White,
+                                    letterSpacing = (-0.3).sp)
+                                if (uiState.unreadCount > 0) {
                                     Box(
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(20.dp))
@@ -175,52 +99,47 @@ fun NotificationsScreen(
                                             .padding(horizontal = 8.dp, vertical = 2.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Text(
-                                            "$unreadCount new",
-                                            fontSize   = 10.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color      = Color.White
-                                        )
+                                        Text("${uiState.unreadCount} new", fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold, color = Color.White)
                                     }
                                 }
                             }
-                            Text(
-                                "Stay updated on your activity",
-                                fontSize = 12.sp,
-                                color    = Color.White.copy(alpha = 0.72f)
-                            )
+                            Text("Stay updated on your activity", fontSize = 12.sp,
+                                color = Color.White.copy(alpha = 0.72f))
                         }
                     }
 
-                    // Mark all read button
-                    if (unreadCount > 0) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // ✅ Manual refresh button
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(20.dp))
+                                .size(36.dp)
+                                .clip(CircleShape)
                                 .background(Color.White.copy(alpha = 0.16f))
-                                .clickable {
-                                    val updated = notifications.map { it.copy(isRead = true) }
-                                    notifications.clear()
-                                    notifications.addAll(updated)
-                                }
-                                .padding(horizontal = 12.dp, vertical = 7.dp)
+                                .clickable { viewModel.loadNotifications(userId) },
+                            contentAlignment = Alignment.Center
                         ) {
-                            Row(
-                                verticalAlignment     = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(5.dp)
+                            Icon(Icons.Default.Refresh, contentDescription = "Refresh",
+                                tint = Color.White, modifier = Modifier.size(18.dp))
+                        }
+
+                        if (uiState.unreadCount > 0) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(20.dp))
+                                    .background(Color.White.copy(alpha = 0.16f))
+                                    .clickable { viewModel.markAllAsRead(userId) }
+                                    .padding(horizontal = 12.dp, vertical = 7.dp)
                             ) {
-                                Icon(
-                                    Icons.Default.DoneAll,
-                                    contentDescription = null,
-                                    tint     = Color.White,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Text(
-                                    "Mark all read",
-                                    fontSize   = 11.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color      = Color.White
-                                )
+                                Row(
+                                    verticalAlignment     = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                                ) {
+                                    Icon(Icons.Default.DoneAll, contentDescription = null,
+                                        tint = Color.White, modifier = Modifier.size(14.dp))
+                                    Text("Mark all read", fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold, color = Color.White)
+                                }
                             }
                         }
                     }
@@ -229,66 +148,73 @@ fun NotificationsScreen(
         }
 
         // ── Content ───────────────────────────────────────────────────────────
-        if (notifications.isEmpty()) {
-            Box(
-                modifier         = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("🔔", fontSize = 48.sp)
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        "No notifications yet",
-                        fontSize   = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color      = NoorTextPrimary
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        "You're all caught up!",
-                        fontSize = 13.sp,
-                        color    = NoorTextHint
-                    )
+        when {
+            // ✅ FIX: Shimmer on first load instead of a blocking spinner
+            uiState.isLoading -> {
+                NotificationsShimmer()
+            }
+
+            uiState.error != null -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text("⚠️", fontSize = 36.sp)
+                        Text("Failed to load notifications", fontSize = 14.sp, color = NoorTextPrimary)
+                        Button(
+                            onClick = { viewModel.loadNotifications(userId) },
+                            colors  = ButtonDefaults.buttonColors(containerColor = NoorBlue)
+                        ) { Text("Retry", color = Color.White) }
+                    }
                 }
             }
-        } else {
-            LazyColumn(
-                modifier            = Modifier.fillMaxSize(),
-                contentPadding      = PaddingValues(vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(0.dp)
-            ) {
-                // Unread section
-                val unread = notifications.filter { !it.isRead }
-                val read   = notifications.filter  {  it.isRead }
 
-                if (unread.isNotEmpty()) {
-                    item {
-                        NotificationGroupLabel("New")
-                    }
-                    items(unread, key = { it.id }) { notif ->
-                        NotificationRow(
-                            notification = notif,
-                            onMarkRead   = { id ->
-                                val idx = notifications.indexOfFirst { it.id == id }
-                                if (idx != -1) notifications[idx] = notifications[idx].copy(isRead = true)
-                            }
-                        )
+            uiState.announcements.isEmpty() -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("🔔", fontSize = 48.sp)
+                        Spacer(Modifier.height(12.dp))
+                        Text("No notifications yet", fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold, color = NoorTextPrimary)
+                        Spacer(Modifier.height(4.dp))
+                        Text("You're all caught up!", fontSize = 13.sp, color = NoorTextHint)
                     }
                 }
+            }
 
-                if (read.isNotEmpty()) {
-                    item {
-                        NotificationGroupLabel("Earlier")
+            else -> {
+                val unread = uiState.announcements.filter { !it.second.isRead }
+                val read   = uiState.announcements.filter {  it.second.isRead }
+
+                LazyColumn(
+                    modifier       = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(vertical = 8.dp)
+                ) {
+                    if (unread.isNotEmpty()) {
+                        item { NotificationGroupLabel("New") }
+                        items(unread, key = { it.first.id }) { (announcement, userAnnouncement) ->
+                            AnnouncementRow(
+                                announcement     = announcement,
+                                userAnnouncement = userAnnouncement,
+                                onMarkRead       = { viewModel.markAsRead(userId, announcement.id) }
+                            )
+                        }
                     }
-                    items(read, key = { it.id }) { notif ->
-                        NotificationRow(
-                            notification = notif,
-                            onMarkRead   = {}
-                        )
+
+                    if (read.isNotEmpty()) {
+                        item { NotificationGroupLabel("Earlier") }
+                        items(read, key = { it.first.id }) { (announcement, userAnnouncement) ->
+                            AnnouncementRow(
+                                announcement     = announcement,
+                                userAnnouncement = userAnnouncement,
+                                onMarkRead       = {}
+                            )
+                        }
                     }
+
+                    item { Spacer(Modifier.height(16.dp)) }
                 }
-
-                item { Spacer(Modifier.height(16.dp)) }
             }
         }
     }
@@ -311,67 +237,66 @@ private fun NotificationGroupLabel(title: String) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Notification row
+// Announcement row
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun NotificationRow(
-    notification: NotificationItem,
-    onMarkRead: (String) -> Unit
+private fun AnnouncementRow(
+    announcement: Announcement,
+    userAnnouncement: UserAnnouncement,
+    onMarkRead: () -> Unit
 ) {
-    val bgColor = if (!notification.isRead) NoorBlueLight else NoorSurface
+    val isRead  = userAnnouncement.isRead
+    val bgColor = if (!isRead) NoorBlueLight else NoorSurface
 
-    val (iconEmoji, iconBg) = when (notification.type) {
-        NotificationType.PROPOSAL -> "📋" to NoorBlueLight
-        NotificationType.MESSAGE  -> "💬" to NoorGreenLight
-        NotificationType.PAYMENT  -> "💰" to Color(0xFFFFF8E1)
-        NotificationType.SYSTEM   -> "🔔" to NoorOrangeLight
+    val timeLabel = remember(announcement.createdAt) {
+        val now  = System.currentTimeMillis()
+        val diff = now - announcement.createdAt
+        when {
+            diff < 60_000       -> "Just now"
+            diff < 3_600_000    -> "${diff / 60_000} min ago"
+            diff < 86_400_000   -> "${diff / 3_600_000} hr ago"
+            diff < 172_800_000  -> "Yesterday"
+            else                -> SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(announcement.createdAt))
+        }
     }
 
     Row(
-        modifier = Modifier
+        modifier  = Modifier
             .fillMaxWidth()
             .background(bgColor)
-            .clickable { if (!notification.isRead) onMarkRead(notification.id) }
+            .clickable { if (!isRead) onMarkRead() }
             .padding(horizontal = 16.dp, vertical = 13.dp),
-        verticalAlignment    = Alignment.Top,
+        verticalAlignment     = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Icon
         Box(
             modifier = Modifier
                 .size(44.dp)
                 .clip(RoundedCornerShape(12.dp))
-                .background(iconBg),
+                .background(NoorBlueLight),
             contentAlignment = Alignment.Center
-        ) {
-            Text(iconEmoji, fontSize = 20.sp)
-        }
+        ) { Text("📢", fontSize = 20.sp) }
 
-        // Content
         Column(modifier = Modifier.weight(1f)) {
             Row(
-                modifier             = Modifier.fillMaxWidth(),
+                modifier              = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment    = Alignment.Top
+                verticalAlignment     = Alignment.Top
             ) {
                 Text(
-                    text       = notification.title,
+                    text       = announcement.title,
                     fontSize   = 13.sp,
-                    fontWeight = if (!notification.isRead) FontWeight.Bold else FontWeight.SemiBold,
+                    fontWeight = if (!isRead) FontWeight.Bold else FontWeight.SemiBold,
                     color      = NoorTextPrimary,
                     modifier   = Modifier.weight(1f)
                 )
                 Spacer(Modifier.width(8.dp))
-                Text(
-                    notification.time,
-                    fontSize = 10.sp,
-                    color    = NoorTextHint
-                )
+                Text(timeLabel, fontSize = 10.sp, color = NoorTextHint)
             }
             Spacer(Modifier.height(4.dp))
             Text(
-                text      = notification.body,
+                text      = announcement.body,
                 fontSize  = 12.sp,
                 color     = NoorTextSecondary,
                 lineHeight = 17.sp,
@@ -379,8 +304,7 @@ private fun NotificationRow(
             )
         }
 
-        // Unread dot
-        if (!notification.isRead) {
+        if (!isRead) {
             Box(
                 modifier = Modifier
                     .padding(top = 4.dp)

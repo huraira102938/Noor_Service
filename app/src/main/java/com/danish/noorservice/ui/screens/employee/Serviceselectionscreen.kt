@@ -12,6 +12,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.danish.noorservice.ui.components.*
 import com.danish.noorservice.ui.theme.*
+import com.danish.noorservice.viewmodel.employee.EmployeeRegistrationViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 data class ServiceCategory(
     val id: String,
@@ -35,17 +37,18 @@ val allServiceCategories = listOf(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ServiceSelectionScreen(
+    viewModel: EmployeeRegistrationViewModel,
     onNext: (selectedIds: List<String>) -> Unit,
     onBack: () -> Unit
 ) {
-    val selectedServices = remember { mutableStateListOf<String>() }
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val selectedServices = remember { mutableStateListOf<String>().apply { addAll(uiState.selectedServiceIds) } }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(NoorBackground)
     ) {
-        // Header — back arrow fix applied inside NoorScreenHeader via statusBarsPadding
         NoorScreenHeader(
             title       = "Your Services",
             subtitle    = "Select all services you can offer",
@@ -71,12 +74,10 @@ fun ServiceSelectionScreen(
                 )
                 Spacer(Modifier.height(14.dp))
 
-                // Fix #4: verticalArrangement = spacedBy(12.dp) so chip rows
-                // have breathing room between them when they wrap.
                 FlowRow(
                     modifier              = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement   = Arrangement.spacedBy(12.dp)  // ← key fix
+                    verticalArrangement   = Arrangement.spacedBy(12.dp)
                 ) {
                     allServiceCategories.forEach { svc ->
                         NoorSelectableChip(
@@ -88,6 +89,7 @@ fun ServiceSelectionScreen(
                                     selectedServices.remove(svc.id)
                                 else
                                     selectedServices.add(svc.id)
+                                viewModel.updateSelectedServices(selectedServices.toList())
                             }
                         )
                     }
@@ -105,7 +107,10 @@ fun ServiceSelectionScreen(
 
             NoorPrimaryButton(
                 text    = "Continue  →",
-                onClick = { onNext(selectedServices.toList()) },
+                onClick = {
+                    viewModel.goToStep3()
+                    onNext(selectedServices.toList())
+                },
                 enabled = selectedServices.isNotEmpty()
             )
 

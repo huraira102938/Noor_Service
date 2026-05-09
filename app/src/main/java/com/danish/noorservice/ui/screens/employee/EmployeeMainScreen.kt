@@ -14,13 +14,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.danish.noorservice.ui.theme.*
+import com.danish.noorservice.viewmodel.employee.EmployeeHomeViewModel
 import kotlinx.coroutines.launch
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Bottom Nav Items
-// Employee can only: view their profile/home, view notifications, manage settings
-// No direct messaging or proposals — all contact goes through admin
-// ─────────────────────────────────────────────────────────────────────────────
 
 private data class NavItem(
     val label: String,
@@ -29,25 +24,30 @@ private data class NavItem(
 )
 
 private val navItems = listOf(
-    NavItem("Home",      "🏠"),
-    NavItem("Notifications", "🔔", badgeCount = 3),
-    NavItem("Settings",  "⚙️"),
+    NavItem("Home",          "🏠"),
+    NavItem("Notifications", "🔔"),
+    NavItem("Settings",      "⚙️"),
 )
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Main screen shell
-// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 fun EmployeeMainScreen(
+    userId: String,
     onLogout: () -> Unit,
+    // ✅ FIX: Accept the VM from AppNavigation instead of creating it here.
+    // This means loadProfile() was already called the moment Firebase confirmed
+    // the user — before this composable even entered composition.
+    homeViewModel: EmployeeHomeViewModel,
     initialTab: Int = 0
 ) {
-    var selectedTab by remember { mutableIntStateOf(initialTab) }
-
+    var selectedTab       by remember { mutableIntStateOf(initialTab) }
     var lastBackPressTime by remember { mutableStateOf(0L) }
-    val scope = rememberCoroutineScope()
+    val scope             = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // ✅ No LaunchedEffect / loadProfile() call here anymore.
+    // The load was already started in AppNavigation as soon as auth confirmed.
+    // The hasLoaded guard in the VM prevents any double-fetch if this
+    // composable somehow re-enters composition.
 
     BackHandler(enabled = true) {
         if (selectedTab != 0) {
@@ -85,21 +85,24 @@ fun EmployeeMainScreen(
         ) {
             when (selectedTab) {
                 0 -> EmployeeHomeScreen(
+                    userId    = userId,
+                    viewModel = homeViewModel,
                     onNavigateToNotifications = { selectedTab = 1 },
                     onNavigateToSettings      = { selectedTab = 2 }
                 )
                 1 -> NotificationsScreen(
+                    userId = userId,
                     onBack = { selectedTab = 0 }
                 )
-                2 -> EmployeeSettingsScreen(onLogout = onLogout)
+                2 -> EmployeeSettingsScreen(
+                    userId    = userId,
+                    onLogout  = onLogout,
+                    onProfileSaved = { homeViewModel.loadProfile(userId, forceRefresh = true) }
+                )
             }
         }
     }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Bottom Navigation Bar
-// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun EmployeeBottomNav(
@@ -109,45 +112,31 @@ private fun EmployeeBottomNav(
     NavigationBar(
         containerColor = NoorSurface,
         tonalElevation = 0.dp,
-        modifier       = Modifier
-            .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+        modifier       = Modifier.clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
     ) {
         navItems.forEachIndexed { index, item ->
             val isSelected = selectedIndex == index
-
             NavigationBarItem(
-                selected  = isSelected,
-                onClick   = { onItemSelected(index) },
-                icon      = {
+                selected = isSelected,
+                onClick  = { onItemSelected(index) },
+                icon     = {
                     BadgedBox(
                         badge = {
                             if (item.badgeCount > 0) {
-                                Badge(
-                                    containerColor = NoorOrange,
-                                    contentColor   = Color.White
-                                ) {
-                                    Text(
-                                        item.badgeCount.toString(),
-                                        fontSize   = 9.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
+                                Badge(containerColor = NoorOrange, contentColor = Color.White) {
+                                    Text(item.badgeCount.toString(),
+                                        fontSize = 9.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
                     ) {
-                        Text(
-                            text     = item.emoji,
-                            fontSize = if (isSelected) 22.sp else 20.sp
-                        )
+                        Text(item.emoji, fontSize = if (isSelected) 22.sp else 20.sp)
                     }
                 },
-                label     = {
-                    Text(
-                        text       = item.label,
-                        fontSize   = 10.sp,
+                label = {
+                    Text(item.label, fontSize = 10.sp,
                         fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                        color      = if (isSelected) NoorBlue else NoorTextHint
-                    )
+                        color      = if (isSelected) NoorBlue else NoorTextHint)
                 },
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor   = NoorBlue,

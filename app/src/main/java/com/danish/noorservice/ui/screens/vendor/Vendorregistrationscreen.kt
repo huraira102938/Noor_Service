@@ -35,11 +35,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
 import com.danish.noorservice.ui.components.NoorSectionCard
 import com.danish.noorservice.ui.components.NoorSelectableChip
 import com.danish.noorservice.ui.components.NoorTextField
 import com.danish.noorservice.ui.theme.*
+import com.danish.noorservice.viewmodel.vendor.VendorRegistrationEvent
+import com.danish.noorservice.viewmodel.vendor.VendorRegistrationViewModel
+import com.danish.noorservice.viewmodel.vendor.VendorServiceInput
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Vendor service categories offered TO employers (B2B)
@@ -53,20 +57,20 @@ data class VendorServiceCategory(
 )
 
 val allVendorServiceCategories = listOf(
-    VendorServiceCategory("staffing",    "Staffing Solutions",     "👥", "Bulk workforce supply & temp staffing"),
-    VendorServiceCategory("security",    "Security Services",      "🛡️", "Trained guards, CCTV, access control"),
-    VendorServiceCategory("cleaning",    "Cleaning & Janitorial",  "🧹", "Office, industrial & residential cleaning"),
-    VendorServiceCategory("catering",    "Catering & Mess",        "🍽️", "Corporate meal plans & canteen management"),
-    VendorServiceCategory("maintenance", "Facility Maintenance",   "🔧", "Plumbing, electrical, HVAC & civil works"),
-    VendorServiceCategory("it_support",  "IT Support",             "💻", "Network, hardware & helpdesk services"),
-    VendorServiceCategory("transport",   "Transport & Logistics",  "🚌", "Staff transport & fleet management"),
-    VendorServiceCategory("landscaping", "Landscaping",            "🌿", "Garden maintenance & outdoor spaces"),
-    VendorServiceCategory("pest_control","Pest Control",           "🐛", "Residential & commercial pest management"),
-    VendorServiceCategory("training",    "Training & Development", "📚", "Workforce training & skill development"),
+    VendorServiceCategory("staffing",     "Staffing Solutions",     "👥", "Bulk workforce supply & temp staffing"),
+    VendorServiceCategory("security",     "Security Services",      "🛡️", "Trained guards, CCTV, access control"),
+    VendorServiceCategory("cleaning",     "Cleaning & Janitorial",  "🧹", "Office, industrial & residential cleaning"),
+    VendorServiceCategory("catering",     "Catering & Mess",        "🍽️", "Corporate meal plans & canteen management"),
+    VendorServiceCategory("maintenance",  "Facility Maintenance",   "🔧", "Plumbing, electrical, HVAC & civil works"),
+    VendorServiceCategory("it_support",   "IT Support",             "💻", "Network, hardware & helpdesk services"),
+    VendorServiceCategory("transport",    "Transport & Logistics",  "🚌", "Staff transport & fleet management"),
+    VendorServiceCategory("landscaping",  "Landscaping",            "🌿", "Garden maintenance & outdoor spaces"),
+    VendorServiceCategory("pest_control", "Pest Control",           "🐛", "Residential & commercial pest management"),
+    VendorServiceCategory("training",     "Training & Development", "📚", "Workforce training & skill development"),
 )
 
-private val serviceScaleOptions = listOf("1–10 staff", "11–50 staff", "51–200 staff", "200+ staff")
-private val cityOptions = listOf("Lahore", "Karachi", "Islamabad", "Rawalpindi", "Faisalabad", "Multan", "Peshawar", "Other")
+private val serviceScaleOptions   = listOf("1–10 staff", "11–50 staff", "51–200 staff", "200+ staff")
+private val cityOptions           = listOf("Lahore", "Karachi", "Islamabad", "Rawalpindi", "Faisalabad", "Multan", "Peshawar", "Other")
 
 // Shared with catalog screen
 internal val pricingModelOptions  = listOf("Monthly Contract", "Per Shift", "Project-Based", "Hourly Rate", "Custom Quote")
@@ -75,52 +79,54 @@ internal val coverageAreaOptions  = listOf("Lahore", "Karachi", "Islamabad", "Ra
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Vendor Registration Screen  (2-step wizard)
+//
+// FIX: Now accepts VendorRegistrationViewModel so data is saved to Firestore
+// and isProfileComplete is set to true on submit.  Previously the "Submit"
+// button called onRegistered() directly without persisting anything, causing
+// the vendor to land back on this screen every time the app reopened.
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 fun VendorRegistrationScreen(
     onBack: () -> Unit,
-    onRegistered: () -> Unit
+    onRegistered: () -> Unit,
+    // ✅ FIX: Accept (or create) the ViewModel
+    viewModel: VendorRegistrationViewModel = hiltViewModel()
 ) {
-    var currentStep by remember { mutableIntStateOf(1) }
+    val uiState by viewModel.uiState.collectAsState()
 
-    // ── Step 1 fields ─────────────────────────────────────────────────────────
-    var businessName    by remember { mutableStateOf("") }
-    var contactPerson   by remember { mutableStateOf("") }
-    var phone           by remember { mutableStateOf("") }
-    var email           by remember { mutableStateOf("") }
-    var ntn             by remember { mutableStateOf("") }
-    var regNumber       by remember { mutableStateOf("") }
-    var city            by remember { mutableStateOf("") }
-    var address         by remember { mutableStateOf("") }
-    var bio             by remember { mutableStateOf("") }
-    val selectedCities  = remember { mutableStateListOf<String>() }
-    var logoUri         by remember { mutableStateOf<Uri?>(null) }
+    // ✅ FIX: Navigate to success screen only after Firestore write completes
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is VendorRegistrationEvent.Success -> onRegistered()
+                is VendorRegistrationEvent.Error   -> { /* shown via uiState.error */ }
+            }
+        }
+    }
 
-    val logoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? -> logoUri = uri }
-
-    // ── Step 2 fields ─────────────────────────────────────────────────────────
+    // ── Local UI-only state (expansion, per-service maps, client input) ──────
+    // These don't need to survive process death so local state is fine here.
     val selectedServiceIds   = remember { mutableStateListOf<String>() }
-    // Per-service detail maps (keyed by serviceId)
     val servicePricingModel  = remember { mutableStateMapOf<String, String>() }
     val servicePriceRange    = remember { mutableStateMapOf<String, String>() }
     val serviceMinContract   = remember { mutableStateMapOf<String, String>() }
     val serviceCoverageAreas = remember { mutableStateMapOf<String, SnapshotStateList<String>>() }
-    // Which service cards are expanded
     val expandedServiceIds   = remember { mutableStateListOf<String>() }
 
-    var serviceScale         by remember { mutableStateOf("") }
-    var yearsInBusiness      by remember { mutableStateOf("") }
+    val selectedCities       = remember { mutableStateListOf<String>() }
     var isoRegistered        by remember { mutableStateOf(false) }
     var hasPreviousClients   by remember { mutableStateOf(false) }
     val previousClientsList  = remember { mutableStateListOf<String>() }
     var currentClientInput   by remember { mutableStateOf("") }
 
-    val step1Valid = businessName.isNotBlank() && contactPerson.isNotBlank() &&
-            phone.isNotBlank() && city.isNotBlank()
-    val step2Valid = selectedServiceIds.isNotEmpty() && serviceScale.isNotBlank()
+    val logoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? -> viewModel.setLogoUri(uri) }
+
+    val step1Valid = uiState.businessName.isNotBlank() && uiState.contactPerson.isNotBlank() &&
+            uiState.phone.isNotBlank() && uiState.city.isNotBlank()
+    val step2Valid = selectedServiceIds.isNotEmpty() && uiState.serviceScale.isNotBlank()
 
     Column(
         modifier = Modifier
@@ -140,7 +146,9 @@ fun VendorRegistrationScreen(
                     modifier = Modifier
                         .size(38.dp).clip(CircleShape)
                         .background(Color.White.copy(alpha = 0.18f))
-                        .clickable { if (currentStep == 1) onBack() else currentStep = 1 },
+                        .clickable {
+                            if (uiState.currentStep == 1) onBack() else viewModel.goBack()
+                        },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(Icons.Default.ArrowBack, contentDescription = "Back",
@@ -157,9 +165,9 @@ fun VendorRegistrationScreen(
                     repeat(2) { index ->
                         val stepNum = index + 1
                         val color = when {
-                            stepNum < currentStep  -> VendorAccent
-                            stepNum == currentStep -> Color.White
-                            else                   -> Color.White.copy(alpha = 0.28f)
+                            stepNum < uiState.currentStep  -> VendorAccent
+                            stepNum == uiState.currentStep -> Color.White
+                            else                           -> Color.White.copy(alpha = 0.28f)
                         }
                         Box(
                             modifier = Modifier
@@ -174,7 +182,6 @@ fun VendorRegistrationScreen(
                     verticalAlignment     = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Show logo preview in header if uploaded, else placeholder
                     Box(
                         modifier = Modifier
                             .size(44.dp)
@@ -182,9 +189,9 @@ fun VendorRegistrationScreen(
                             .background(Color.White.copy(alpha = 0.18f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        if (logoUri != null) {
+                        if (uiState.logoUri != null) {
                             AsyncImage(
-                                model = logoUri,
+                                model = uiState.logoUri,
                                 contentDescription = "Company Logo",
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp))
@@ -196,12 +203,12 @@ fun VendorRegistrationScreen(
 
                     Column {
                         Text(
-                            if (currentStep == 1) "Business Information" else "Services & Capacity",
+                            if (uiState.currentStep == 1) "Business Information" else "Services & Capacity",
                             fontSize = 20.sp, fontWeight = FontWeight.Bold,
                             color = Color.White, letterSpacing = (-0.3).sp
                         )
                         Text(
-                            if (currentStep == 1) "Tell us about your business"
+                            if (uiState.currentStep == 1) "Tell us about your business"
                             else "What do you offer and at what scale?",
                             fontSize = 12.sp, color = Color.White.copy(alpha = 0.75f)
                         )
@@ -218,10 +225,9 @@ fun VendorRegistrationScreen(
                 .padding(horizontal = 16.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            if (currentStep == 1) {
+            if (uiState.currentStep == 1) {
                 // ── STEP 1: Business Info ─────────────────────────────────────
 
-                // ── Logo / Company Photo ──────────────────────────────────────
                 NoorSectionCard {
                     VendorSectionLabel("Company Logo / Photo")
                     Spacer(Modifier.height(4.dp))
@@ -234,7 +240,6 @@ fun VendorRegistrationScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        // Preview box
                         Box(
                             modifier = Modifier
                                 .size(80.dp)
@@ -242,32 +247,26 @@ fun VendorRegistrationScreen(
                                 .background(VendorTealLight)
                                 .border(
                                     width = 2.dp,
-                                    color = if (logoUri != null) VendorTeal else NoorBorder,
+                                    color = if (uiState.logoUri != null) VendorTeal else NoorBorder,
                                     shape = RoundedCornerShape(16.dp)
                                 )
                                 .clickable { logoPickerLauncher.launch("image/*") },
                             contentAlignment = Alignment.Center
                         ) {
-                            if (logoUri != null) {
+                            if (uiState.logoUri != null) {
                                 AsyncImage(
-                                    model = logoUri,
+                                    model = uiState.logoUri,
                                     contentDescription = "Logo Preview",
                                     contentScale = ContentScale.Crop,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .clip(RoundedCornerShape(16.dp))
+                                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(16.dp))
                                 )
                             } else {
                                 Column(
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
-                                    Icon(
-                                        Icons.Default.CameraAlt,
-                                        contentDescription = null,
-                                        tint = VendorTeal,
-                                        modifier = Modifier.size(24.dp)
-                                    )
+                                    Icon(Icons.Default.CameraAlt, contentDescription = null,
+                                        tint = VendorTeal, modifier = Modifier.size(24.dp))
                                     Text("Upload", fontSize = 10.sp,
                                         color = VendorTeal, fontWeight = FontWeight.SemiBold)
                                 }
@@ -277,10 +276,9 @@ fun VendorRegistrationScreen(
                         Column(modifier = Modifier.weight(1f),
                             verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(
-                                if (logoUri != null) "✅ Logo selected" else "No logo selected",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = if (logoUri != null) VendorTeal else NoorTextHint
+                                if (uiState.logoUri != null) "✅ Logo selected" else "No logo selected",
+                                fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                                color = if (uiState.logoUri != null) VendorTeal else NoorTextHint
                             )
                             Text("Recommended: square image, PNG or JPG, at least 200×200 px.",
                                 fontSize = 10.sp, color = NoorTextHint, lineHeight = 15.sp)
@@ -293,18 +291,17 @@ fun VendorRegistrationScreen(
                                         .padding(horizontal = 12.dp, vertical = 6.dp)
                                 ) {
                                     Text(
-                                        if (logoUri != null) "Change Photo" else "Choose File",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.SemiBold,
+                                        if (uiState.logoUri != null) "Change Photo" else "Choose File",
+                                        fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
                                         color = VendorTeal
                                     )
                                 }
-                                if (logoUri != null) {
+                                if (uiState.logoUri != null) {
                                     Box(
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(8.dp))
                                             .background(NoorRedLight)
-                                            .clickable { logoUri = null }
+                                            .clickable { viewModel.setLogoUri(null) }
                                             .padding(horizontal = 12.dp, vertical = 6.dp)
                                     ) {
                                         Text("Remove", fontSize = 11.sp,
@@ -319,19 +316,27 @@ fun VendorRegistrationScreen(
                 NoorSectionCard {
                     VendorSectionLabel("Business Identity")
                     Spacer(Modifier.height(14.dp))
-                    NoorTextField(value = businessName, onValueChange = { businessName = it },
+                    NoorTextField(
+                        value = uiState.businessName,
+                        onValueChange = { viewModel.updateBusinessName(it) },
                         label = "Business / Company Name *",
                         placeholder = "e.g. Al-Noor Facility Services")
                     Spacer(Modifier.height(12.dp))
-                    NoorTextField(value = contactPerson, onValueChange = { contactPerson = it },
+                    NoorTextField(
+                        value = uiState.contactPerson,
+                        onValueChange = { viewModel.updateContactPerson(it) },
                         label = "Contact Person *",
                         placeholder = "Full name of primary contact")
                     Spacer(Modifier.height(12.dp))
-                    NoorTextField(value = phone, onValueChange = { phone = it },
+                    NoorTextField(
+                        value = uiState.phone,
+                        onValueChange = { viewModel.updatePhone(it) },
                         label = "Phone Number *", placeholder = "03XX-XXXXXXX",
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
                     Spacer(Modifier.height(12.dp))
-                    NoorTextField(value = email, onValueChange = { email = it },
+                    NoorTextField(
+                        value = uiState.email,
+                        onValueChange = { viewModel.updateEmail(it) },
                         label = "Business Email", placeholder = "info@company.com",
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email))
                 }
@@ -343,11 +348,15 @@ fun VendorRegistrationScreen(
                         fontSize = 11.sp, color = NoorTextHint, lineHeight = 16.sp)
                     Spacer(Modifier.height(14.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        NoorTextField(value = ntn, onValueChange = { ntn = it },
+                        NoorTextField(
+                            value = uiState.ntn,
+                            onValueChange = { viewModel.updateNtn(it) },
                             label = "NTN Number", placeholder = "XXXXXXX-X",
                             modifier = Modifier.weight(1f),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
-                        NoorTextField(value = regNumber, onValueChange = { regNumber = it },
+                        NoorTextField(
+                            value = uiState.regNumber,
+                            onValueChange = { viewModel.updateRegNumber(it) },
                             label = "Company Reg No.", placeholder = "SECP / FBR",
                             modifier = Modifier.weight(1f))
                     }
@@ -356,10 +365,14 @@ fun VendorRegistrationScreen(
                 NoorSectionCard {
                     VendorSectionLabel("Location")
                     Spacer(Modifier.height(12.dp))
-                    NoorTextField(value = city, onValueChange = { city = it },
+                    NoorTextField(
+                        value = uiState.city,
+                        onValueChange = { viewModel.updateCity(it) },
                         label = "Head Office City *", placeholder = "e.g. Lahore")
                     Spacer(Modifier.height(12.dp))
-                    NoorTextField(value = address, onValueChange = { address = it },
+                    NoorTextField(
+                        value = uiState.address,
+                        onValueChange = { viewModel.updateAddress(it) },
                         label = "Address", placeholder = "Street, Area, City",
                         singleLine = false, maxLines = 3)
                     Spacer(Modifier.height(14.dp))
@@ -378,6 +391,7 @@ fun VendorRegistrationScreen(
                                 onClick  = {
                                     if (selectedCities.contains(c)) selectedCities.remove(c)
                                     else selectedCities.add(c)
+                                    viewModel.updateOperatingCities(selectedCities.toList())
                                 })
                         }
                     }
@@ -387,34 +401,32 @@ fun VendorRegistrationScreen(
                     VendorSectionLabel("About Your Business")
                     Spacer(Modifier.height(12.dp))
                     NoorTextField(
-                        value = bio,
-                        onValueChange = { if (it.length <= 300) bio = it },
+                        value = uiState.bio,
+                        onValueChange = { viewModel.updateBio(it) },
                         label = "Business Description (optional)",
                         placeholder = "What makes your business stand out? Mention experience, certifications, notable clients…",
                         singleLine = false, maxLines = 5)
-                    Text("${bio.length}/300",
+                    Text("${uiState.bio.length}/300",
                         fontSize = 10.sp,
-                        color    = if (bio.length > 280) NoorRed else NoorTextHint,
+                        color    = if (uiState.bio.length > 280) NoorRed else NoorTextHint,
                         modifier = Modifier.align(Alignment.End).padding(top = 4.dp))
                 }
 
                 VendorPrimaryButton(
                     text    = "Continue  →",
                     enabled = step1Valid,
-                    onClick = { currentStep = 2 }
+                    onClick = { viewModel.goToStep2() }
                 )
 
             } else {
                 // ── STEP 2: Services & Capacity ───────────────────────────────
 
-                // ── Service category chips ────────────────────────────────────
                 NoorSectionCard {
                     VendorSectionLabel("Services You Offer *")
                     Spacer(Modifier.height(6.dp))
                     Text(
                         "Select each service you provide. A detail card will appear below to configure pricing and coverage.",
-                        fontSize = 11.sp, color = NoorTextHint, lineHeight = 16.sp
-                    )
+                        fontSize = 11.sp, color = NoorTextHint, lineHeight = 16.sp)
                     Spacer(Modifier.height(14.dp))
                     @OptIn(ExperimentalLayoutApi::class)
                     FlowRow(
@@ -437,16 +449,17 @@ fun VendorRegistrationScreen(
                                         serviceCoverageAreas.remove(svc.id)
                                     } else {
                                         selectedServiceIds.add(svc.id)
-                                        expandedServiceIds.add(svc.id) // auto-expand on select
+                                        expandedServiceIds.add(svc.id)
                                         serviceCoverageAreas[svc.id] = mutableStateListOf()
                                     }
+                                    // Sync selected services to ViewModel
+                                    viewModel.updateSelectedServices(selectedServiceIds.toList())
                                 }
                             )
                         }
                     }
                 }
 
-                // ── Per-service detail cards ───────────────────────────────────
                 AnimatedVisibility(
                     visible = selectedServiceIds.isNotEmpty(),
                     enter   = fadeIn() + expandVertically()
@@ -463,7 +476,6 @@ fun VendorRegistrationScreen(
                                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                             ) {
                                 Column(modifier = Modifier.padding(14.dp)) {
-                                    // Card header row — tap to expand/collapse
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
@@ -485,8 +497,8 @@ fun VendorRegistrationScreen(
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text(svc.label, fontSize = 13.sp,
                                                 fontWeight = FontWeight.Bold, color = NoorTextPrimary)
-                                            val priceFilled  = servicePriceRange[id]?.isNotBlank() == true
-                                            val modelFilled  = servicePricingModel[id]?.isNotBlank() == true
+                                            val priceFilled    = servicePriceRange[id]?.isNotBlank() == true
+                                            val modelFilled    = servicePricingModel[id]?.isNotBlank() == true
                                             val contractFilled = serviceMinContract[id]?.isNotBlank() == true
                                             val doneCount = listOf(priceFilled, modelFilled, contractFilled).count { it }
                                             Text(
@@ -505,7 +517,6 @@ fun VendorRegistrationScreen(
                                         )
                                     }
 
-                                    // Expanded detail form
                                     AnimatedVisibility(
                                         visible = isExpanded,
                                         enter   = fadeIn() + expandVertically()
@@ -515,7 +526,6 @@ fun VendorRegistrationScreen(
                                             HorizontalDivider(color = NoorDivider, thickness = 0.7.dp)
                                             Spacer(Modifier.height(14.dp))
 
-                                            // ── Pricing Model ─────────────────
                                             Text("Pricing Model *", fontSize = 11.sp,
                                                 fontWeight = FontWeight.SemiBold,
                                                 color = NoorTextHint, letterSpacing = 0.4.sp)
@@ -527,27 +537,30 @@ fun VendorRegistrationScreen(
                                             ) {
                                                 pricingModelOptions.forEach { opt ->
                                                     NoorSelectableChip(
-                                                        label    = opt,
-                                                        icon     = "💰",
+                                                        label    = opt, icon = "💰",
                                                         selected = servicePricingModel[id] == opt,
-                                                        onClick  = { servicePricingModel[id] = opt }
+                                                        onClick  = {
+                                                            servicePricingModel[id] = opt
+                                                            syncServiceDetail(id, servicePricingModel, servicePriceRange, serviceMinContract, serviceCoverageAreas, viewModel)
+                                                        }
                                                     )
                                                 }
                                             }
 
                                             Spacer(Modifier.height(14.dp))
 
-                                            // ── Price Range ───────────────────
                                             NoorTextField(
                                                 value = servicePriceRange[id] ?: "",
-                                                onValueChange = { servicePriceRange[id] = it },
+                                                onValueChange = {
+                                                    servicePriceRange[id] = it
+                                                    syncServiceDetail(id, servicePricingModel, servicePriceRange, serviceMinContract, serviceCoverageAreas, viewModel)
+                                                },
                                                 label       = "Price Range *",
                                                 placeholder = "e.g. PKR 15,000 – 80,000 / month"
                                             )
 
                                             Spacer(Modifier.height(14.dp))
 
-                                            // ── Minimum Contract Duration ─────
                                             Text("Minimum Contract Duration *", fontSize = 11.sp,
                                                 fontWeight = FontWeight.SemiBold,
                                                 color = NoorTextHint, letterSpacing = 0.4.sp)
@@ -559,17 +572,18 @@ fun VendorRegistrationScreen(
                                             ) {
                                                 contractDurationOpts.forEach { opt ->
                                                     NoorSelectableChip(
-                                                        label    = opt,
-                                                        icon     = "📅",
+                                                        label    = opt, icon = "📅",
                                                         selected = serviceMinContract[id] == opt,
-                                                        onClick  = { serviceMinContract[id] = opt }
+                                                        onClick  = {
+                                                            serviceMinContract[id] = opt
+                                                            syncServiceDetail(id, servicePricingModel, servicePriceRange, serviceMinContract, serviceCoverageAreas, viewModel)
+                                                        }
                                                     )
                                                 }
                                             }
 
                                             Spacer(Modifier.height(14.dp))
 
-                                            // ── Coverage Areas ────────────────
                                             Text("Coverage Areas", fontSize = 11.sp,
                                                 fontWeight = FontWeight.SemiBold,
                                                 color = NoorTextHint, letterSpacing = 0.4.sp)
@@ -582,13 +596,13 @@ fun VendorRegistrationScreen(
                                                 coverageAreaOptions.forEach { area ->
                                                     val areas = serviceCoverageAreas[id] ?: mutableStateListOf()
                                                     NoorSelectableChip(
-                                                        label    = area,
-                                                        icon     = "📍",
+                                                        label    = area, icon = "📍",
                                                         selected = areas.contains(area),
                                                         onClick  = {
                                                             val current = serviceCoverageAreas.getOrPut(id) { mutableStateListOf() }
                                                             if (current.contains(area)) current.remove(area)
                                                             else current.add(area)
+                                                            syncServiceDetail(id, servicePricingModel, servicePriceRange, serviceMinContract, serviceCoverageAreas, viewModel)
                                                         }
                                                     )
                                                 }
@@ -618,13 +632,15 @@ fun VendorRegistrationScreen(
                         verticalArrangement   = Arrangement.spacedBy(10.dp)) {
                         serviceScaleOptions.forEach { opt ->
                             NoorSelectableChip(label = opt, icon = "👥",
-                                selected = serviceScale == opt,
-                                onClick  = { serviceScale = opt })
+                                selected = uiState.serviceScale == opt,
+                                onClick  = { viewModel.updateServiceScale(opt) })
                         }
                     }
 
                     Spacer(Modifier.height(16.dp))
-                    NoorTextField(value = yearsInBusiness, onValueChange = { yearsInBusiness = it },
+                    NoorTextField(
+                        value = uiState.yearsInBusiness,
+                        onValueChange = { viewModel.updateYearsInBusiness(it) },
                         label = "Years in Business", placeholder = "e.g. 8",
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
                 }
@@ -653,7 +669,10 @@ fun VendorRegistrationScreen(
                         }
                         Switch(
                             checked = isoRegistered,
-                            onCheckedChange = { isoRegistered = it },
+                            onCheckedChange = {
+                                isoRegistered = it
+                                viewModel.updateIsoCertified(it)
+                            },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor   = Color.White, checkedTrackColor   = VendorTeal,
                                 uncheckedThumbColor = Color.White, uncheckedTrackColor = NoorBorder)
@@ -664,7 +683,6 @@ fun VendorRegistrationScreen(
                     HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
                     Spacer(Modifier.height(12.dp))
 
-                    // Updated Notable Clients Section with Add Button
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -688,7 +706,10 @@ fun VendorRegistrationScreen(
                             checked = hasPreviousClients,
                             onCheckedChange = {
                                 hasPreviousClients = it
-                                if (!it) previousClientsList.clear()
+                                if (!it) {
+                                    previousClientsList.clear()
+                                    viewModel.updateNotableClients(emptyList())
+                                }
                             },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor   = Color.White, checkedTrackColor   = VendorTeal,
@@ -703,7 +724,6 @@ fun VendorRegistrationScreen(
                         Column {
                             Spacer(Modifier.height(12.dp))
 
-                            // Input row for adding new client
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -717,47 +737,42 @@ fun VendorRegistrationScreen(
                                     modifier = Modifier.weight(1f),
                                     singleLine = true
                                 )
-
                                 Button(
                                     onClick = {
-                                        if (currentClientInput.isNotBlank() && !previousClientsList.contains(currentClientInput.trim())) {
+                                        if (currentClientInput.isNotBlank() &&
+                                            !previousClientsList.contains(currentClientInput.trim())) {
                                             previousClientsList.add(currentClientInput.trim())
+                                            viewModel.updateNotableClients(previousClientsList.toList())
                                             currentClientInput = ""
                                         }
                                     },
                                     enabled = currentClientInput.isNotBlank(),
-                                    shape = RoundedCornerShape(12.dp),
+                                    shape  = RoundedCornerShape(12.dp),
                                     colors = ButtonDefaults.buttonColors(
-                                        containerColor = VendorTeal,
+                                        containerColor         = VendorTeal,
                                         disabledContainerColor = NoorBorder
                                     ),
                                     modifier = Modifier.height(56.dp)
                                 ) {
-                                    Icon(Icons.Default.Add, contentDescription = "Add", modifier = Modifier.size(20.dp))
+                                    Icon(Icons.Default.Add, contentDescription = "Add",
+                                        modifier = Modifier.size(20.dp))
                                     Spacer(Modifier.width(4.dp))
                                     Text("Add", fontSize = 13.sp, fontWeight = FontWeight.Medium)
                                 }
                             }
 
-                            // Display list of added clients
                             if (previousClientsList.isNotEmpty()) {
                                 Spacer(Modifier.height(16.dp))
-
-                                Text(
-                                    "Notable Clients (${previousClientsList.size})",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = NoorTextPrimary
-                                )
-
+                                Text("Notable Clients (${previousClientsList.size})",
+                                    fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                                    color = NoorTextPrimary)
                                 Spacer(Modifier.height(8.dp))
-
                                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                     previousClientsList.forEach { client ->
                                         Card(
                                             modifier = Modifier.fillMaxWidth(),
-                                            shape = RoundedCornerShape(10.dp),
-                                            colors = CardDefaults.cardColors(containerColor = VendorTealLight)
+                                            shape    = RoundedCornerShape(10.dp),
+                                            colors   = CardDefaults.cardColors(containerColor = VendorTealLight)
                                         ) {
                                             Row(
                                                 modifier = Modifier
@@ -767,28 +782,23 @@ fun VendorRegistrationScreen(
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
                                                 Row(
-                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    verticalAlignment     = Alignment.CenterVertically,
                                                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                                                 ) {
                                                     Text("🏢", fontSize = 16.sp)
-                                                    Text(
-                                                        client,
-                                                        fontSize = 13.sp,
+                                                    Text(client, fontSize = 13.sp,
                                                         color = NoorTextPrimary,
-                                                        fontWeight = FontWeight.Medium
-                                                    )
+                                                        fontWeight = FontWeight.Medium)
                                                 }
-
                                                 IconButton(
-                                                    onClick = { previousClientsList.remove(client) },
+                                                    onClick = {
+                                                        previousClientsList.remove(client)
+                                                        viewModel.updateNotableClients(previousClientsList.toList())
+                                                    },
                                                     modifier = Modifier.size(32.dp)
                                                 ) {
-                                                    Icon(
-                                                        Icons.Default.Close,
-                                                        contentDescription = "Remove",
-                                                        tint = NoorRed,
-                                                        modifier = Modifier.size(18.dp)
-                                                    )
+                                                    Icon(Icons.Default.Close, contentDescription = "Remove",
+                                                        tint = NoorRed, modifier = Modifier.size(18.dp))
                                                 }
                                             }
                                         }
@@ -797,6 +807,12 @@ fun VendorRegistrationScreen(
                             }
                         }
                     }
+                }
+
+                // Error banner
+                uiState.error?.let { errorMsg ->
+                    Text("⚠️ $errorMsg", color = NoorRed, fontSize = 12.sp,
+                        modifier = Modifier.fillMaxWidth())
                 }
 
                 Box(
@@ -817,16 +833,41 @@ fun VendorRegistrationScreen(
                     }
                 }
 
+                // ✅ FIX: Call viewModel.saveVendorProfile() instead of onRegistered() directly.
                 VendorPrimaryButton(
-                    text    = "Submit Registration  ✓",
-                    enabled = step2Valid,
-                    onClick = onRegistered
+                    text    = if (uiState.isLoading) "Submitting…" else "Submit Registration  ✓",
+                    enabled = step2Valid && !uiState.isLoading,
+                    onClick = { viewModel.saveVendorProfile() }
                 )
             }
 
             Spacer(Modifier.height(16.dp))
         }
     }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helper — syncs local per-service UI state into the ViewModel
+// Called whenever the user changes any field inside a service detail card.
+// ─────────────────────────────────────────────────────────────────────────────
+
+private fun syncServiceDetail(
+    id: String,
+    pricingModelMap:  Map<String, String>,
+    priceRangeMap:    Map<String, String>,
+    minContractMap:   Map<String, String>,
+    coverageAreasMap: Map<String, SnapshotStateList<String>>,
+    viewModel: VendorRegistrationViewModel
+) {
+    viewModel.updateServiceDetail(
+        id,
+        VendorServiceInput(
+            pricingModel        = pricingModelMap[id] ?: "",
+            priceRange          = priceRangeMap[id] ?: "",
+            minContractDuration = minContractMap[id] ?: "",
+            coverageAreas       = coverageAreasMap[id]?.toList() ?: emptyList()
+        )
+    )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

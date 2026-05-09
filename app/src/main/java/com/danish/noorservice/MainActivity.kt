@@ -9,7 +9,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
 import com.danish.noorservice.navigation.AppNavigation
 import com.danish.noorservice.ui.theme.NoorServiceTheme
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
