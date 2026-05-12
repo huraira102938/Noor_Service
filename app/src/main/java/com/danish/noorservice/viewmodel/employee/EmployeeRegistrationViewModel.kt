@@ -22,12 +22,16 @@ data class EmployeeRegistrationState(
     val error: String? = null,
     val fullName: String = "",
     val gender: String = "",
+    val phone: String = "",
     val email: String = "",
     val cnic: String = "",
     val dob: String = "",
     val city: String = "",
     val address: String = "",
     val languages: List<String> = listOf("Urdu"),
+    val dailyRate: String = "",
+    val hourlyRate: String = "",
+    val monthlyRate: String = "",
     val photoUri: Uri? = null,
     val selectedServiceIds: List<String> = emptyList(),
     val serviceDetails: Map<String, ServiceDetailInput> = emptyMap()
@@ -63,19 +67,23 @@ class EmployeeRegistrationViewModel @Inject constructor(
 
     fun setUserId(uid: String) { userId = uid }
 
-    fun updateFullName(value: String)  { _uiState.value = _uiState.value.copy(fullName  = value) }
+fun updateFullName(value: String)  { _uiState.value = _uiState.value.copy(fullName  = value) }
     fun updateGender(value: String)    { _uiState.value = _uiState.value.copy(gender    = value) }
+    fun updatePhone(value: String)     { _uiState.value = _uiState.value.copy(phone     = value) }
     fun updateEmail(value: String)     { _uiState.value = _uiState.value.copy(email     = value) }
     fun updateCnic(value: String)      { _uiState.value = _uiState.value.copy(cnic      = value) }
     fun updateDob(value: String)       { _uiState.value = _uiState.value.copy(dob       = value) }
     fun updateCity(value: String)      { _uiState.value = _uiState.value.copy(city      = value) }
     fun updateAddress(value: String)   { _uiState.value = _uiState.value.copy(address   = value) }
     fun updateLanguages(v: List<String>) { _uiState.value = _uiState.value.copy(languages = v) }
+    fun updateDailyRate(value: String)   { _uiState.value = _uiState.value.copy(dailyRate   = value) }
+    fun updateHourlyRate(value: String)  { _uiState.value = _uiState.value.copy(hourlyRate  = value) }
+    fun updateMonthlyRate(value: String) { _uiState.value = _uiState.value.copy(monthlyRate = value) }
     fun setPhotoUri(uri: Uri?)         { _uiState.value = _uiState.value.copy(photoUri  = uri) }
 
     fun isStep1Valid(): Boolean {
         val s = _uiState.value
-        return s.fullName.isNotBlank() && s.gender.isNotBlank() &&
+        return s.fullName.isNotBlank() && s.gender.isNotBlank() && s.phone.isNotBlank() &&
                 s.cnic.isNotBlank() && s.city.isNotBlank() && s.languages.isNotEmpty()
     }
 
@@ -121,12 +129,16 @@ class EmployeeRegistrationViewModel @Inject constructor(
                     uid               = userId,
                     fullName          = _uiState.value.fullName,
                     gender            = _uiState.value.gender,
+                    phone             = _uiState.value.phone,
                     email             = _uiState.value.email,
                     cnic              = _uiState.value.cnic,
                     dob               = _uiState.value.dob,
                     city              = _uiState.value.city,
                     address           = _uiState.value.address,
                     languages         = _uiState.value.languages,
+                    dailyRate         = _uiState.value.dailyRate,
+                    hourlyRate        = _uiState.value.hourlyRate,
+                    monthlyRate       = _uiState.value.monthlyRate,
                     photoUrl          = photoUrl,
                     isProfileApproved = false,
                     isAvailable       = true,

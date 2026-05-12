@@ -27,7 +27,15 @@ class EmployeeNotificationsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(EmployeeNotificationsState())
     val uiState: StateFlow<EmployeeNotificationsState> = _uiState.asStateFlow()
 
+    private var currentUserId: String = ""
+
     fun loadNotifications(userId: String) {
+        // Reset if userId changed (new login)
+        if (userId != currentUserId) {
+            currentUserId = userId
+            _uiState.value = EmployeeNotificationsState()
+        }
+
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
@@ -49,11 +57,28 @@ class EmployeeNotificationsViewModel @Inject constructor(
         }
     }
 
+    fun reset() {
+        currentUserId = ""
+        _uiState.value = EmployeeNotificationsState()
+    }
+
     fun markAsRead(userId: String, announcementId: String) {
         viewModelScope.launch {
             try {
                 announcementRepository.markAnnouncementAsRead(userId, announcementId)
-                loadNotifications(userId)
+                // Update local state without reloading all notifications
+                val updatedAnnouncements = _uiState.value.announcements.map { (ann, userAnn) ->
+                    if (ann.id == announcementId) {
+                        ann to userAnn.copy(isRead = true, readAt = System.currentTimeMillis())
+                    } else {
+                        ann to userAnn
+                    }
+                }
+                val unreadCount = updatedAnnouncements.count { !it.second.isRead }
+                _uiState.value = _uiState.value.copy(
+                    announcements = updatedAnnouncements,
+                    unreadCount = unreadCount
+                )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = e.message)
             }
@@ -64,7 +89,14 @@ class EmployeeNotificationsViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 announcementRepository.markAllAsRead(userId)
-                loadNotifications(userId)
+                // Update local state without reloading all notifications
+                val updatedAnnouncements = _uiState.value.announcements.map { (ann, userAnn) ->
+                    ann to userAnn.copy(isRead = true, readAt = System.currentTimeMillis())
+                }
+                _uiState.value = _uiState.value.copy(
+                    announcements = updatedAnnouncements,
+                    unreadCount = 0
+                )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = e.message)
             }

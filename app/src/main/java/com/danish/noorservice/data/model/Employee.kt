@@ -22,7 +22,8 @@ data class Employee(
     val hourlyRate: String = "",
     val monthlyRate: String = "",
     val serviceIds: List<String> = emptyList(),
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val lastUpdated: Long = System.currentTimeMillis()
 )
 
 data class EmployeeService(

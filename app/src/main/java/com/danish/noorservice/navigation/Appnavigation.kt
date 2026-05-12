@@ -116,18 +116,18 @@ fun AppNavigation(
     // hasLoaded guard inside loadProfile() ensures this never double-fetches.
     LaunchedEffect(authState.currentUser) {
         val user = authState.currentUser
-        if (user != null && user.role == "employee" && user.isProfileComplete) {
+        if (user != null && user.role == "employee") {
             employeeHomeViewModel.loadProfile(user.uid)
             employeeNotificationsViewModel.loadNotifications(user.uid)
             employeeSettingsViewModel.loadProfile(user.uid)
         }
-        if (user != null && user.role == "vendor" && user.isProfileComplete) {
+        if (user != null && user.role == "vendor") {
             vendorHomeViewModel.loadProfile(user.uid)
             vendorCatalogViewModel.loadServices(user.uid)
             vendorNotificationsViewModel.loadNotifications(user.uid)
             vendorSettingsViewModel.loadProfile(user.uid)
         }
-        if (user != null && user.role == "employer" && user.isProfileComplete) {
+        if (user != null && user.role == "employer") {
             employerHomeViewModel.loadProfile(user.uid)
             employerSettingsViewModel.loadProfile(user.uid)
         }

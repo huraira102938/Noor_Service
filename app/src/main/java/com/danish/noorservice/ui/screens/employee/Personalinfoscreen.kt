@@ -3,11 +3,14 @@ package com.danish.noorservice.ui.screens.employee
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -65,6 +68,16 @@ fun PersonalInfoScreen(
                     placeholder   = "As on CNIC"
                 )
 
+                Spacer(Modifier.height(12.dp))
+
+                NoorTextField(
+                    value           = uiState.phone,
+                    onValueChange   = viewModel::updatePhone,
+                    label           = "Phone Number *",
+                    placeholder     = "03XX-XXXXXXX",
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+                )
+
                 Spacer(Modifier.height(14.dp))
 
                 Text(
@@ -98,6 +111,92 @@ fun PersonalInfoScreen(
                     placeholder     = "you@email.com",
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
                 )
+            }
+
+            NoorSectionCard {
+                SectionLabel("My Rates (PKR)")
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Set your pricing so employers know what to expect.",
+                    fontSize = 11.sp,
+                    color = NoorTextHint,
+                    lineHeight = 16.sp
+                )
+                Spacer(Modifier.height(14.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(NoorGreenLight),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("📅", fontSize = 18.sp)
+                    }
+                    NoorTextField(
+                        value = uiState.dailyRate,
+                        onValueChange = viewModel::updateDailyRate,
+                        label = "Daily Rate",
+                        placeholder = "e.g. 1,200",
+                        modifier = Modifier.weight(1f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    )
+                    Text("/ day", fontSize = 12.sp, color = NoorTextHint)
+                }
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(NoorBlueLight),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("⏱️", fontSize = 18.sp)
+                    }
+                    NoorTextField(
+                        value = uiState.hourlyRate,
+                        onValueChange = viewModel::updateHourlyRate,
+                        label = "Hourly Rate (optional)",
+                        placeholder = "e.g. 150",
+                        modifier = Modifier.weight(1f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    )
+                    Text("/ hr", fontSize = 12.sp, color = NoorTextHint)
+                }
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(NoorOrangeLight),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("🗓️", fontSize = 18.sp)
+                    }
+                    NoorTextField(
+                        value = uiState.monthlyRate,
+                        onValueChange = viewModel::updateMonthlyRate,
+                        label = "Monthly Rate (optional)",
+                        placeholder = "e.g. 25,000",
+                        modifier = Modifier.weight(1f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    )
+                    Text("/ mo", fontSize = 12.sp, color = NoorTextHint)
+                }
             }
 
             NoorSectionCard {

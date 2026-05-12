@@ -25,6 +25,9 @@ import androidx.compose.ui.unit.sp
 import com.danish.noorservice.ui.screens.employer.AdminProposalStatus
 import com.danish.noorservice.ui.screens.employer.AdminProposalStore
 import com.danish.noorservice.ui.theme.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Admin Settings Screen
@@ -51,6 +54,7 @@ fun AdminSettingsScreen(onLogout: () -> Unit = {}) {
     }
 
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var showResetDialog by remember { mutableStateOf(false) }
 
     if (showCategoryMgmt) {
         AdminCategoryManagementScreen(onBack = { showCategoryMgmt = false })

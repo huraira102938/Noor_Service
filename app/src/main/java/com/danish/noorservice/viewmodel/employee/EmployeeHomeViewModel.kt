@@ -16,7 +16,8 @@ data class EmployeeHomeState(
     val isLoading: Boolean = false,
     val profile: Employee? = null,
     val services: List<EmployeeService> = emptyList(),
-    val error: String? = null
+    val error: String? = null,
+    val hasLoaded: Boolean = false
 )
 
 @HiltViewModel
@@ -27,7 +28,17 @@ class EmployeeHomeViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(EmployeeHomeState())
     val uiState: StateFlow<EmployeeHomeState> = _uiState.asStateFlow()
 
-    fun loadProfile(userId: String) {
+    private var currentUserId: String = ""
+
+    fun loadProfile(userId: String, forceRefresh: Boolean = false) {
+        // Reset if userId changed (new login)
+        if (userId != currentUserId) {
+            currentUserId = userId
+            _uiState.value = EmployeeHomeState()
+        }
+
+        if (!forceRefresh && _uiState.value.hasLoaded && _uiState.value.profile != null) return
+
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
@@ -38,15 +49,22 @@ class EmployeeHomeViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     profile   = profile,
-                    services  = services
+                    services  = services,
+                    hasLoaded = true
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    error     = e.message
+                    error     = e.message,
+                    hasLoaded = true
                 )
             }
         }
+    }
+
+    fun reset() {
+        currentUserId = ""
+        _uiState.value = EmployeeHomeState()
     }
 
     fun isProfileApproved(): Boolean = _uiState.value.profile?.isProfileApproved == true

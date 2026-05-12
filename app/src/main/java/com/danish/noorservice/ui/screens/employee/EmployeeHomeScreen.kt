@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -95,7 +96,7 @@ fun EmployeeHomeScreen(
                             .size(36.dp)
                             .clip(CircleShape)
                             .background(Color.White.copy(alpha = 0.18f))
-                            .clickable { viewModel.loadProfile(userId) },
+                            .clickable { viewModel.loadProfile(userId, forceRefresh = true) },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -202,7 +203,7 @@ private fun EmployeeHomeContent(
                         ) {
                             if (!profile?.photoUrl.isNullOrBlank()) {
                                 AsyncImage(
-                                    model              = profile!!.photoUrl,
+                                    model              = "${profile!!.photoUrl}?t=${profile!!.lastUpdated}",
                                     contentDescription = "Profile photo",
                                     contentScale       = ContentScale.Crop,
                                     modifier           = Modifier.size(58.dp).clip(CircleShape)
@@ -263,14 +264,6 @@ private fun EmployeeHomeContent(
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("📅", fontSize = 18.sp)
-                        Text(firstService?.availabilityDays?.joinToString(", ") ?: "—",
-                            fontSize = 12.sp, fontWeight = FontWeight.Medium, color = NoorTextPrimary)
-                        Text("Available Days", fontSize = 10.sp, color = NoorTextHint)
-                    }
-                    HorizontalDivider(color = NoorDivider,
-                        modifier = Modifier.width(1.dp).height(40.dp))
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("🕐", fontSize = 18.sp)
                         Text(firstService?.availabilityTime ?: "—",
                             fontSize = 12.sp, fontWeight = FontWeight.Medium, color = NoorTextPrimary)
@@ -283,6 +276,84 @@ private fun EmployeeHomeContent(
                         Text(firstService?.experience ?: "—",
                             fontSize = 12.sp, fontWeight = FontWeight.Medium, color = NoorTextPrimary)
                         Text("Experience", fontSize = 10.sp, color = NoorTextHint)
+                    }
+                }
+            }
+        }
+
+        // ── Available Days ───────────────────────────────────────────────────────
+        if (!firstService?.availabilityDays.isNullOrEmpty()) {
+            Card(
+                modifier  = Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth(),
+                shape     = RoundedCornerShape(16.dp),
+                colors    = CardDefaults.cardColors(containerColor = NoorSurface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("📅 My Availability", fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold, color = NoorBlue)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        firstService!!.availabilityDays.forEach { day ->
+                            Surface(shape = RoundedCornerShape(8.dp), color = NoorGreenLight,
+                                modifier = Modifier.weight(1f)) {
+                                Text(day, fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
+                                    color = NoorGreen,
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // ── My Pricing ───────────────────────────────────────────────────────────
+        val hasPricing = !profile?.dailyRate.isNullOrBlank() ||
+                !profile?.hourlyRate.isNullOrBlank() ||
+                !profile?.monthlyRate.isNullOrBlank()
+        if (hasPricing) {
+            Card(
+                modifier  = Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth(),
+                shape     = RoundedCornerShape(16.dp),
+                colors    = CardDefaults.cardColors(containerColor = NoorSurface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("💰 My Pricing (PKR)", fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold, color = NoorBlue)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        if (!profile?.dailyRate.isNullOrBlank()) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("📅", fontSize = 18.sp)
+                                Text("PKR ${profile!!.dailyRate}", fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold, color = NoorTextPrimary)
+                                Text("/ day", fontSize = 10.sp, color = NoorTextHint)
+                            }
+                        }
+                        if (!profile?.hourlyRate.isNullOrBlank()) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("⏱️", fontSize = 18.sp)
+                                Text("PKR ${profile!!.hourlyRate}", fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold, color = NoorTextPrimary)
+                                Text("/ hr", fontSize = 10.sp, color = NoorTextHint)
+                            }
+                        }
+                        if (!profile?.monthlyRate.isNullOrBlank()) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("🗓️", fontSize = 18.sp)
+                                Text("PKR ${profile!!.monthlyRate}", fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold, color = NoorTextPrimary)
+                                Text("/ mo", fontSize = 10.sp, color = NoorTextHint)
+                            }
+                        }
                     }
                 }
             }

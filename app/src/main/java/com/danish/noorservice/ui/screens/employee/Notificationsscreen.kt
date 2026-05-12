@@ -9,7 +9,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -74,64 +73,25 @@ fun NotificationsScreen(
                         }
 
                         Column {
-                            Row(
-                                verticalAlignment     = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Text("Notifications", fontSize = 20.sp,
-                                    fontWeight = FontWeight.Bold, color = Color.White,
-                                    letterSpacing = (-0.3).sp)
-                                if (uiState.unreadCount > 0) {
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(20.dp))
-                                            .background(NoorOrange)
-                                            .padding(horizontal = 8.dp, vertical = 2.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text("${uiState.unreadCount} new", fontSize = 10.sp,
-                                            fontWeight = FontWeight.Bold, color = Color.White)
-                                    }
-                                }
-                            }
+                            Text("Notifications", fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold, color = Color.White,
+                                letterSpacing = (-0.3).sp)
                             Text("Stay updated on your activity", fontSize = 12.sp,
                                 color = Color.White.copy(alpha = 0.72f))
                         }
                     }
 
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        // ✅ Manual refresh button
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.16f))
-                                .clickable { viewModel.loadNotifications(userId) },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Refresh",
-                                tint = Color.White, modifier = Modifier.size(18.dp))
-                        }
-
-                        if (uiState.unreadCount > 0) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(20.dp))
-                                    .background(Color.White.copy(alpha = 0.16f))
-                                    .clickable { viewModel.markAllAsRead(userId) }
-                                    .padding(horizontal = 12.dp, vertical = 7.dp)
-                            ) {
-                                Row(
-                                    verticalAlignment     = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(5.dp)
-                                ) {
-                                    Icon(Icons.Default.DoneAll, contentDescription = null,
-                                        tint = Color.White, modifier = Modifier.size(14.dp))
-                                    Text("Mark all read", fontSize = 11.sp,
-                                        fontWeight = FontWeight.SemiBold, color = Color.White)
-                                }
-                            }
-                        }
+                    // ✅ Manual refresh button
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.16f))
+                            .clickable { viewModel.loadNotifications(userId) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Refresh",
+                            tint = Color.White, modifier = Modifier.size(18.dp))
                     }
                 }
             }
@@ -156,23 +116,7 @@ when {
                             colors  = ButtonDefaults.buttonColors(containerColor = NoorBlue)
                         ) { Text("Retry", color = Color.White) }
                     }
-                }
-            }
-
-            uiState.error != null -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text("⚠️", fontSize = 36.sp)
-                        Text("Failed to load notifications", fontSize = 14.sp, color = NoorTextPrimary)
-                        Button(
-                            onClick = { viewModel.loadNotifications(userId) },
-                            colors  = ButtonDefaults.buttonColors(containerColor = NoorBlue)
-                        ) { Text("Retry", color = Color.White) }
-                    }
-                }
+}
             }
 
             uiState.announcements.isEmpty() -> {
@@ -189,33 +133,15 @@ when {
             }
 
             else -> {
-                val unread = uiState.announcements.filter { !it.second.isRead }
-                val read   = uiState.announcements.filter {  it.second.isRead }
-
                 LazyColumn(
                     modifier       = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(vertical = 8.dp)
                 ) {
-                    if (unread.isNotEmpty()) {
-                        item { NotificationGroupLabel("New") }
-                        items(unread, key = { it.first.id }) { (announcement, userAnnouncement) ->
-                            AnnouncementRow(
-                                announcement     = announcement,
-                                userAnnouncement = userAnnouncement,
-                                onMarkRead       = { viewModel.markAsRead(userId, announcement.id) }
-                            )
-                        }
-                    }
-
-                    if (read.isNotEmpty()) {
-                        item { NotificationGroupLabel("Earlier") }
-                        items(read, key = { it.first.id }) { (announcement, userAnnouncement) ->
-                            AnnouncementRow(
-                                announcement     = announcement,
-                                userAnnouncement = userAnnouncement,
-                                onMarkRead       = {}
-                            )
-                        }
+                    items(uiState.announcements, key = { it.first.id }) { (announcement, userAnnouncement) ->
+                        AnnouncementRow(
+                            announcement     = announcement,
+                            userAnnouncement = userAnnouncement
+                        )
                     }
 
                     item { Spacer(Modifier.height(16.dp)) }
@@ -248,8 +174,7 @@ private fun NotificationGroupLabel(title: String) {
 @Composable
 private fun AnnouncementRow(
     announcement: Announcement,
-    userAnnouncement: UserAnnouncement,
-    onMarkRead: () -> Unit
+    userAnnouncement: UserAnnouncement
 ) {
     val isRead  = userAnnouncement.isRead
     val bgColor = if (!isRead) NoorBlueLight else NoorSurface
@@ -270,7 +195,6 @@ private fun AnnouncementRow(
         modifier  = Modifier
             .fillMaxWidth()
             .background(bgColor)
-            .clickable { if (!isRead) onMarkRead() }
             .padding(horizontal = 16.dp, vertical = 13.dp),
         verticalAlignment     = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -306,16 +230,6 @@ private fun AnnouncementRow(
                 color     = NoorTextSecondary,
                 lineHeight = 17.sp,
                 maxLines  = 2
-            )
-        }
-
-        if (!isRead) {
-            Box(
-                modifier = Modifier
-                    .padding(top = 4.dp)
-                    .size(8.dp)
-                    .clip(CircleShape)
-                    .background(NoorOrange)
             )
         }
     }

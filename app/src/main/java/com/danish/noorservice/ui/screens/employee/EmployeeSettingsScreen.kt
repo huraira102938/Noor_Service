@@ -80,7 +80,6 @@ fun EmployeeSettingsScreen(
         SettingsSubScreen.NONE -> { /* fall through */ }
     }
 
-    var showDeleteDialog by remember { mutableStateOf(false) }
     var showLogoutDialog by remember { mutableStateOf(false) }
 
     val profile = uiState.profile
@@ -292,14 +291,6 @@ fun EmployeeSettingsScreen(
                     title   = "Log Out",
                     onClick = { showLogoutDialog = true }
                 )
-                HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
-                SettingsNavItem(
-                    emoji      = "🗑️",
-                    emojiBg    = NoorRedLight,
-                    title      = "Delete Account",
-                    titleColor = NoorRed,
-                    onClick    = { showDeleteDialog = true }
-                )
             }
 
             Spacer(Modifier.height(8.dp))
@@ -328,37 +319,7 @@ fun EmployeeSettingsScreen(
         )
     }
 
-    if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            shape = RoundedCornerShape(20.dp),
-            title = {
-                Text(
-                    "Delete Account",
-                    fontWeight = FontWeight.Bold,
-                    fontSize   = 16.sp,
-                    color      = NoorRed
-                )
-            },
-            text = {
-                Text(
-                    "This will permanently delete your account and all data. This action cannot be undone.",
-                    fontSize = 13.sp,
-                    color    = NoorTextSecondary
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Delete", color = NoorRed, fontWeight = FontWeight.SemiBold)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancel", color = NoorTextHint)
-                }
-            }
-        )
-    }
+
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

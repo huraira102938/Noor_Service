@@ -22,7 +22,8 @@ data class EmployeeSettingsState(
     val services: List<EmployeeService> = emptyList(),
     val isActive: Boolean = true,
     val error: String? = null,
-    val saveSuccess: Boolean = false
+    val saveSuccess: Boolean = false,
+    val hasLoaded: Boolean = false
 )
 
 @HiltViewModel
@@ -35,7 +36,17 @@ class EmployeeSettingsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(EmployeeSettingsState())
     val uiState: StateFlow<EmployeeSettingsState> = _uiState.asStateFlow()
 
+    private var currentUserId: String = ""
+
     fun loadProfile(userId: String) {
+        // Reset if userId changed (new login)
+        if (userId != currentUserId) {
+            currentUserId = userId
+            _uiState.value = EmployeeSettingsState()
+        }
+
+        if (_uiState.value.hasLoaded && _uiState.value.profile != null) return
+
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
@@ -45,15 +56,22 @@ class EmployeeSettingsViewModel @Inject constructor(
                     isLoading = false,
                     profile   = profile,
                     services  = services,
-                    isActive  = profile?.isAvailable ?: true
+                    isActive  = profile?.isAvailable ?: true,
+                    hasLoaded = true
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    error     = e.message
+                    error     = e.message,
+                    hasLoaded = true
                 )
             }
         }
+    }
+
+    fun reset() {
+        currentUserId = ""
+        _uiState.value = EmployeeSettingsState()
     }
 
     fun saveProfile(
@@ -85,21 +103,22 @@ class EmployeeSettingsViewModel @Inject constructor(
                 }
 
                 val updated = (_uiState.value.profile ?: Employee(uid = userId)).copy(
-                    fullName    = fullName,
-                    email       = email,
-                    phone       = phone,
-                    cnic        = cnic,
-                    city        = city,
-                    address     = address,
-                    gender      = gender,
-                    dob         = dob,
-                    bio         = bio,
-                    languages   = languages,
-                    dailyRate   = dailyRate,
-                    hourlyRate  = hourlyRate,
-                    monthlyRate = monthlyRate,
-                    serviceIds  = serviceIds,
-                    photoUrl    = photoUrl
+                    fullName     = fullName,
+                    email        = email,
+                    phone        = phone,
+                    cnic         = cnic,
+                    city         = city,
+                    address      = address,
+                    gender       = gender,
+                    dob          = dob,
+                    bio          = bio,
+                    languages    = languages,
+                    dailyRate    = dailyRate,
+                    hourlyRate   = hourlyRate,
+                    monthlyRate  = monthlyRate,
+                    serviceIds   = serviceIds,
+                    photoUrl     = photoUrl,
+                    lastUpdated  = System.currentTimeMillis()
                 )
 
                 userRepository.saveEmployeeProfile(updated)
