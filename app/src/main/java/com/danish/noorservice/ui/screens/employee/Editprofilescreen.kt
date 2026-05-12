@@ -97,7 +97,7 @@ fun EditProfileScreen(
     // ✅ FIX: Show shimmer on initial load instead of a blocking spinner.
     // This can only happen if this screen is ever opened without going through
     // EmployeeSettingsScreen (e.g. deep-link or direct navigation in future).
-    if (uiState.isLoading && !uiState.hasLoaded) {
+    if (uiState.isLoading) {
         Column(
             modifier = Modifier
                 .fillMaxSize()

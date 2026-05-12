@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -120,8 +121,45 @@ fun AdminNotificationsScreen(
     var showCompose by remember { mutableStateOf(false) }
     var deleteTarget by remember { mutableStateOf<Announcement?>(null) }
 
-    val visible = AnnouncementStore.announcements
+    fun formatTimestamp(timestamp: Long): String {
+        val now = System.currentTimeMillis()
+        val diff = now - timestamp
+        return when {
+            diff < 60 * 60 * 1000 -> "${diff / (60 * 1000)} min ago"
+            diff < 24 * 60 * 60 * 1000 -> "${diff / (60 * 60 * 1000)} hrs ago"
+            diff < 7 * 24 * 60 * 60 * 1000 -> "${diff / (24 * 60 * 60 * 1000)} days ago"
+            else -> java.text.SimpleDateFormat("MMM d", java.util.Locale.getDefault()).format(java.util.Date(timestamp))
+        }
+    }
+
+    val visible = uiState.announcements
+        .map { ann ->
+            val target = ann.targetAudience.lowercase().trim()
+            val type = ann.type.lowercase().trim()
+            Announcement(
+                id = ann.id,
+                title = ann.title,
+                body = ann.body,
+                audience = when {
+                    target == "employee" -> AnnouncementAudience.WORKERS
+                    target == "employer" -> AnnouncementAudience.EMPLOYERS
+                    target == "vendor" -> AnnouncementAudience.VENDORS
+                    target == "all" -> AnnouncementAudience.ALL
+                    else -> AnnouncementAudience.ALL
+                },
+                type = when {
+                    type.contains("warn") -> AnnouncementType.WARNING
+                    type.contains("urgent") -> AnnouncementType.URGENT
+                    type.contains("success") -> AnnouncementType.SUCCESS
+                    type.contains("promo") -> AnnouncementType.PROMO
+                    else -> AnnouncementType.INFO
+                },
+                sentAt = formatTimestamp(ann.createdAt)
+            )
+        }
         .filter { filterAudience == null || it.audience == filterAudience }
+
+    android.util.Log.d("AnnouncementUI", "Total: ${uiState.announcements.size}, Visible: ${visible.size}, Filter: $filterAudience")
 
     LaunchedEffect(Unit) {
         viewModel.loadAnnouncements()
@@ -248,7 +286,18 @@ fun AdminNotificationsScreen(
                 }
             }
         } else {
+            val listState = rememberLazyListState()
+            val previousCount = remember { mutableStateOf(0) }
+
+            LaunchedEffect(visible.size) {
+                if (visible.size > previousCount.value) {
+                    listState.animateScrollToItem(0)
+                }
+                previousCount.value = visible.size
+            }
+
             LazyColumn(
+                state = listState,
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
@@ -265,8 +314,8 @@ fun AdminNotificationsScreen(
     // ── Compose dialog ────────────────────────────────────────────────────────
     if (showCompose) {
         ComposeAnnouncementDialog(
-            onSend = { ann ->
-                AnnouncementStore.addAnnouncement(ann)
+            onSend = { title, body, targetAudience, type ->
+                viewModel.createAnnouncement(title, body, targetAudience, type, "admin")
                 showCompose = false
             },
             onDismiss = { showCompose = false }
@@ -281,7 +330,7 @@ fun AdminNotificationsScreen(
             title = { Text("Delete announcement?", fontWeight = FontWeight.Bold, color = NoorRed) },
             text = { Text("\"${ann.title}\" will be permanently removed.", fontSize = 13.sp, color = NoorTextSecondary) },
             confirmButton = {
-                TextButton(onClick = { AnnouncementStore.deleteAnnouncement(ann.id); deleteTarget = null }) {
+                TextButton(onClick = { viewModel.deleteAnnouncement(ann.id); deleteTarget = null }) {
                     Text("Delete", color = NoorRed, fontWeight = FontWeight.SemiBold)
                 }
             },
@@ -450,7 +499,7 @@ private fun AnnouncementCard(
 
 @Composable
 private fun ComposeAnnouncementDialog(
-    onSend: (Announcement) -> Unit,
+    onSend: (title: String, body: String, targetAudience: String, type: String) -> Unit,
     onDismiss: () -> Unit
 ) {
     var title by remember { mutableStateOf("") }
@@ -612,16 +661,20 @@ private fun ComposeAnnouncementDialog(
                 Button(
                     onClick = {
                         if (isValid) {
-                            onSend(
-                                Announcement(
-                                    id = "ann_${System.currentTimeMillis()}",
-                                    title = title.trim(),
-                                    body = body.trim(),
-                                    audience = audience,
-                                    type = type,
-                                    sentAt = "Just now"
-                                )
-                            )
+                            val targetAudience = when (audience) {
+                                AnnouncementAudience.ALL -> "all"
+                                AnnouncementAudience.WORKERS -> "employee"
+                                AnnouncementAudience.EMPLOYERS -> "employer"
+                                AnnouncementAudience.VENDORS -> "vendor"
+                            }
+                            val announcementType = when (type) {
+                                AnnouncementType.INFO -> "info"
+                                AnnouncementType.WARNING -> "warning"
+                                AnnouncementType.URGENT -> "urgent"
+                                AnnouncementType.SUCCESS -> "success"
+                                AnnouncementType.PROMO -> "promo"
+                            }
+                            onSend(title.trim(), body.trim(), targetAudience, announcementType)
                         }
                     },
                     enabled = isValid,

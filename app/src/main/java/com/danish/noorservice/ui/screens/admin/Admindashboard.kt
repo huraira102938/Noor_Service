@@ -26,6 +26,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.danish.noorservice.R
+import com.danish.noorservice.ui.components.ShimmerBox
+import com.danish.noorservice.ui.components.rememberShimmerBrush
 import com.danish.noorservice.ui.screens.employer.AdminProposalStatus
 import com.danish.noorservice.ui.screens.employer.AdminProposalStore
 import com.danish.noorservice.ui.screens.employer.sampleWorkers
@@ -37,17 +39,25 @@ import com.danish.noorservice.ui.theme.*
 
 @Composable
 fun AdminDashboardScreen(
-    onNavigate: (tab: Int) -> Unit,
+    viewModel: com.danish.noorservice.viewmodel.admin.AdminDashboardViewModel? = null,
+    onNavigate: (tab: Int) -> Unit = {},
     onNavigateToProposalInbox: () -> Unit = {},
     onNavigateToAnnouncements: () -> Unit = {},
-    onNavigateToCategoryManagement: () -> Unit = {}
+    onNavigateToCategoryManagement: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {}
 ) {
+    val dashboardViewModel = viewModel ?: androidx.hilt.navigation.compose.hiltViewModel()
+    val uiState by dashboardViewModel.uiState.collectAsState()
+
+    LaunchedEffect(Unit) {
+        dashboardViewModel.loadDashboard()
+    }
+
     val pendingProposals by remember {
         derivedStateOf {
-            AdminProposalStore.proposals.count { it.status == AdminProposalStatus.PENDING } // ← was SENT
+            AdminProposalStore.proposals.count { it.status == AdminProposalStatus.PENDING }
         }
     }
-    val availableWorkers = sampleWorkers.count { it.isAvailable }
 
     Column(
         modifier = Modifier
@@ -67,7 +77,7 @@ fun AdminDashboardScreen(
                 verticalAlignment     = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                     Box(
                         modifier = Modifier
                             .size(52.dp).clip(CircleShape)
@@ -85,13 +95,16 @@ fun AdminDashboardScreen(
                     }
                     Spacer(Modifier.width(10.dp))
                     Column {
-                        Text("Noor Services – Admin",
+                        Text("Danish Awan",
                             fontSize = 15.sp, fontWeight = FontWeight.Bold,
                             color = Color.White, letterSpacing = (-0.2).sp)
-                        Text("Control Panel",
+                        Text("admin_danish@noorservice.com",
                             fontSize = 10.sp,
                             color = Color.White.copy(alpha = 0.65f), letterSpacing = 0.5.sp)
                     }
+                }
+                IconButton(onClick = onNavigateToSettings, modifier = Modifier.size(40.dp)) {
+                    Icon(Icons.Default.Settings, contentDescription = "Settings", tint = Color.White, modifier = Modifier.size(22.dp))
                 }
             }
         }
@@ -102,6 +115,27 @@ fun AdminDashboardScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = 16.dp)
         ) {
+            val showShimmer = uiState.isLoading || !uiState.hasLoaded
+            
+            if (showShimmer) {
+                val brush = rememberShimmerBrush()
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    ShimmerBox(modifier = Modifier.fillMaxWidth().height(120.dp).clip(RoundedCornerShape(18.dp)), brush = brush)
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        ShimmerBox(modifier = Modifier.weight(1f).height(80.dp).clip(RoundedCornerShape(14.dp)), brush = brush)
+                        ShimmerBox(modifier = Modifier.weight(1f).height(80.dp).clip(RoundedCornerShape(14.dp)), brush = brush)
+                        ShimmerBox(modifier = Modifier.weight(1f).height(80.dp).clip(RoundedCornerShape(14.dp)), brush = brush)
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        ShimmerBox(modifier = Modifier.weight(1f).height(80.dp).clip(RoundedCornerShape(14.dp)), brush = brush)
+                        ShimmerBox(modifier = Modifier.weight(1f).height(80.dp).clip(RoundedCornerShape(14.dp)), brush = brush)
+                        ShimmerBox(modifier = Modifier.weight(1f).height(80.dp).clip(RoundedCornerShape(14.dp)), brush = brush)
+                    }
+                }
+            } else if (uiState.hasLoaded) {
             // ── Welcome banner ────────────────────────────────────────────────
             Box(
                 modifier = Modifier
@@ -154,11 +188,11 @@ fun AdminDashboardScreen(
                 modifier              = Modifier.padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                AdminStatCard("${sampleWorkers.size}", "Workers", "👷", AdminPurple, AdminPurpleLight,
+                AdminStatCard("${uiState.totalEmployees}", "Workers", "👷", AdminPurple, AdminPurpleLight,
                     modifier = Modifier.weight(1f), onClick = { onNavigate(1) })
-                AdminStatCard("6", "Employers", "🏠", NoorOrange, NoorOrangeLight,
+                AdminStatCard("${uiState.totalEmployers}", "Employers", "🏠", NoorOrange, NoorOrangeLight,
                     modifier = Modifier.weight(1f), onClick = { onNavigate(2) })
-                AdminStatCard("3", "Vendors", "🏢", VendorTeal, VendorTealLight,
+                AdminStatCard("${uiState.totalVendors}", "Vendors", "🏢", VendorTeal, VendorTealLight,
                     modifier = Modifier.weight(1f), onClick = { onNavigate(3) })
             }
 
@@ -168,11 +202,11 @@ fun AdminDashboardScreen(
                 modifier              = Modifier.padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                AdminStatCard("$availableWorkers", "Available Now", "🟢", NoorGreen, NoorGreenLight,
+                AdminStatCard("0", "Proposals Received", "📋", NoorGreen, NoorGreenLight,
                     modifier = Modifier.weight(1f))
                 AdminStatCard("$pendingProposals", "Pending Actions", "⚡", NoorRed, NoorRedLight,
                     modifier = Modifier.weight(1f))
-                AdminStatCard("10+", "Services", "🛠️", NoorBlue, NoorBlueLight,
+                AdminStatCard("${uiState.totalServices}", "Services", "🛠️", NoorBlue, NoorBlueLight,
                     modifier = Modifier.weight(1f))
             }
 
@@ -259,6 +293,7 @@ fun AdminDashboardScreen(
                         )
                     }
                 Spacer(Modifier.height(8.dp))
+            }
             }
         }
     }

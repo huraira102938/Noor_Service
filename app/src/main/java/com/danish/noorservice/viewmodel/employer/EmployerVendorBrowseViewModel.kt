@@ -1,5 +1,6 @@
 package com.danish.noorservice.viewmodel.employer
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.danish.noorservice.data.model.Vendor
@@ -15,10 +16,12 @@ import javax.inject.Inject
 data class EmployerVendorBrowseState(
     val isLoading: Boolean = false,
     val vendors: List<Vendor> = emptyList(),
+    val vendorServices: Map<String, List<VendorService>> = emptyMap(),
     val selectedVendor: Vendor? = null,
-    val vendorServices: List<VendorService> = emptyList(),
+    val selectedVendorServices: List<VendorService> = emptyList(),
     val searchCity: String = "",
     val selectedService: String = "",
+    val hasLoaded: Boolean = false,
     val error: String? = null
 )
 
@@ -31,16 +34,42 @@ class EmployerVendorBrowseViewModel @Inject constructor(
     val uiState: StateFlow<EmployerVendorBrowseState> = _uiState.asStateFlow()
 
     fun loadVendors() {
+        if (_uiState.value.hasLoaded && _uiState.value.vendors.isNotEmpty()) return
+        
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
 
             try {
-                val vendors = userRepository.getAllApprovedVendors()
+                Log.d("EmployerVendorBrowse", "Loading vendors...")
+                val allVendors = userRepository.getAllApprovedVendors()
+                Log.d("EmployerVendorBrowse", "Found ${allVendors.size} total vendors")
+                
+                // Filter: profileApproved AND active
+                val vendors = allVendors.filter { it.isProfileApproved && it.isActive }
+                Log.d("EmployerVendorBrowse", "Filtered to ${vendors.size} approved+active vendors")
+                vendors.forEach { v ->
+                    Log.d("EmployerVendorBrowse", "Vendor: ${v.businessName}, profileApproved=${v.isProfileApproved}, active=${v.isActive}")
+                }
+
+                val vendorServicesMap = mutableMapOf<String, List<VendorService>>()
+                
+                vendors.forEach { vendor ->
+                    try {
+                        val services = userRepository.getVendorServices(vendor.uid)
+                        vendorServicesMap[vendor.uid] = services
+                    } catch (e: Exception) {
+                        vendorServicesMap[vendor.uid] = emptyList()
+                    }
+                }
+
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    vendors = vendors
+                    vendors = vendors,
+                    vendorServices = vendorServicesMap,
+                    hasLoaded = true
                 )
             } catch (e: Exception) {
+                Log.e("EmployerVendorBrowse", "Error: ${e.message}")
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     error = e.message
@@ -60,7 +89,7 @@ class EmployerVendorBrowseViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     selectedVendor = vendor,
-                    vendorServices = services
+                    selectedVendorServices = services
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
@@ -74,7 +103,7 @@ class EmployerVendorBrowseViewModel @Inject constructor(
     fun clearSelectedVendor() {
         _uiState.value = _uiState.value.copy(
             selectedVendor = null,
-            vendorServices = emptyList()
+            selectedVendorServices = emptyList()
         )
     }
 }

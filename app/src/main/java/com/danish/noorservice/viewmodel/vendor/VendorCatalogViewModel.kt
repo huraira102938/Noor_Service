@@ -14,7 +14,8 @@ import javax.inject.Inject
 data class VendorCatalogState(
     val isLoading: Boolean = false,
     val services: List<VendorService> = emptyList(),
-    val error: String? = null
+    val error: String? = null,
+    val savingSuccess: Boolean = false
 )
 
 @HiltViewModel
@@ -26,8 +27,9 @@ class VendorCatalogViewModel @Inject constructor(
     val uiState: StateFlow<VendorCatalogState> = _uiState.asStateFlow()
 
     fun loadServices(userId: String) {
+
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
             try {
                 val services = userRepository.getVendorServices(userId)
@@ -42,5 +44,55 @@ class VendorCatalogViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    fun saveService(userId: String, service: VendorService) {
+        viewModelScope.launch {
+            try {
+                val current = _uiState.value.services.toMutableList()
+                val existingIndex = current.indexOfFirst { it.serviceId == service.serviceId }
+                if (existingIndex >= 0) {
+                    current[existingIndex] = service
+                } else {
+                    current.add(service)
+                }
+                userRepository.saveVendorServices(userId, current)
+                _uiState.value = _uiState.value.copy(savingSuccess = true, services = current)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(error = e.message)
+            }
+        }
+    }
+
+    fun deleteService(userId: String, serviceId: String) {
+        viewModelScope.launch {
+            try {
+                userRepository.deleteVendorService(userId, serviceId)
+                val current = _uiState.value.services.filter { it.serviceId != serviceId }
+                _uiState.value = _uiState.value.copy(services = current)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(error = e.message)
+            }
+        }
+    }
+
+    fun updateServiceActive(userId: String, serviceId: String, isActive: Boolean) {
+        viewModelScope.launch {
+            try {
+                val current = _uiState.value.services.toMutableList()
+                val idx = current.indexOfFirst { it.serviceId == serviceId }
+                if (idx >= 0) {
+                    current[idx] = current[idx].copy(isActive = isActive)
+                }
+                userRepository.saveVendorServices(userId, current)
+                _uiState.value = _uiState.value.copy(services = current)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(error = e.message)
+            }
+        }
+    }
+
+    fun clearSaveSuccess() {
+        _uiState.value = _uiState.value.copy(savingSuccess = false)
     }
 }

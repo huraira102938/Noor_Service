@@ -13,11 +13,10 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class EmployeeNotificationsState(
-    val isLoading: Boolean = true,
+    val isLoading: Boolean = false,
     val announcements: List<Pair<Announcement, UserAnnouncement>> = emptyList(),
     val unreadCount: Int = 0,
-    val error: String? = null,
-    val hasLoaded: Boolean = false
+    val error: String? = null
 )
 
 @HiltViewModel
@@ -28,9 +27,7 @@ class EmployeeNotificationsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(EmployeeNotificationsState())
     val uiState: StateFlow<EmployeeNotificationsState> = _uiState.asStateFlow()
 
-    fun loadNotifications(userId: String, forceRefresh: Boolean = false) {
-        if (_uiState.value.hasLoaded && !forceRefresh) return
-
+    fun loadNotifications(userId: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
@@ -41,8 +38,7 @@ class EmployeeNotificationsViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     announcements = announcements,
-                    unreadCount = unreadCount,
-                    hasLoaded = true
+                    unreadCount = unreadCount
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
@@ -57,7 +53,7 @@ class EmployeeNotificationsViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 announcementRepository.markAnnouncementAsRead(userId, announcementId)
-                loadNotifications(userId, forceRefresh = true)
+                loadNotifications(userId)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = e.message)
             }
@@ -68,7 +64,7 @@ class EmployeeNotificationsViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 announcementRepository.markAllAsRead(userId)
-                loadNotifications(userId, forceRefresh = true)
+                loadNotifications(userId)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = e.message)
             }

@@ -16,14 +16,13 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class EmployeeSettingsState(
-    val isLoading: Boolean = true,
+    val isLoading: Boolean = false,
     val isSaving: Boolean = false,
     val profile: Employee? = null,
     val services: List<EmployeeService> = emptyList(),
     val isActive: Boolean = true,
     val error: String? = null,
-    val saveSuccess: Boolean = false,
-    val hasLoaded: Boolean = false
+    val saveSuccess: Boolean = false
 )
 
 @HiltViewModel
@@ -36,17 +35,7 @@ class EmployeeSettingsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(EmployeeSettingsState())
     val uiState: StateFlow<EmployeeSettingsState> = _uiState.asStateFlow()
 
-    /**
-     * Load the employee profile from Firestore.
-     *
-     * ✅ FIX: Skips the fetch when data has already been loaded once.
-     * Pass [forceRefresh] = true after saving changes in EditProfileScreen
-     * to pull fresh data without the guard blocking it.
-     */
-    fun loadProfile(userId: String, forceRefresh: Boolean = false) {
-        // Guard: skip if already loaded and no explicit refresh requested
-        if (_uiState.value.hasLoaded && !forceRefresh) return
-
+    fun loadProfile(userId: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
@@ -56,8 +45,7 @@ class EmployeeSettingsViewModel @Inject constructor(
                     isLoading = false,
                     profile   = profile,
                     services  = services,
-                    isActive  = profile?.isAvailable ?: true,
-                    hasLoaded = true
+                    isActive  = profile?.isAvailable ?: true
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
@@ -125,9 +113,7 @@ class EmployeeSettingsViewModel @Inject constructor(
                     profile     = updated,
                     services    = if (updatedServices.isNotEmpty()) updatedServices
                     else _uiState.value.services,
-                    saveSuccess = true,
-                    // Keep hasLoaded = true; the in-memory profile is now up-to-date
-                    hasLoaded   = true
+                    saveSuccess = true
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(

@@ -29,7 +29,7 @@ class VendorHomeViewModel @Inject constructor(
 
     fun loadProfile(userId: String) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
             try {
                 val profile = userRepository.getVendorProfile(userId)
@@ -47,9 +47,5 @@ class VendorHomeViewModel @Inject constructor(
                 )
             }
         }
-    }
-
-    fun isProfileApproved(): Boolean {
-        return _uiState.value.profile?.isProfileApproved == true
     }
 }

@@ -43,10 +43,6 @@ fun EmployeeSettingsScreen(
     val uiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
     var subScreen by remember { mutableStateOf(SettingsSubScreen.NONE) }
 
-    LaunchedEffect(userId) {
-        settingsViewModel.loadProfile(userId)
-    }
-
     when (subScreen) {
         SettingsSubScreen.EDIT_PROFILE -> {
             // ✅ FIX: Pass the SAME viewModel instance so EditProfileScreen
@@ -127,14 +123,12 @@ fun EmployeeSettingsScreen(
                         color    = Color.White.copy(alpha = 0.72f)
                     )
                 }
-                // ✅ Manual refresh button — visible only when data is loaded
-                if (uiState.hasLoaded) {
-                    Box(
+                Box(
                         modifier = Modifier
                             .size(36.dp)
                             .clip(CircleShape)
                             .background(Color.White.copy(alpha = 0.18f))
-                            .clickable { settingsViewModel.loadProfile(userId, forceRefresh = true) },
+                            .clickable { settingsViewModel.loadProfile(userId) },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -144,14 +138,20 @@ fun EmployeeSettingsScreen(
                             modifier = Modifier.size(18.dp)
                         )
                     }
-                }
             }
         }
 
-        // ✅ FIX: Show shimmer instead of a spinner — and only on the very
-        // first load (hasLoaded = false). Once loaded, we never block the UI.
-        if (uiState.isLoading && !uiState.hasLoaded) {
-            SettingsScreenShimmer()
+        if (uiState.isLoading) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = NoorBlue)
+            }
+            return@Column
+        }
+
+        if (uiState.profile == null) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("Pull to refresh", color = NoorTextHint, fontSize = 14.sp)
+            }
             return@Column
         }
 

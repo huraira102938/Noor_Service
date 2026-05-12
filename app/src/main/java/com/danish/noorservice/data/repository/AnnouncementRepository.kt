@@ -3,6 +3,8 @@ package com.danish.noorservice.data.repository
 import com.danish.noorservice.data.model.Announcement
 import com.danish.noorservice.data.model.UserAnnouncement
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.Source
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -13,13 +15,45 @@ class AnnouncementRepository @Inject constructor(
     private val firestore: FirebaseFirestore
 ) {
     companion object {
-        private const val DAYS_TO_KEEP = 30L
+        private const val DAYS_TO_KEEP = 10L
+    }
+
+    suspend fun deleteOldAnnouncements() {
+        try {
+            val cutoffTime = System.currentTimeMillis() - (DAYS_TO_KEEP * 24 * 60 * 60 * 1000)
+            val oldDocs = firestore.collection("announcements")
+                .whereLessThan("createdAt", cutoffTime)
+                .get()
+                .await()
+
+            for (doc in oldDocs.documents) {
+                val announcementId = doc.id
+
+                // Delete the announcement
+                doc.reference.delete().await()
+
+                // Delete associated user announcement records
+                val userAnnouncementDocs = firestore.collection("userAnnouncements")
+                    .get()
+                    .await()
+
+                for (userDoc in userAnnouncementDocs.documents) {
+                    userDoc.reference.collection("announcements")
+                        .document(announcementId)
+                        .delete()
+                        .await()
+                }
+            }
+        } catch (e: Exception) {
+            // Silently fail - cleanup should not block normal operations
+        }
     }
 
     suspend fun createAnnouncement(
         title: String,
         body: String,
         targetAudience: String,
+        type: String,
         createdBy: String
     ): Result<Announcement> {
         return try {
@@ -28,6 +62,7 @@ class AnnouncementRepository @Inject constructor(
                 title = title,
                 body = body,
                 targetAudience = targetAudience,
+                type = type,
                 createdBy = createdBy,
                 createdAt = System.currentTimeMillis()
             )
@@ -41,18 +76,57 @@ class AnnouncementRepository @Inject constructor(
         }
     }
 
+    suspend fun deleteAnnouncement(announcementId: String): Result<Unit> {
+        return try {
+            // Delete from announcements collection
+            firestore.collection("announcements")
+                .document(announcementId)
+                .delete()
+                .await()
+
+            // Delete associated user announcement records
+            val userAnnouncementDocs = firestore.collection("userAnnouncements")
+                .get()
+                .await()
+
+            for (userDoc in userAnnouncementDocs.documents) {
+                userDoc.reference.collection("announcements")
+                    .document(announcementId)
+                    .delete()
+                    .await()
+            }
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun getAnnouncementsForRole(role: String): List<Announcement> {
+        // Clean up old announcements first
+        deleteOldAnnouncements()
+
         val cutoffTime = System.currentTimeMillis() - (DAYS_TO_KEEP * 24 * 60 * 60 * 1000)
 
         val allDocs = firestore.collection("announcements")
             .whereGreaterThan("createdAt", cutoffTime)
-            .orderBy("createdAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
-            .get()
+            .orderBy("createdAt", Query.Direction.DESCENDING)
+            .get(Source.SERVER)
             .await()
 
-        return allDocs.documents
-            .mapNotNull { it.toObject(Announcement::class.java) }
-            .filter { it.targetAudience == "all" || it.targetAudience == role }
+        val announcements = allDocs.documents
+            .mapNotNull { doc ->
+                val ann = doc.toObject(Announcement::class.java)
+                android.util.Log.d("AnnouncementRepo", "Loaded: ${ann?.title}, target=${ann?.targetAudience}, type=${ann?.type}")
+                ann
+            }
+
+        // Admin sees all announcements, others see only their target
+        return if (role == "admin") {
+            announcements
+        } else {
+            announcements.filter { it.targetAudience == "all" || it.targetAudience == role }
+        }
     }
 
     suspend fun getUserAnnouncements(userId: String): List<Pair<Announcement, UserAnnouncement>> {
@@ -66,7 +140,7 @@ class AnnouncementRepository @Inject constructor(
                 .document(userId)
                 .collection("announcements")
                 .document(announcement.id)
-                .get()
+                .get(Source.SERVER)
                 .await()
 
             val userAnnouncement = userAnnouncementDoc.toObject(UserAnnouncement::class.java)
@@ -79,7 +153,9 @@ class AnnouncementRepository @Inject constructor(
     }
 
     private suspend fun getUserRole(userId: String): String {
-        val doc = firestore.collection("users").document(userId).get().await()
+        val doc = firestore.collection("users").document(userId)
+            .get(Source.SERVER)
+            .await()
         return doc.getString("role") ?: ""
     }
 

@@ -94,7 +94,7 @@ fun EmployeeMainScreen(
                 2 -> EmployeeSettingsScreen(
                     userId    = userId,
                     onLogout  = onLogout,
-                    onProfileSaved = { homeViewModel.loadProfile(userId, forceRefresh = true) },
+                    onProfileSaved = {},
                     notificationsViewModel = notificationsViewModel,
                     settingsViewModel = settingsViewModel
                 )

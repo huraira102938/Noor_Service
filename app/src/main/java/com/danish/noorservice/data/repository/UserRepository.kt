@@ -1,7 +1,9 @@
 package com.danish.noorservice.data.repository
 
+import android.util.Log
 import com.danish.noorservice.data.model.*
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Source
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -42,7 +44,9 @@ class UserRepository @Inject constructor(
     }
 
     suspend fun getEmployeeProfile(uid: String): Employee? {
-        val doc = firestore.collection("employees").document(uid).get().await()
+        val doc = firestore.collection("employees").document(uid)
+            .get(Source.SERVER)
+            .await()
         return doc.toObject(Employee::class.java)
     }
 
@@ -66,22 +70,36 @@ class UserRepository @Inject constructor(
         val docs = firestore.collection("employeeServices")
             .document(uid)
             .collection("services")
-            .get()
+            .get(Source.SERVER)
             .await()
         return docs.documents.mapNotNull { it.toObject(EmployeeService::class.java) }
     }
 
-    suspend fun getAllApprovedEmployees(): List<Employee> {
+suspend fun getAllEmployees(): List<Employee> {
         val docs = firestore.collection("employees")
-            .whereEqualTo("isProfileApproved", true)
-            .get()
+            .get(Source.SERVER)
             .await()
         return docs.documents.mapNotNull { it.toObject(Employee::class.java) }
     }
 
+    suspend fun getAllApprovedEmployees(): List<Employee> {
+        val docs = firestore.collection("employees")
+            .whereEqualTo("profileApproved", true)
+            .get(Source.SERVER)
+            .await()
+        return docs.documents.mapNotNull { it.toObject(Employee::class.java) }
+    }
+
+    suspend fun getAllVendors(): List<Vendor> {
+        val docs = firestore.collection("vendors")
+            .get(Source.SERVER)
+            .await()
+        return docs.documents.mapNotNull { it.toObject(Vendor::class.java) }
+    }
+
     suspend fun searchEmployees(city: String?, serviceId: String?): List<Employee> {
         val docs = firestore.collection("employees")
-            .whereEqualTo("isProfileApproved", true)
+            .whereEqualTo("profileApproved", true)
             .get()
             .await()
 
@@ -108,7 +126,9 @@ class UserRepository @Inject constructor(
     }
 
     suspend fun getVendorProfile(uid: String): Vendor? {
-        val doc = firestore.collection("vendors").document(uid).get().await()
+        val doc = firestore.collection("vendors").document(uid)
+            .get(Source.SERVER)
+            .await()
         return doc.toObject(Vendor::class.java)
     }
 
@@ -128,22 +148,81 @@ class UserRepository @Inject constructor(
         }
     }
 
+    suspend fun deleteVendorService(uid: String, serviceId: String) {
+        firestore.collection("vendorServices")
+            .document(uid)
+            .collection("services")
+            .document(serviceId)
+            .delete()
+            .await()
+    }
+
+    suspend fun updateVendorServiceActive(uid: String, service: VendorService): Result<Unit> {
+        return try {
+            firestore.collection("vendorServices")
+                .document(uid)
+                .collection("services")
+                .document(service.serviceId)
+                .set(service)
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun getVendorServices(uid: String): List<VendorService> {
         val docs = firestore.collection("vendorServices")
             .document(uid)
             .collection("services")
-            .get()
+            .get(Source.SERVER)
             .await()
         return docs.documents.mapNotNull { it.toObject(VendorService::class.java) }
     }
 
     suspend fun getAllApprovedVendors(): List<Vendor> {
-        val docs = firestore.collection("vendors")
-            .whereEqualTo("isProfileApproved", true)
-            .whereEqualTo("isActive", true)
-            .get()
-            .await()
-        return docs.documents.mapNotNull { it.toObject(Vendor::class.java) }
+        try {
+            Log.e("UserRepository", ">>>>>> START getAllApprovedVendors")
+            
+            val task = firestore.collection("vendors").get(Source.SERVER)
+            val docs = task.await()
+            
+            Log.e("UserRepository", ">>>>>> Found ${docs.size()} docs in vendors collection")
+            
+            if (docs.isEmpty) {
+                Log.e("UserRepository", ">>>>>> NO DOCUMENTS FOUND!")
+                return emptyList()
+            }
+            
+            val vendors = mutableListOf<Vendor>()
+            for (doc in docs.documents) {
+                Log.e("UserRepository", ">>>>>> Processing doc: ${doc.id}")
+                
+                val vendor = doc.toObject(Vendor::class.java)
+                if (vendor != null) {
+                    Log.e("UserRepository", ">>>>>> MAPPED: ${vendor.businessName}, profileApproved=${vendor.isProfileApproved}, active=${vendor.isActive}")
+                    vendors.add(vendor)
+                } else {
+                    Log.e("UserRepository", ">>>>>> FAILED TO MAP: ${doc.id}")
+                }
+            }
+            
+            Log.e("UserRepository", ">>>>>> Returning ${vendors.size} vendors")
+            return vendors
+        } catch (e: Exception) {
+            Log.e("UserRepository", ">>>>>> ERROR: ${e.message}")
+            e.printStackTrace()
+            return emptyList()
+        }
+    }
+
+    suspend fun getAllEmployers(): List<Employer> {
+        return try {
+            val docs = firestore.collection("employers").get(Source.SERVER).await()
+            docs.documents.mapNotNull { it.toObject(Employer::class.java) }
+        } catch (e: Exception) {
+            emptyList()
+        }
     }
 
     suspend fun updateProfileApproval(userId: String, role: String, isApproved: Boolean): Result<Unit> {
@@ -157,6 +236,32 @@ class UserRepository @Inject constructor(
                     firestore.collection("vendors").document(userId)
                         .update("isProfileApproved", isApproved).await()
                 }
+                "employer" -> {
+                    firestore.collection("employers").document(userId)
+                        .update("isProfileApproved", isApproved).await()
+                }
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateUserActive(userId: String, role: String, isActive: Boolean): Result<Unit> {
+        return try {
+            when (role) {
+                "employee" -> {
+                    firestore.collection("employees").document(userId)
+                        .update("isActive", isActive).await()
+                }
+                "vendor" -> {
+                    firestore.collection("vendors").document(userId)
+                        .update("isActive", isActive).await()
+                }
+                "employer" -> {
+                    firestore.collection("employers").document(userId)
+                        .update("isActive", isActive).await()
+                }
             }
             Result.success(Unit)
         } catch (e: Exception) {
@@ -168,6 +273,109 @@ class UserRepository @Inject constructor(
         return try {
             firestore.collection("users").document(uid)
                 .update("isProfileComplete", isComplete).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // Category and Skills Management
+    suspend fun getAllCategories(): List<Category> {
+        return try {
+            val docs = firestore.collection("categories")
+                .get()
+                .await()
+            val result = docs.documents.mapNotNull { doc ->
+                val cat = doc.toObject(Category::class.java)
+                android.util.Log.d("CategoryRepo", "Doc ${doc.id}: type=${cat?.categoryType}, label=${cat?.label}")
+                cat
+            }
+            result
+        } catch (e: Exception) {
+            android.util.Log.e("CategoryRepo", "Error: ${e.message}")
+            emptyList()
+        }
+    }
+
+    suspend fun getCategoriesByType(type: String): List<Category> {
+        return try {
+            val docs = firestore.collection("categories")
+                .whereEqualTo("type", type)
+                .whereEqualTo("active", true)
+                .get()
+                .await()
+            docs.documents.mapNotNull { it.toObject(Category::class.java) }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    suspend fun addCategory(category: Category): Result<Unit> {
+        return try {
+            firestore.collection("categories").document(category.id).set(category).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateCategory(category: Category): Result<Unit> {
+        return try {
+            firestore.collection("categories").document(category.id).set(category).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteCategory(categoryId: String): Result<Unit> {
+        return try {
+            firestore.collection("categories").document(categoryId).delete().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun addSkillToCategory(categoryId: String, skill: Skill): Result<Unit> {
+        return try {
+            val doc = firestore.collection("categories").document(categoryId).get().await()
+            val category = doc.toObject(Category::class.java)
+            if (category != null) {
+                val updatedSkills = category.skills + skill
+                firestore.collection("categories").document(categoryId)
+                    .update("skills", updatedSkills).await()
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateSkillInCategory(categoryId: String, oldSkillId: String, newSkill: Skill): Result<Unit> {
+        return try {
+            val doc = firestore.collection("categories").document(categoryId).get().await()
+            val category = doc.toObject(Category::class.java)
+            if (category != null) {
+                val updatedSkills = category.skills.map { if (it.id == oldSkillId) newSkill else it }
+                firestore.collection("categories").document(categoryId)
+                    .update("skills", updatedSkills).await()
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteSkillFromCategory(categoryId: String, skillId: String): Result<Unit> {
+        return try {
+            val doc = firestore.collection("categories").document(categoryId).get().await()
+            val category = doc.toObject(Category::class.java)
+            if (category != null) {
+                val updatedSkills = category.skills.filter { it.id != skillId }
+                firestore.collection("categories").document(categoryId)
+                    .update("skills", updatedSkills).await()
+            }
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

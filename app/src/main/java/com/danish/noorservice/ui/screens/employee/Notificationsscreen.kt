@@ -38,10 +38,6 @@ fun NotificationsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(userId) {
-        viewModel.loadNotifications(userId)
-    }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -110,7 +106,7 @@ fun NotificationsScreen(
                                 .size(36.dp)
                                 .clip(CircleShape)
                                 .background(Color.White.copy(alpha = 0.16f))
-                                .clickable { viewModel.loadNotifications(userId, forceRefresh = true) },
+                                .clickable { viewModel.loadNotifications(userId) },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(Icons.Default.Refresh, contentDescription = "Refresh",
@@ -142,12 +138,12 @@ fun NotificationsScreen(
         }
 
         // ── Content ───────────────────────────────────────────────────────────
-        when {
-            uiState.isLoading && !uiState.hasLoaded -> {
+when {
+            uiState.isLoading -> {
                 NotificationsShimmer()
             }
 
-            uiState.error != null && !uiState.hasLoaded -> {
+            uiState.error != null -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -156,7 +152,23 @@ fun NotificationsScreen(
                         Text("⚠️", fontSize = 36.sp)
                         Text("Failed to load notifications", fontSize = 14.sp, color = NoorTextPrimary)
                         Button(
-                            onClick = { viewModel.loadNotifications(userId, forceRefresh = true) },
+                            onClick = { viewModel.loadNotifications(userId) },
+                            colors  = ButtonDefaults.buttonColors(containerColor = NoorBlue)
+                        ) { Text("Retry", color = Color.White) }
+                    }
+                }
+            }
+
+            uiState.error != null -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text("⚠️", fontSize = 36.sp)
+                        Text("Failed to load notifications", fontSize = 14.sp, color = NoorTextPrimary)
+                        Button(
+                            onClick = { viewModel.loadNotifications(userId) },
                             colors  = ButtonDefaults.buttonColors(containerColor = NoorBlue)
                         ) { Text("Retry", color = Color.White) }
                     }

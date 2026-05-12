@@ -23,17 +23,64 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil3.compose.AsyncImage
+import com.danish.noorservice.data.model.Employee
+import com.danish.noorservice.data.model.EmployeeService
 import com.danish.noorservice.ui.screens.employee.allServiceCategories
+import com.danish.noorservice.ui.components.EmployeeBrowseShimmer
 import com.danish.noorservice.ui.theme.*
 import com.danish.noorservice.viewmodel.employer.EmployerBrowseViewModel
 import java.text.SimpleDateFormat
 import java.util.*
+
+private val avatarColors = listOf(
+    Color(0xFF4CAF50), Color(0xFF2196F3), Color(0xFFFF9800),
+    Color(0xFF9C27B0), Color(0xFFE91E63), Color(0xFF00BCD4)
+)
+
+private fun Employee.toWorkerProfile(serviceIdsOverride: List<String>? = null): WorkerProfile {
+    val initials = fullName.split(" ").take(2).mapNotNull { it.firstOrNull()?.uppercase() }.joinToString("")
+    val colorIndex = uid.hashCode().let { kotlin.math.abs(it) } % avatarColors.size
+    val dateFormat = SimpleDateFormat("MMM yyyy", Locale.getDefault())
+    val joined = dateFormat.format(java.util.Date(createdAt))
+    val finalServiceIds = serviceIdsOverride ?: serviceIds
+
+    return WorkerProfile(
+        id = uid,
+        name = fullName,
+        initials = initials.ifEmpty { "W" },
+        avatarColor = avatarColors[colorIndex],
+        workerUsername = "@NS-${uid.take(4).uppercase()}",
+        city = city,
+        area = address.take(50),
+        phone = phone,
+        cnic = cnic,
+        dob = dob,
+        address = address,
+        gender = gender,
+        serviceIds = finalServiceIds,
+        skills = emptyList(),
+        experience = "",
+        licenceType = "",
+        availableDays = emptyList(),
+        timeSlot = "9 AM - 6 PM",
+        additionalNote = bio,
+        isAvailable = isAvailable,
+        joinedDate = joined,
+        dailyRate = dailyRate,
+        hourlyRate = hourlyRate,
+        monthlyRate = monthlyRate,
+        bio = bio,
+        languages = languages
+    )
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Worker data model
@@ -51,6 +98,7 @@ data class WorkerProfile(
     val name: String,
     val initials: String,
     val avatarColor: Color,
+    val photoUrl: String = "",
     val workerUsername: String,
     val city: String,
     val area: String,
@@ -260,12 +308,26 @@ fun EmployerBrowseScreen(
         viewModel.loadEmployees()
     }
 
-    if (openWorker != null) {
-        EmployerWorkerDetailScreen(worker = openWorker!!, onBack = { openWorker = null })
+    val selectedWorker = openWorker
+    if (selectedWorker != null) {
+        LaunchedEffect(selectedWorker.id) {
+            viewModel.selectEmployee(selectedWorker.id)
+        }
+        EmployerWorkerDetailScreen(
+            worker = selectedWorker,
+            services = uiState.employeeServices,
+            onBack = {
+                openWorker = null
+                viewModel.clearSelectedEmployee()
+            }
+        )
         return
     }
 
-    val filtered = sampleWorkers.filter { w ->
+    val realWorkers = uiState.employees.map { employee ->
+        employee.toWorkerProfile(uiState.employeeServiceIds[employee.uid])
+    }
+    val filtered = realWorkers.filter { w ->
         val matchCat   = selectedCatId == null || w.serviceIds.contains(selectedCatId)
         val matchAvail = !showAvailOnly || w.isAvailable
         val matchQuery = query.isBlank() ||
@@ -359,7 +421,9 @@ fun EmployerBrowseScreen(
         HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
 
         // ── Results ───────────────────────────────────────────────────────────
-        if (filtered.isEmpty()) {
+        if (uiState.isLoading || uiState.employees.isEmpty()) {
+            EmployeeBrowseShimmer()
+        } else if (filtered.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("🔍", fontSize = 48.sp)
@@ -471,6 +535,7 @@ fun WorkerCard(worker: WorkerProfile, onClick: () -> Unit) {
 @Composable
 fun EmployerWorkerDetailScreen(
     worker: WorkerProfile,
+    services: List<EmployeeService>,
     onBack: () -> Unit
 ) {
     var showProposalDialog by remember { mutableStateOf(false) }
@@ -562,38 +627,80 @@ fun EmployerWorkerDetailScreen(
             }
 
             // Services
-            WorkerDetailSection("Services Offered") {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    worker.serviceIds.forEach { id ->
-                        val svc = allServiceCategories.find { it.id == id }
-                        if (svc != null) {
-                            Box(modifier = Modifier.clip(RoundedCornerShape(10.dp))
-                                .background(NoorBlueLight)
-                                .padding(horizontal = 10.dp, vertical = 6.dp)
-                            ) { Text("${svc.emoji} ${svc.label}", fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold, color = NoorBlue) }
+            if (services.isNotEmpty()) {
+                WorkerDetailSection("Services Offered") {
+                    services.forEach { empService ->
+                        val category = allServiceCategories.find { it.id == empService.serviceId }
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = NoorSurface)
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        category?.emoji ?: "🔧",
+                                        fontSize = 16.sp
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        category?.label ?: empService.serviceId,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = NoorTextPrimary
+                                    )
+                                }
+                                if (empService.experience.isNotBlank()) {
+                                    Spacer(Modifier.height(8.dp))
+                                    Text("Experience: ${empService.experience}", fontSize = 12.sp, color = NoorTextSecondary)
+                                }
+                                if (empService.availabilityDays.isNotEmpty()) {
+                                    Text("Available: ${empService.availabilityDays.joinToString(", ")} (${empService.availabilityTime})", 
+                                        fontSize = 12.sp, color = NoorTextSecondary)
+                                }
+                                if (empService.dailyRate.isNotBlank()) {
+                                    Text("Daily Rate: ${empService.dailyRate}", fontSize = 12.sp, color = NoorGreen, fontWeight = FontWeight.SemiBold)
+                                }
+                                if (empService.skills.isNotEmpty()) {
+                                    Spacer(Modifier.height(8.dp))
+                                    Text("Skills:", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = NoorTextHint)
+                                    empService.skills.forEach { skill ->
+                                        Text("• $skill", fontSize = 11.sp, color = NoorTextSecondary)
+                                    }
+                                }
+                                if (empService.additionalNote.isNotBlank()) {
+                                    Spacer(Modifier.height(4.dp))
+                                    Text("Note: ${empService.additionalNote}", fontSize = 11.sp, color = NoorTextHint, fontStyle = FontStyle.Italic)
+                                }
+                            }
                         }
+                        Spacer(Modifier.height(8.dp))
                     }
                 }
             }
 
             // About
             WorkerDetailSection("About") {
-                Text(worker.bio, fontSize = 13.sp, color = NoorTextSecondary, lineHeight = 20.sp)
+                Text(worker.bio.ifBlank { "No bio available" }, fontSize = 13.sp, color = NoorTextSecondary, lineHeight = 20.sp)
             }
 
             // Skills
             WorkerDetailSection("Skills") {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    worker.skills.forEach { skill ->
-                        Box(modifier = Modifier.clip(RoundedCornerShape(8.dp))
-                            .background(NoorBackground)
-                            .border(1.dp, NoorBorder, RoundedCornerShape(8.dp))
-                            .padding(horizontal = 10.dp, vertical = 5.dp)
-                        ) { Text(skill, fontSize = 11.sp, color = NoorTextSecondary,
-                            fontWeight = FontWeight.Medium) }
+                val allSkills = services.flatMap { it.skills }.distinct()
+                if (allSkills.isNotEmpty()) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        allSkills.forEach { skill ->
+                            Box(modifier = Modifier.clip(RoundedCornerShape(8.dp))
+                                .background(NoorBackground)
+                                .border(1.dp, NoorBorder, RoundedCornerShape(8.dp))
+                                .padding(horizontal = 10.dp, vertical = 5.dp)
+                            ) { Text(skill, fontSize = 11.sp, color = NoorTextSecondary,
+                                fontWeight = FontWeight.Medium) }
+                        }
                     }
+                } else {
+                    Text("No skills listed", fontSize = 12.sp, color = NoorTextHint)
                 }
             }
 

@@ -15,11 +15,13 @@ import javax.inject.Inject
 
 data class AdminDashboardState(
     val isLoading: Boolean = false,
+    val hasLoaded: Boolean = false,
     val totalEmployees: Int = 0,
     val totalEmployers: Int = 0,
     val totalVendors: Int = 0,
-    val pendingEmployees: Int = 0,
-    val pendingVendors: Int = 0,
+    val totalProposals: Int = 0,
+    val pendingActions: Int = 0,
+    val totalServices: Int = 0,
     val recentEmployees: List<Employee> = emptyList(),
     val recentVendors: List<Vendor> = emptyList(),
     val error: String? = null
@@ -34,20 +36,29 @@ class AdminDashboardViewModel @Inject constructor(
     val uiState: StateFlow<AdminDashboardState> = _uiState.asStateFlow()
 
     fun loadDashboard() {
+        if (_uiState.value.hasLoaded && _uiState.value.totalEmployees > 0) return
+
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
 
             try {
-                // For now, we'll just show 0 since we don't have all users fetched
-                // In a real implementation, you'd have a repository method to get all users
+                val employees = userRepository.getAllApprovedEmployees()
+                val employers = userRepository.getAllEmployers()
+                val vendors = userRepository.getAllApprovedVendors()
+
+                // Get total categories count from Firestore for services
+                val allCategories = userRepository.getAllCategories()
+                val categoryCount = allCategories.size
 
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    totalEmployees = 0,
-                    totalEmployers = 0,
-                    totalVendors = 0,
-                    pendingEmployees = 0,
-                    pendingVendors = 0
+                    hasLoaded = true,
+                    totalEmployees = employees.size,
+                    totalEmployers = employers.size,
+                    totalVendors = vendors.filter { it.isProfileApproved && it.isActive }.size,
+                    totalProposals = 0,
+                    pendingActions = 0,
+                    totalServices = categoryCount
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(

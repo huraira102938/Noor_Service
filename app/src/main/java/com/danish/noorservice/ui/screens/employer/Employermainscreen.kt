@@ -25,6 +25,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.danish.noorservice.ui.theme.*
+import com.danish.noorservice.viewmodel.employer.EmployerHomeViewModel
+import com.danish.noorservice.viewmodel.employer.EmployerSettingsViewModel
 import kotlinx.coroutines.launch
 
 private data class EmployerNavItem(
@@ -46,6 +48,9 @@ private val employerNavItems = listOf(
 
 @Composable
 fun EmployerMainScreen(
+    userId: String,
+    homeViewModel: EmployerHomeViewModel,
+    settingsViewModel: EmployerSettingsViewModel,
     onLogout: () -> Unit,
     initialTab: Int = 0
 ) {
@@ -100,11 +105,21 @@ fun EmployerMainScreen(
                 .padding(bottom = innerPadding.calculateBottomPadding())
         ) {
             when (selectedTab) {
-                0 -> EmployerHomeScreen(onBrowse = { selectedTab = 1 }, onSettings = { selectedTab = 4 })
+                0 -> EmployerHomeScreen(
+                    userId = userId,
+                    homeViewModel = homeViewModel,
+                    settingsViewModel = settingsViewModel,
+                    onBrowse = { selectedTab = 1 },
+                    onSettings = { selectedTab = 4 }
+                )
                 1 -> EmployerBrowseScreen()
                 2 -> EmployerVendorBrowseScreen()
                 3 -> EmployerProposalsCombinedScreen()
-                4 -> EmployerSettingsScreen(onLogout = onLogout)
+                4 -> EmployerSettingsScreen(
+                    userId = userId,
+                    viewModel = settingsViewModel,
+                    onLogout = onLogout
+                )
             }
         }
     }

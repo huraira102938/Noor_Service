@@ -15,10 +15,12 @@ import javax.inject.Inject
 data class EmployerBrowseState(
     val isLoading: Boolean = false,
     val employees: List<Employee> = emptyList(),
+    val employeeServiceIds: Map<String, List<String>> = emptyMap(),
     val selectedEmployee: Employee? = null,
     val employeeServices: List<EmployeeService> = emptyList(),
     val searchCity: String = "",
     val selectedService: String = "",
+    val hasLoaded: Boolean = false,
     val error: String? = null
 )
 
@@ -31,14 +33,29 @@ class EmployerBrowseViewModel @Inject constructor(
     val uiState: StateFlow<EmployerBrowseState> = _uiState.asStateFlow()
 
     fun loadEmployees() {
+        if (_uiState.value.hasLoaded && _uiState.value.employees.isNotEmpty()) return
+        
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
 
             try {
                 val employees = userRepository.getAllApprovedEmployees()
+                val employeeServiceIds = mutableMapOf<String, List<String>>()
+                
+                employees.forEach { employee ->
+                    try {
+                        val services = userRepository.getEmployeeServices(employee.uid)
+                        employeeServiceIds[employee.uid] = services.map { it.serviceId }
+                    } catch (e: Exception) {
+                        employeeServiceIds[employee.uid] = emptyList()
+                    }
+                }
+
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    employees = employees
+                    employees = employees,
+                    employeeServiceIds = employeeServiceIds,
+                    hasLoaded = true
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(

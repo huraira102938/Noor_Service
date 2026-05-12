@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -32,19 +33,76 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil3.compose.AsyncImage
+import com.danish.noorservice.data.model.Vendor
+import com.danish.noorservice.data.model.VendorService
 import com.danish.noorservice.ui.screens.vendor.VendorServiceListing
 import com.danish.noorservice.ui.screens.vendor.allVendorServiceCategories
 import com.danish.noorservice.ui.screens.vendor.sampleListings
+import com.danish.noorservice.ui.components.VendorBrowseShimmer
 import com.danish.noorservice.ui.theme.*
 import com.danish.noorservice.viewmodel.employer.EmployerVendorBrowseViewModel
 import java.text.SimpleDateFormat
 import java.util.*
+
+private data class PublicVendorProfileWithServices(
+    val profile: PublicVendorProfile,
+    val services: List<VendorService>
+)
+
+private fun Vendor.toPublicVendorProfileWithServices(servicesOverride: List<VendorService>? = null): PublicVendorProfileWithServices {
+    val dateFormat = SimpleDateFormat("MMM yyyy", Locale.getDefault())
+    val joined = dateFormat.format(java.util.Date(createdAt))
+    val vendorServices = servicesOverride ?: emptyList()
+    val emojis = listOf("🏢", "🛡️", "🧹", "🔧", "🚗", "🌿", "👔", "🧑‍🍳")
+    val emojiIndex = uid.hashCode().let { kotlin.math.abs(it) } % emojis.size
+    
+    val listings = vendorServices.mapNotNull { service ->
+        val category = allVendorServiceCategories.find { it.id == service.serviceId }
+        if (category != null) {
+            VendorServiceListing(
+                id = service.serviceId,
+                categoryId = service.serviceId,
+                categoryLabel = category.label,
+                emoji = category.emoji,
+                isActive = service.isActive,
+                description = service.description,
+                minContractDuration = service.minContractDuration,
+                pricingModel = service.pricingModel,
+                priceRange = service.priceRange,
+                coverageAreas = service.coverageAreas,
+                highlights = service.highlights
+            )
+        } else null
+    }
+    
+    val profile = PublicVendorProfile(
+        id = uid,
+        businessName = businessName,
+        emoji = emojis[emojiIndex],
+        logoUrl = logoUrl,
+        city = city,
+        operatingCities = operatingCities,
+        isActive = isActive,
+        isISOCertified = isoCertified,
+        isVerified = isProfileApproved,
+        yearsInBusiness = yearsInBusiness.toString(),
+        workforceScale = serviceScale,
+        bio = bio,
+        notableClients = notableClients,
+        listings = listings,
+        joinedDate = joined
+    )
+    
+    return PublicVendorProfileWithServices(profile, vendorServices)
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Vendor public profile model (what employers see)
@@ -54,6 +112,7 @@ data class PublicVendorProfile(
     val id: String,
     val businessName: String,
     val emoji: String,
+    val logoUrl: String = "",
     val city: String,
     val operatingCities: List<String>,
     val isActive: Boolean,
@@ -214,28 +273,37 @@ fun EmployerVendorBrowseScreen(
     var openVendor     by remember { mutableStateOf<PublicVendorProfile?>(null) }
     var query          by remember { mutableStateOf("") }
     var selectedCatId  by remember { mutableStateOf<String?>(null) }
-    var showActiveOnly by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.loadVendors()
     }
 
-    if (openVendor != null) {
+    val selectedVendor = openVendor
+    if (selectedVendor != null) {
+        LaunchedEffect(selectedVendor.id) {
+            viewModel.selectVendor(selectedVendor.id)
+        }
         EmployerVendorDetailScreen(
-            vendor = openVendor!!,
-            onBack = { openVendor = null }
+            vendor = selectedVendor,
+            services = uiState.selectedVendorServices,
+            onBack = {
+                openVendor = null
+                viewModel.clearSelectedVendor()
+            }
         )
         return
     }
 
-    val filtered = sampleVendors.filter { v ->
-        val matchCat    = selectedCatId == null || v.listings.any { it.categoryId == selectedCatId }
-        val matchActive = !showActiveOnly || v.isActive
-        val matchQuery  = query.isBlank() ||
-                v.businessName.contains(query, ignoreCase = true) ||
-                v.city.contains(query, ignoreCase = true) ||
-                v.listings.any { it.categoryLabel.contains(query, ignoreCase = true) }
-        matchCat && matchActive && matchQuery
+    val realVendors = uiState.vendors.map { vendor ->
+        vendor.toPublicVendorProfileWithServices(uiState.vendorServices[vendor.uid])
+    }
+
+    val filtered = realVendors.filter { v ->
+        val matchCat   = selectedCatId == null || v.services.any { it.serviceId == selectedCatId }
+        val matchQuery = query.isBlank() ||
+                v.profile.businessName.contains(query, ignoreCase = true) ||
+                v.profile.city.contains(query, ignoreCase = true)
+        matchCat && matchQuery && v.profile.isVerified && v.profile.isActive
     }
 
     Column(modifier = Modifier.fillMaxSize().background(NoorBackground)) {
@@ -247,11 +315,38 @@ fun EmployerVendorBrowseScreen(
                 .statusBarsPadding()
                 .padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 20.dp)
         ) {
-            Column {
-                Text(
-                    "Find Vendors", fontSize = 22.sp, fontWeight = FontWeight.Bold,
-                    color = Color.White, letterSpacing = (-0.3).sp
-                )
+Column {
+                Row(
+                    modifier              = Modifier.fillMaxWidth(),
+                    horizontalArrangement  = Arrangement.SpaceBetween,
+                    verticalAlignment     = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            "Find Vendors", fontSize = 22.sp, fontWeight = FontWeight.Bold,
+                            color = Color.White, letterSpacing = (-0.3).sp
+                        )
+                        Text(
+                            "Browse B2B service providers - Hire via admin",
+                            fontSize = 12.sp, color = Color.White.copy(alpha = 0.72f)
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.18f))
+                            .clickable { viewModel.loadVendors() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.Refresh,
+                            contentDescription = "Refresh",
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
                 Text(
                     "Browse B2B service providers · Hire via admin",
                     fontSize = 12.sp, color = Color.White.copy(alpha = 0.72f)
@@ -297,32 +392,12 @@ fun EmployerVendorBrowseScreen(
             }
         }
 
-        // Active-only toggle
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(NoorSurface)
-                .padding(horizontal = 16.dp, vertical = 6.dp),
-            verticalAlignment     = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                "Open for business only", fontSize = 12.sp,
-                color = NoorTextSecondary, fontWeight = FontWeight.Medium
-            )
-            Switch(
-                checked         = showActiveOnly,
-                onCheckedChange = { showActiveOnly = it },
-                colors          = SwitchDefaults.colors(
-                    checkedThumbColor   = Color.White, checkedTrackColor   = NoorBlue,
-                    uncheckedThumbColor = Color.White, uncheckedTrackColor = NoorBorder
-                )
-            )
-        }
         HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
 
         // Results
-        if (filtered.isEmpty()) {
+        if (uiState.isLoading || uiState.vendors.isEmpty()) {
+            VendorBrowseShimmer()
+        } else if (filtered.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("🔍", fontSize = 48.sp)
@@ -343,8 +418,8 @@ fun EmployerVendorBrowseScreen(
                         fontSize = 11.sp, color = NoorTextHint, fontWeight = FontWeight.SemiBold
                     )
                 }
-                items(filtered) { vendor ->
-                    VendorBrowseCard(vendor = vendor, onClick = { openVendor = vendor })
+                items(filtered) { vendorWithServices ->
+                    VendorBrowseCard(vendor = vendorWithServices.profile, onClick = { openVendor = vendorWithServices.profile })
                 }
             }
         }
@@ -374,7 +449,18 @@ fun VendorBrowseCard(vendor: PublicVendorProfile, onClick: () -> Unit) {
                         .clip(RoundedCornerShape(14.dp))
                         .background(if (vendor.isActive) NoorBlueLight else NoorBackground),
                     contentAlignment = Alignment.Center
-                ) { Text(vendor.emoji, fontSize = 26.sp) }
+                ) {
+                    if (vendor.logoUrl.isNotBlank()) {
+                        AsyncImage(
+                            model = vendor.logoUrl,
+                            contentDescription = "Logo",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Text(vendor.emoji, fontSize = 26.sp)
+                    }
+                }
 
                 Column(modifier = Modifier.weight(1f)) {
                     Row(
@@ -473,15 +559,56 @@ fun VendorBrowseCard(vendor: PublicVendorProfile, onClick: () -> Unit) {
 // Vendor Detail Screen
 // ─────────────────────────────────────────────────────────────────────────────
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun EmployerVendorDetailScreen(
     vendor: PublicVendorProfile,
+    services: List<VendorService>,
     onBack: () -> Unit
 ) {
     var showProposalDialog by remember { mutableStateOf(false) }
     var proposalSent by remember {
         mutableStateOf(VendorProposalStore.proposals.any { it.vendorName == vendor.businessName })
+    }
+    var showFullImage by remember { mutableStateOf(false) }
+
+    if (showFullImage && vendor.logoUrl.isNotBlank()) {
+        AlertDialog(
+            onDismissRequest = { showFullImage = false },
+            modifier = Modifier.fillMaxSize(),
+            properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
+            content = {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black)
+                        .clickable { showFullImage = false },
+                    contentAlignment = Alignment.Center
+                ) {
+                    AsyncImage(
+                        model = vendor.logoUrl,
+                        contentDescription = "Full Logo",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit
+                    )
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(16.dp)
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.2f))
+                            .clickable { showFullImage = false },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.Close, contentDescription = "Close",
+                            tint = Color.White, modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+            }
+        )
     }
 
     Column(modifier = Modifier.fillMaxSize().background(NoorBackground)) {
@@ -512,9 +639,21 @@ fun EmployerVendorDetailScreen(
                     Box(
                         modifier = Modifier
                             .size(64.dp).clip(RoundedCornerShape(16.dp))
-                            .background(Color.White.copy(alpha = 0.22f)),
+                            .background(Color.White.copy(alpha = 0.22f))
+                            .clickable { if (vendor.logoUrl.isNotBlank()) showFullImage = true },
                         contentAlignment = Alignment.Center
-                    ) { Text(vendor.emoji, fontSize = 30.sp) }
+                    ) {
+                        if (vendor.logoUrl.isNotBlank()) {
+                            AsyncImage(
+                                model = vendor.logoUrl,
+                                contentDescription = "Logo",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Text(vendor.emoji, fontSize = 30.sp)
+                        }
+                    }
                     Column(modifier = Modifier.weight(1f)) {
                         Row(
                             verticalAlignment     = Alignment.CenterVertically,

@@ -29,27 +29,46 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import com.danish.noorservice.data.model.Employer
 import com.danish.noorservice.ui.components.NoorPrimaryButton
 import com.danish.noorservice.ui.components.NoorSectionCard
 import com.danish.noorservice.ui.components.NoorTextField
 import com.danish.noorservice.ui.theme.*
+import com.danish.noorservice.viewmodel.employer.EmployerSettingsViewModel
 
 @Composable
 fun EmployerEditProfileScreen(
+    userId: String,
+    profile: Employer?,
+    viewModel: EmployerSettingsViewModel,
     onBack: () -> Unit,
     onSaved: () -> Unit = {}
 ) {
-    var fullName by remember { mutableStateOf("Danish Awan") }
-    var email    by remember { mutableStateOf("newservicesprovided@gmail.com") }
-    var phone    by remember { mutableStateOf("0300-9254605") }
-    var city     by remember { mutableStateOf("Lahore") }
-    var area     by remember { mutableStateOf("DHA Phase 3") }
-    var address  by remember { mutableStateOf("House 7, Street 12, DHA Phase 3") }
-    var bio      by remember { mutableStateOf("Looking for reliable and verified domestic service workers in Lahore.") }
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) {
+        viewModel.clearSaveSuccess()
+    }
+
+    var fullName by remember(profile) { mutableStateOf(profile?.fullName ?: "") }
+    var email    by remember(profile) { mutableStateOf(profile?.email ?: "") }
+    var phone    by remember(profile) { mutableStateOf(profile?.phone ?: "") }
+    var city     by remember(profile) { mutableStateOf(profile?.city ?: "") }
+    var area     by remember(profile) { mutableStateOf(profile?.area ?: "") }
+    var address  by remember(profile) { mutableStateOf(profile?.address ?: "") }
+    var bio      by remember(profile) { mutableStateOf(profile?.about ?: "") }
 
     var photoUri         by remember { mutableStateOf<Uri?>(null) }
+    var existingPhotoUrl by remember(profile) { mutableStateOf(profile?.photoUrl ?: "") }
     var showSavedSnackbar by remember { mutableStateOf(false) }
+
+    LaunchedEffect(uiState.saveSuccess) {
+        if (uiState.saveSuccess) {
+            showSavedSnackbar = true
+        }
+    }
 
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let { photoUri = it }
@@ -84,11 +103,19 @@ fun EmployerEditProfileScreen(
                                 modifier = Modifier.size(76.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.22f)).border(2.dp, Color.White.copy(alpha = 0.5f), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
-                                if (photoUri != null) {
-                                    AsyncImage(model = photoUri, contentDescription = "Profile photo",
-                                        contentScale = ContentScale.Crop, modifier = Modifier.size(76.dp).clip(CircleShape))
-                                } else {
-                                    Text("DA", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                                val initials = fullName.take(2).uppercase().ifEmpty { "EM" }
+                                when {
+                                    photoUri != null -> {
+                                        AsyncImage(model = photoUri, contentDescription = "Profile photo",
+                                            contentScale = ContentScale.Crop, modifier = Modifier.size(76.dp).clip(CircleShape))
+                                    }
+                                    existingPhotoUrl.isNotBlank() -> {
+                                        AsyncImage(model = existingPhotoUrl, contentDescription = "Profile photo",
+                                            contentScale = ContentScale.Crop, modifier = Modifier.size(76.dp).clip(CircleShape))
+                                    }
+                                    else -> {
+                                        Text(initials, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                                    }
                                 }
                             }
                             Box(
@@ -148,7 +175,25 @@ fun EmployerEditProfileScreen(
                         modifier = Modifier.align(Alignment.End))
                 }
 
-                NoorPrimaryButton("Save Changes", enabled = isFormValid, onClick = { showSavedSnackbar = true; onSaved() })
+                NoorPrimaryButton(
+                text = if (uiState.isSaving) "Saving..." else "Save Changes",
+                enabled = isFormValid && !uiState.isSaving,
+                onClick = {
+                    val updatedProfile = Employer(
+                        uid = userId,
+                        fullName = fullName,
+                        email = email,
+                        phone = phone,
+                        city = city,
+                        area = area,
+                        address = address,
+                        about = bio,
+                        photoUrl = existingPhotoUrl,
+                        createdAt = profile?.createdAt ?: System.currentTimeMillis()
+                    )
+                    viewModel.saveProfile(updatedProfile, photoUri)
+                }
+            )
                 Spacer(Modifier.height(16.dp))
             }
         }

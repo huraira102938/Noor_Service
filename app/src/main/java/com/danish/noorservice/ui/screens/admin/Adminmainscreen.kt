@@ -14,6 +14,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.danish.noorservice.ui.theme.*
+import com.danish.noorservice.viewmodel.admin.AdminDashboardViewModel
+import com.danish.noorservice.viewmodel.admin.AdminManagementViewModel
 import kotlinx.coroutines.launch
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -49,6 +51,8 @@ private val adminNavItems = listOf(
 
 @Composable
 fun AdminMainScreen(
+    dashboardViewModel: AdminDashboardViewModel? = null,
+    managementViewModel: AdminManagementViewModel? = null,
     onLogout: () -> Unit,
     initialTab: Int = 0
 ) {
@@ -61,6 +65,7 @@ fun AdminMainScreen(
     var showProposalInbox by remember { mutableStateOf(false) }
     var showAnnouncements by remember { mutableStateOf(false) }
     var showCategoryMgmt by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(false) }
 
     // Live proposal badge count
     val pendingProposals by remember {
@@ -75,6 +80,7 @@ fun AdminMainScreen(
             showProposalInbox -> showProposalInbox = false
             showAnnouncements -> showAnnouncements = false
             showCategoryMgmt -> showCategoryMgmt = false
+            showSettings -> showSettings = false
             selectedTab != 0 -> selectedTab = 0
             else -> {
                 val now = System.currentTimeMillis()
@@ -98,7 +104,7 @@ fun AdminMainScreen(
         snackbarHost   = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             // Only show bottom bar when not in sub-screens
-            if (!showProposalInbox && !showAnnouncements && !showCategoryMgmt) {
+            if (!showProposalInbox && !showAnnouncements && !showCategoryMgmt && !showSettings) {
                 AdminBottomNav(
                     selectedIndex    = selectedTab,
                     pendingProposals = pendingProposals,
@@ -110,7 +116,7 @@ fun AdminMainScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = if (showProposalInbox || showAnnouncements || showCategoryMgmt) 0.dp else innerPadding.calculateBottomPadding())
+                .padding(bottom = if (showProposalInbox || showAnnouncements || showCategoryMgmt || showSettings) 0.dp else innerPadding.calculateBottomPadding())
         ) {
             when {
                 showProposalInbox -> {
@@ -122,17 +128,22 @@ fun AdminMainScreen(
                 showCategoryMgmt -> {
                     AdminCategoryManagementScreen(onBack = { showCategoryMgmt = false })
                 }
+                showSettings -> {
+                    AdminSettingsScreen(onLogout = onLogout)
+                }
                 else -> {
                     when (selectedTab) {
                         0 -> AdminDashboardScreen(
+                            viewModel = dashboardViewModel,
                             onNavigate = { selectedTab = it },
                             onNavigateToProposalInbox = { showProposalInbox = true },
                             onNavigateToAnnouncements = { showAnnouncements = true },
-                            onNavigateToCategoryManagement = { showCategoryMgmt = true }
+                            onNavigateToCategoryManagement = { showCategoryMgmt = true },
+                            onNavigateToSettings = { showSettings = true }
                         )
-                        1 -> AdminWorkersScreen()
-                        2 -> AdminEmployersScreen()
-                        3 -> AdminVendorsScreen()
+                        1 -> AdminWorkersScreen(viewModel = managementViewModel)
+                        2 -> AdminEmployersScreen(viewModel = managementViewModel)
+                        3 -> AdminVendorsScreen(viewModel = managementViewModel)
                         4 -> AdminSettingsScreen(onLogout = onLogout)
                     }
                 }

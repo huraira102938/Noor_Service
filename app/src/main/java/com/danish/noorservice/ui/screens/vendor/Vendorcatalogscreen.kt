@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -30,14 +31,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.danish.noorservice.data.model.VendorService
 import com.danish.noorservice.ui.components.NoorSectionCard
 import com.danish.noorservice.ui.components.NoorSelectableChip
 import com.danish.noorservice.ui.components.NoorTextField
+import com.danish.noorservice.ui.components.ShimmerBox
+import com.danish.noorservice.ui.components.rememberShimmerBrush
 import com.danish.noorservice.ui.theme.*
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Data model
-// ─────────────────────────────────────────────────────────────────────────────
+import com.danish.noorservice.viewmodel.vendor.VendorCatalogViewModel
 
 data class VendorServiceListing(
     val id: String,
@@ -53,43 +55,29 @@ data class VendorServiceListing(
     var highlights: List<String>
 )
 
-// Options defined in VendorRegistrationScreen.kt (internal) — referenced here directly
-// coverageAreaOptions, pricingModelOptions, contractDurationOpts
+val sampleListings = mutableListOf(
+    VendorServiceListing("1", "cleaning",  "Cleaning & Janitorial",  "🧹", true,  "Full-scale office and industrial cleaning.", "1 Month",    "Monthly Contract", "PKR 15,000 – 80,000 / month", listOf("Lahore", "Islamabad"),       listOf("Eco-friendly products", "Trained & uniformed staff")),
+    VendorServiceListing("2", "staffing",  "Staffing Solutions",       "👥", true,  "Bulk workforce supply for all requirements.", "3 Months",   "Monthly Contract", "PKR 25,000 – 500,000 / month", listOf("Lahore", "Faisalabad"),        listOf("Background verified staff", "Payroll management")),
+    VendorServiceListing("3", "security",  "Security Services",        "🛡️", false, "Guards & CCTV monitoring.",                 "6 Months",   "Per Shift",        "PKR 1,200 – 2,000 / shift",      listOf("Lahore"),                  listOf("Licensed guards", "CCTV monitoring"))
+)
 
- val sampleListings = mutableListOf(
-    VendorServiceListing(
-        id = "1", categoryId = "cleaning",
-        categoryLabel = "Cleaning & Janitorial", emoji = "🧹",
-        isActive = true,
-        description = "Full-scale office and industrial cleaning including daily, weekly and deep-clean packages. Our trained staff use eco-friendly products.",
-        minContractDuration = "1 Month",
-        pricingModel = "Monthly Contract",
-        priceRange = "PKR 15,000 – 80,000 / month",
-        coverageAreas = listOf("Lahore", "Islamabad"),
-        highlights = listOf("Eco-friendly products", "Trained & uniformed staff", "24/7 availability")
-    ),
-    VendorServiceListing(
-        id = "2", categoryId = "staffing",
-        categoryLabel = "Staffing Solutions", emoji = "👥",
-        isActive = true,
-        description = "Bulk workforce supply for short-term and long-term requirements. Includes screening, training and payroll management.",
-        minContractDuration = "3 Months",
-        pricingModel = "Monthly Contract",
-        priceRange = "PKR 25,000 – 500,000 / month",
-        coverageAreas = listOf("Lahore", "Faisalabad", "Rawalpindi"),
-        highlights = listOf("Background verified staff", "Payroll management included", "Replacement guarantee")
-    ),
-    VendorServiceListing(
-        id = "3", categoryId = "security",
-        categoryLabel = "Security Services", emoji = "🛡️",
-        isActive = false,
-        description = "Trained armed and unarmed security guards, CCTV monitoring and access control systems for commercial and residential clients.",
-        minContractDuration = "6 Months",
-        pricingModel = "Per Shift",
-        priceRange = "PKR 1,200 – 2,000 / shift",
-        coverageAreas = listOf("Lahore"),
-        highlights = listOf("Licensed guards", "CCTV installation & monitoring", "Emergency response protocol")
-    )
+fun VendorService.toListing(emoji: String = "💼", label: String = ""): VendorServiceListing = VendorServiceListing(
+    id = serviceId, categoryId = serviceId,
+    categoryLabel = label.ifBlank { serviceId.replaceFirstChar { it.uppercaseChar() } },
+    emoji = emoji, isActive = isActive, description = description,
+    minContractDuration = minContractDuration, pricingModel = pricingModel,
+    priceRange = priceRange, coverageAreas = coverageAreas, highlights = highlights
+)
+
+fun VendorServiceListing.toService(): VendorService = VendorService(
+    serviceId         = categoryId,
+    pricingModel      = pricingModel,
+    priceRange        = priceRange,
+    minContractDuration = minContractDuration,
+    coverageAreas     = coverageAreas,
+    isActive          = isActive,
+    description       = description,
+    highlights        = highlights
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -97,142 +85,212 @@ data class VendorServiceListing(
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-fun VendorCatalogScreen() {
-    val listings = remember { mutableStateListOf(*sampleListings.toTypedArray()) }
+fun VendorCatalogScreen(
+    userId: String,
+    viewModel: VendorCatalogViewModel
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    // ✅ Hoisted to composable scope — visible everywhere in this function
     var showAddSheet by remember { mutableStateOf(false) }
-    // editingListing: non-null means edit sheet is open for that listing index
-    var editingIndex by remember { mutableStateOf<Int?>(null) }
+    var editingService by remember { mutableStateOf<VendorServiceListing?>(null) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(
+    Column(modifier = Modifier.fillMaxSize().background(NoorBackground)) {
+
+        // ── Header ──────────────────────────────────────────────────────────────
+        Box(
             modifier = Modifier
-                .fillMaxSize()
-                .background(NoorBackground)
+                .fillMaxWidth()
+                .background(Brush.linearGradient(listOf(VendorTeal, VendorTealDark)))
+                .statusBarsPadding()
+                .padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 16.dp)
         ) {
-            // ── Header ────────────────────────────────────────────────────────
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Brush.linearGradient(listOf(VendorTeal, VendorTealDark)))
-                    .statusBarsPadding()
-                    .padding(horizontal = 20.dp, vertical = 18.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(
-                    modifier              = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment     = Alignment.CenterVertically
+                Column {
+                    Text(
+                        "Service Catalog", fontSize = 20.sp, fontWeight = FontWeight.Bold,
+                        color = Color.White, letterSpacing = (-0.3).sp
+                    )
+                    Text(
+                        "Manage your B2B service listings", fontSize = 12.sp,
+                        color = Color.White.copy(alpha = 0.72f)
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.18f))
+                        .clickable { viewModel.loadServices(userId) },
+                    contentAlignment = Alignment.Center
                 ) {
-                    Column {
-                        Text("Service Catalog", fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold, color = Color.White,
-                            letterSpacing = (-0.3).sp)
-                        Text("Manage your B2B service offerings",
-                            fontSize = 12.sp, color = Color.White.copy(alpha = 0.72f))
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color.White.copy(alpha = 0.18f))
-                            .clickable { showAddSheet = true }
-                            .padding(horizontal = 12.dp, vertical = 8.dp)
-                    ) {
-                        Row(verticalAlignment     = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                            Icon(Icons.Default.Add, contentDescription = "Add",
-                                tint = Color.White, modifier = Modifier.size(16.dp))
-                            Text("Add Service", fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold, color = Color.White)
-                        }
-                    }
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Refresh",
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp)
+                    )
                 }
             }
+        }
 
-            // ── Stats summary ─────────────────────────────────────────────────
-            Row(
-                modifier              = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                val active = listings.count { it.isActive }
-                CatalogStatChip("${listings.size}", "Total", NoorTextPrimary, NoorSurface,
-                    modifier = Modifier.weight(1f))
-                CatalogStatChip("$active", "Active", VendorTeal, VendorTealLight,
-                    modifier = Modifier.weight(1f))
-                CatalogStatChip("${listings.size - active}", "Paused", NoorOrange, NoorOrangeLight,
-                    modifier = Modifier.weight(1f))
-            }
+        // ── Content ────────────────────────────────────────────────────────────
+        val services = uiState.services
 
-            // ── Listings ──────────────────────────────────────────────────────
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                if (listings.isEmpty()) {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().padding(top = 60.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text("🗂️", fontSize = 48.sp)
-                            Text("No services yet", fontSize = 15.sp,
-                                fontWeight = FontWeight.SemiBold, color = NoorTextPrimary)
-                            Text("Tap '+ Add Service' to create your first listing.",
-                                fontSize = 13.sp, color = NoorTextHint)
-                        }
-                    }
-                } else {
-                    listings.forEachIndexed { index, listing ->
-                        ServiceListingCard(
-                            listing      = listing,
-                            isLastListing = listings.size == 1,
-                            onToggle     = { active ->
-                                listings[index] = listings[index].copy(isActive = active)
-                            },
-                            onDelete     = { listings.removeAt(index) },
-                            onEdit       = { editingIndex = index }
+        when {
+            uiState.isLoading -> {
+                val brush = rememberShimmerBrush()
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    repeat(4) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(120.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(brush)
                         )
                     }
                 }
+            }
 
-                Spacer(Modifier.height(16.dp))
+            uiState.error != null -> {
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text("⚠️", fontSize = 36.sp)
+                        Text("Failed to load catalog", fontSize = 14.sp, color = NoorTextPrimary)
+                        Button(
+                            onClick = { viewModel.loadServices(userId) },
+                            colors = ButtonDefaults.buttonColors(containerColor = VendorTeal)
+                        ) {
+                            Text("Retry", color = Color.White)
+                        }
+                    }
+                }
+            }
+
+            services.isEmpty() -> {
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text("📋", fontSize = 36.sp)
+                        Text("No services added yet", fontSize = 14.sp, color = NoorTextHint)
+                        Text(
+                            "Pull to refresh or add a new service",
+                            fontSize = 12.sp,
+                            color = NoorTextHint
+                        )
+                    }
+                }
+            }
+
+            else -> {
+                // ── Stats summary ──────────────────────────────────────────────
+                val activeCount = services.count { it.isActive }
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    CatalogStatChip(
+                        value = "${services.size}",
+                        label = "Total",
+                        valueColor = NoorTextPrimary,
+                        bgColor = NoorSurface,
+                        modifier = Modifier.weight(1f)
+                    )
+                    CatalogStatChip(
+                        value = "$activeCount",
+                        label = "Active",
+                        valueColor = VendorTeal,
+                        bgColor = VendorTealLight,
+                        modifier = Modifier.weight(1f)
+                    )
+                    CatalogStatChip(
+                        value = "${services.size - activeCount}",
+                        label = "Paused",
+                        valueColor = NoorOrange,
+                        bgColor = NoorOrangeLight,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                // ── Listings ───────────────────────────────────────────────────
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    services.forEach { svc ->
+                        val listing = svc.toListing()
+                        ServiceListingCard(
+                            listing = listing,
+                            isLastListing = services.indexOf(svc) == services.lastIndex,
+                            onToggle = {
+                                viewModel.updateServiceActive(
+                                    userId,
+                                    svc.serviceId,
+                                    !svc.isActive
+                                )
+                            },
+                            onDelete = { viewModel.deleteService(userId, svc.serviceId) },
+                            onEdit = { editingService = listing }
+                        )
+                    }
+                    Spacer(Modifier.height(16.dp))
+                }
             }
         }
+    }
 
-        // ── Add Service Bottom Sheet ───────────────────────────────────────────
-        if (showAddSheet) {
-            AddEditServiceSheet(
-                existingListing = null,
-                onDismiss       = { showAddSheet = false },
-                onSave          = { newListing ->
-                    listings.add(newListing)
-                    showAddSheet = false
-                }
-            )
-        }
+    // ── Add Service Bottom Sheet ───────────────────────────────────────────────
+    if (showAddSheet) {
+        AddEditServiceSheet(
+            existingListing = null,
+            onDismiss = { showAddSheet = false },
+            onSave = { listing ->
+                viewModel.saveService(userId, listing.toService())
+                showAddSheet = false
+            }
+        )
+    }
 
-        // ── Edit Service Bottom Sheet ──────────────────────────────────────────
-        val editIdx = editingIndex
-        if (editIdx != null && editIdx in listings.indices) {
-            AddEditServiceSheet(
-                existingListing = listings[editIdx],
-                onDismiss       = { editingIndex = null },
-                onSave          = { updated ->
-                    listings[editIdx] = updated
-                    editingIndex = null
-                }
-            )
-        }
+    // ── Edit Service Bottom Sheet ──────────────────────────────────────────────
+    val editSvc = editingService
+    if (editSvc != null) {
+        AddEditServiceSheet(
+            existingListing = editSvc,
+            onDismiss = { editingService = null },
+            onSave = { listing ->
+                viewModel.saveService(userId, listing.toService())
+                editingService = null
+            }
+        )
     }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Service listing card (expandable)
+// Service service card (expandable)
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
@@ -534,8 +592,8 @@ private fun AddEditServiceSheet(
                                 if (isEditing) "Edit Service Listing" else "Add New Service",
                                 fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Color.White)
                             Text(
-                                if (isEditing) "Update the details for this listing"
-                                else "Fill in the details for your new listing",
+                                if (isEditing) "Update the details for this service"
+                                else "Fill in the details for your new service",
                                 fontSize = 11.sp, color = Color.White.copy(alpha = 0.75f))
                         }
                         Box(
@@ -674,7 +732,7 @@ private fun AddEditServiceSheet(
                                     categoryId = selectedCategoryId,
                                     categoryLabel = svc?.label ?: selectedCategoryId,
                                     emoji = svc?.emoji ?: "💼",
-                                    isActive = existingListing?.isActive ?: true,
+                                    isActive = existingListing != null,
                                     description = description,
                                     minContractDuration = minContract,
                                     pricingModel = pricingModel,

@@ -24,14 +24,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.danish.noorservice.ui.screens.employer.AdminProposalStatus
 import com.danish.noorservice.ui.screens.employer.AdminProposalStore
-import com.danish.noorservice.ui.screens.employee.ChangePasswordScreen
 import com.danish.noorservice.ui.theme.*
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Admin Settings Screen
 // ─────────────────────────────────────────────────────────────────────────────
 
-private enum class AdminSettingsSubScreen { NONE, CHANGE_PASSWORD, PROPOSAL_INBOX, NOTIFICATIONS }
+private enum class AdminSettingsSubScreen { NONE, PROPOSAL_INBOX, NOTIFICATIONS }
 
 @Composable
 fun AdminSettingsScreen(onLogout: () -> Unit = {}) {
@@ -40,13 +39,6 @@ fun AdminSettingsScreen(onLogout: () -> Unit = {}) {
     var subScreen by remember { mutableStateOf(AdminSettingsSubScreen.NONE) }
 
     when (subScreen) {
-        AdminSettingsSubScreen.CHANGE_PASSWORD -> {
-            ChangePasswordScreen(
-                onBack = { subScreen = AdminSettingsSubScreen.NONE },
-                onPasswordChanged = { subScreen = AdminSettingsSubScreen.NONE }
-            )
-            return
-        }
         AdminSettingsSubScreen.PROPOSAL_INBOX -> {
             AdminProposalInboxScreen(onBack = { subScreen = AdminSettingsSubScreen.NONE })
             return
@@ -112,11 +104,13 @@ fun AdminSettingsScreen(onLogout: () -> Unit = {}) {
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            "Super Admin", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = NoorTextPrimary
+                            "Danish Awan", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = NoorTextPrimary
                         )
                         Spacer(Modifier.height(2.dp))
-                        Text("admin@noorservices.pk", fontSize = 12.sp, color = NoorTextHint)
-                        Spacer(Modifier.height(6.dp))
+                        Text("admin_danish@noorservice.com", fontSize = 12.sp, color = NoorTextHint)
+                        Spacer(Modifier.height(2.dp))
+                        Text("03123339015", fontSize = 11.sp, color = NoorTextSecondary)
+                        Spacer(Modifier.height(4.dp))
                         Box(
                             modifier = Modifier.clip(RoundedCornerShape(20.dp))
                                 .background(AdminPurpleLight).padding(horizontal = 8.dp, vertical = 3.dp)
@@ -128,26 +122,17 @@ fun AdminSettingsScreen(onLogout: () -> Unit = {}) {
                         }
                     }
                 }
-            }
-
-            // Platform Stats Summary
-            AdminSettingsGroup("Platform Summary") {
-                AdminSettingsStat("👷", "Workers Registered", "6 total")
-                HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
-                AdminSettingsStat("🏠", "Employers Registered", "6 total")
-                HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
-                AdminSettingsStat("🏢", "Vendors Registered", "5 total")
-                HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "ID: nUAnKyVW8ieRWI71NXJMmSUDFbE3",
+                    fontSize = 10.sp,
+                    color = NoorTextHint,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
             }
 
             // Account
             AdminSettingsGroup("Account") {
-                AdminSettingsNavItem(
-                    emoji = "🔒", emojiBg = Color(0xFFF3EEF9),
-                    title = "Change Password",
-                    onClick = { subScreen = AdminSettingsSubScreen.CHANGE_PASSWORD }
-                )
-                HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
                 AdminSettingsNavItem(emoji = "📄", emojiBg = NoorBackground, title = "Terms & Conditions", onClick = {})
                 HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
                 AdminSettingsNavItem(emoji = "🛡️", emojiBg = NoorBackground, title = "Privacy Policy", onClick = {})

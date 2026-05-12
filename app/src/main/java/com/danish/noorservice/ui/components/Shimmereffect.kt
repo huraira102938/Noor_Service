@@ -15,6 +15,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.danish.noorservice.ui.theme.NoorBackground
+import com.danish.noorservice.ui.theme.NoorSurface
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Core shimmer brush builder — reuse across all skeleton composables
@@ -245,3 +247,341 @@ fun NotificationsShimmer() {
         }
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Vendor Home screen skeleton (teal accent)
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+fun VendorHomeScreenShimmer() {
+    val brush = rememberShimmerBrush()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(190.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .background(brush)
+        )
+
+        ShimmerBox(
+            modifier     = Modifier.fillMaxWidth().height(100.dp),
+            brush        = brush,
+            cornerRadius = 16.dp
+        )
+
+        ShimmerBox(
+            modifier     = Modifier.fillMaxWidth().height(80.dp),
+            brush        = brush,
+            cornerRadius = 16.dp
+        )
+
+        ShimmerBox(
+            modifier     = Modifier.fillMaxWidth().height(80.dp),
+            brush        = brush,
+            cornerRadius = 16.dp
+        )
+
+        ShimmerBox(
+            modifier     = Modifier.fillMaxWidth().height(80.dp),
+            brush        = brush,
+            cornerRadius = 16.dp
+        )
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Vendor Settings screen skeleton
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+fun VendorSettingsScreenShimmer() {
+    val brush = rememberShimmerBrush()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.White)
+                .padding(16.dp)
+        ) {
+            Row(
+                verticalAlignment     = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(brush)
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ShimmerBox(modifier = Modifier.width(160.dp).height(16.dp), brush = brush)
+                    ShimmerBox(modifier = Modifier.width(120.dp).height(12.dp), brush = brush)
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        ShimmerBox(modifier = Modifier.width(70.dp).height(22.dp), brush = brush, cornerRadius = 20.dp)
+                        ShimmerBox(modifier = Modifier.width(70.dp).height(22.dp), brush = brush, cornerRadius = 20.dp)
+                    }
+                }
+            }
+        }
+
+        repeat(3) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                ShimmerBox(modifier = Modifier.width(90.dp).height(10.dp), brush = brush)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(brush)
+                )
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+ // Vendor Notifications screen skeleton
+ // ─────────────────────────────────────────────────────────────────────────────
+
+ @Composable
+ fun VendorNotificationsShimmer() {
+     val brush = rememberShimmerBrush()
+
+     Column(
+         modifier = Modifier
+             .fillMaxSize()
+             .padding(vertical = 8.dp),
+         verticalArrangement = Arrangement.spacedBy(1.dp)
+     ) {
+         repeat(6) {
+             Row(
+                 modifier = Modifier
+                     .fillMaxWidth()
+                     .padding(horizontal = 16.dp, vertical = 13.dp),
+                 verticalAlignment     = Alignment.Top,
+                 horizontalArrangement = Arrangement.spacedBy(12.dp)
+             ) {
+                 ShimmerBox(
+                     modifier     = Modifier.size(44.dp),
+                     brush        = brush,
+                     cornerRadius = 12.dp
+                 )
+                 Column(
+                     modifier              = Modifier.weight(1f),
+                     verticalArrangement   = Arrangement.spacedBy(8.dp)
+                 ) {
+                     ShimmerBox(modifier = Modifier.fillMaxWidth(0.65f).height(13.dp), brush = brush)
+                     ShimmerBox(modifier = Modifier.fillMaxWidth().height(11.dp),     brush = brush)
+                     ShimmerBox(modifier = Modifier.fillMaxWidth(0.45f).height(11.dp), brush = brush)
+                 }
+             }
+             Box(
+                 modifier = Modifier
+                     .fillMaxWidth()
+                     .padding(start = 72.dp, end = 16.dp)
+                     .height(0.6.dp)
+                     .background(Color(0xFFEEEEEE))
+             )
+         }
+     }
+ }
+
+ // ─────────────────────────────────────────────────────────────────────────────
+ // Vendor Browse (Employer) skeleton
+ // ─────────────────────────────────────────────────────────────────────────────
+
+ @Composable
+ fun VendorBrowseShimmer() {
+     val brush = rememberShimmerBrush()
+
+     Column(
+         modifier = Modifier
+             .fillMaxSize()
+             .background(NoorBackground)
+     ) {
+         // Header shimmer
+         Box(
+             modifier = Modifier
+                 .fillMaxWidth()
+                 .height(180.dp)
+                 .background(brush)
+         )
+
+         // Filter chips shimmer
+         Row(
+             modifier = Modifier
+                 .fillMaxWidth()
+                 .background(NoorSurface)
+                 .padding(vertical = 10.dp, horizontal = 16.dp),
+             horizontalArrangement = Arrangement.spacedBy(8.dp)
+         ) {
+             repeat(5) {
+                 ShimmerBox(
+                     modifier = Modifier.width(70.dp).height(32.dp),
+                     brush = brush,
+                     cornerRadius = 20.dp
+                 )
+             }
+         }
+
+         // List items shimmer
+         Column(
+             modifier = Modifier.padding(16.dp),
+             verticalArrangement = Arrangement.spacedBy(12.dp)
+         ) {
+             repeat(5) {
+                 Box(
+                     modifier = Modifier
+                         .fillMaxWidth()
+                         .height(110.dp)
+                         .clip(RoundedCornerShape(16.dp))
+                         .background(brush)
+                 )
+             }
+         }
+     }
+ }
+
+ // ─────────────────────────────────────────────────────────────────────────────
+ // Employee Browse (Employer) skeleton
+ // ─────────────────────────────────────────────────────────────────────────────
+
+ @Composable
+ fun EmployeeBrowseShimmer() {
+     val brush = rememberShimmerBrush()
+
+     Column(
+         modifier = Modifier
+             .fillMaxSize()
+             .background(NoorBackground)
+     ) {
+         // Header shimmer
+         Box(
+             modifier = Modifier
+                 .fillMaxWidth()
+                 .height(180.dp)
+                 .background(brush)
+         )
+
+         // Filter chips shimmer
+         Row(
+             modifier = Modifier
+                 .fillMaxWidth()
+                 .background(NoorSurface)
+                 .padding(vertical = 10.dp, horizontal = 16.dp),
+             horizontalArrangement = Arrangement.spacedBy(8.dp)
+         ) {
+             repeat(5) {
+                 ShimmerBox(
+                     modifier = Modifier.width(70.dp).height(32.dp),
+                     brush = brush,
+                     cornerRadius = 20.dp
+                 )
+             }
+         }
+
+         // List items shimmer
+         Column(
+             modifier = Modifier.padding(16.dp),
+             verticalArrangement = Arrangement.spacedBy(12.dp)
+         ) {
+             repeat(5) {
+                 Box(
+                     modifier = Modifier
+                         .fillMaxWidth()
+                         .height(100.dp)
+                         .clip(RoundedCornerShape(16.dp))
+                         .background(brush)
+                 )
+             }
+         }
+     }
+ }
+
+ // ─────────────────────────────────────────────────────────────────────────────
+ // Employer Home screen skeleton
+ // ─────────────────────────────────────────────────────────────────────────────
+
+ @Composable
+ fun EmployerHomeShimmer() {
+     val brush = rememberShimmerBrush()
+
+     Column(
+         modifier = Modifier
+             .fillMaxSize()
+             .background(NoorBackground)
+     ) {
+         // Header
+         Box(
+             modifier = Modifier
+                 .fillMaxWidth()
+                 .height(80.dp)
+                 .background(brush)
+         )
+
+         // Profile card
+         Box(
+             modifier = Modifier
+                 .padding(16.dp)
+                 .fillMaxWidth()
+                 .height(120.dp)
+                 .clip(RoundedCornerShape(20.dp))
+                 .background(brush)
+         )
+
+         // Quick actions
+         Row(
+             modifier = Modifier
+                 .fillMaxWidth()
+                 .padding(horizontal = 16.dp),
+             horizontalArrangement = Arrangement.spacedBy(12.dp)
+         ) {
+             repeat(3) {
+                 Box(
+                     modifier = Modifier
+                         .weight(1f)
+                         .height(80.dp)
+                         .clip(RoundedCornerShape(16.dp))
+                         .background(brush)
+                 )
+             }
+         }
+
+         Spacer(Modifier.height(16.dp))
+
+         // Stats cards
+         Box(
+             modifier = Modifier
+                 .padding(horizontal = 16.dp)
+                 .fillMaxWidth()
+                 .height(100.dp)
+                 .clip(RoundedCornerShape(16.dp))
+                 .background(brush)
+         )
+
+         Spacer(Modifier.height(12.dp))
+
+         Box(
+             modifier = Modifier
+                 .padding(horizontal = 16.dp)
+                 .fillMaxWidth()
+                 .height(100.dp)
+                 .clip(RoundedCornerShape(16.dp))
+                 .background(brush)
+         )
+     }
+ }

@@ -76,15 +76,27 @@ class AdminAnnouncementsViewModel @Inject constructor(
         return _uiState.value.title.isNotBlank() && _uiState.value.body.isNotBlank()
     }
 
-    fun createAnnouncement(createdBy: String) {
+    fun deleteAnnouncement(announcementId: String) {
+        viewModelScope.launch {
+            try {
+                announcementRepository.deleteAnnouncement(announcementId)
+                loadAnnouncements()
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(error = e.message)
+            }
+        }
+    }
+
+    fun createAnnouncement(title: String, body: String, targetAudience: String, type: String, createdBy: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
 
             try {
                 val result = announcementRepository.createAnnouncement(
-                    title = _uiState.value.title,
-                    body = _uiState.value.body,
-                    targetAudience = _uiState.value.targetAudience,
+                    title = title,
+                    body = body,
+                    targetAudience = targetAudience,
+                    type = type,
                     createdBy = createdBy
                 )
 

@@ -16,11 +16,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.compose.AsyncImage
 import com.danish.noorservice.ui.screens.employee.ChangePasswordScreen
 import com.danish.noorservice.ui.theme.*
+import com.danish.noorservice.viewmodel.employer.EmployerSettingsViewModel
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Sub-screen enum
@@ -35,12 +39,25 @@ private enum class EmployerSettingsSubScreen {
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-fun EmployerSettingsScreen(onLogout: () -> Unit = {}) {
+fun EmployerSettingsScreen(
+    userId: String,
+    viewModel: EmployerSettingsViewModel,
+    onLogout: () -> Unit = {}
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(userId) {
+        viewModel.loadProfile(userId)
+    }
+
     var subScreen by remember { mutableStateOf(EmployerSettingsSubScreen.NONE) }
 
     when (subScreen) {
         EmployerSettingsSubScreen.EDIT_PROFILE -> {
             EmployerEditProfileScreen(
+                userId = userId,
+                profile = uiState.profile,
+                viewModel = viewModel,
                 onBack  = { subScreen = EmployerSettingsSubScreen.NONE },
                 onSaved = { subScreen = EmployerSettingsSubScreen.NONE }
             )
@@ -100,12 +117,22 @@ fun EmployerSettingsScreen(onLogout: () -> Unit = {}) {
                         modifier = Modifier.size(56.dp).clip(CircleShape).background(NoorOrange),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("DA", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                        val initials = uiState.profile?.fullName?.take(2)?.uppercase() ?: "EM"
+                        if (!uiState.profile?.photoUrl.isNullOrBlank()) {
+                            AsyncImage(
+                                model = uiState.profile!!.photoUrl,
+                                contentDescription = "Profile photo",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.size(56.dp).clip(CircleShape)
+                            )
+                        } else {
+                            Text(initials, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                        }
                     }
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Danish Awan", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = NoorTextPrimary)
+                        Text(uiState.profile?.fullName ?: "—", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = NoorTextPrimary)
                         Spacer(Modifier.height(2.dp))
-                        Text("newservicesprovided@gmail.com", fontSize = 11.sp, color = NoorTextHint)
+                        Text(uiState.profile?.email ?: "—", fontSize = 11.sp, color = NoorTextHint)
                         Spacer(Modifier.height(6.dp))
                         Box(
                             modifier = Modifier.clip(RoundedCornerShape(20.dp))

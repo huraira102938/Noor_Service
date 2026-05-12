@@ -27,8 +27,16 @@ import com.danish.noorservice.viewmodel.employee.EmployeeHomeViewModel
 import com.danish.noorservice.viewmodel.employee.EmployeeNotificationsViewModel
 import com.danish.noorservice.viewmodel.employee.EmployeeRegistrationViewModel
 import com.danish.noorservice.viewmodel.employee.EmployeeSettingsViewModel
+import com.danish.noorservice.viewmodel.employer.EmployerHomeViewModel
 import com.danish.noorservice.viewmodel.employer.EmployerRegistrationViewModel
+import com.danish.noorservice.viewmodel.employer.EmployerSettingsViewModel
+import com.danish.noorservice.viewmodel.vendor.VendorCatalogViewModel
+import com.danish.noorservice.viewmodel.vendor.VendorHomeViewModel
+import com.danish.noorservice.viewmodel.vendor.VendorNotificationsViewModel
+import com.danish.noorservice.viewmodel.vendor.VendorSettingsViewModel
 import com.danish.noorservice.viewmodel.vendor.VendorRegistrationViewModel
+import com.danish.noorservice.viewmodel.admin.AdminDashboardViewModel
+import com.danish.noorservice.viewmodel.admin.AdminManagementViewModel
 
 object Routes {
     const val AUTH                  = "auth"
@@ -96,6 +104,14 @@ fun AppNavigation(
     val employeeNotificationsViewModel: EmployeeNotificationsViewModel = hiltViewModel()
     val employeeSettingsViewModel: EmployeeSettingsViewModel = hiltViewModel()
 
+    val vendorHomeViewModel: VendorHomeViewModel = hiltViewModel()
+    val vendorCatalogViewModel: VendorCatalogViewModel = hiltViewModel()
+    val vendorNotificationsViewModel: VendorNotificationsViewModel = hiltViewModel()
+    val vendorSettingsViewModel: VendorSettingsViewModel = hiltViewModel()
+
+    val employerHomeViewModel: EmployerHomeViewModel = hiltViewModel()
+    val employerSettingsViewModel: EmployerSettingsViewModel = hiltViewModel()
+
     // As soon as we know who is logged in, start fetching their data.
     // hasLoaded guard inside loadProfile() ensures this never double-fetches.
     LaunchedEffect(authState.currentUser) {
@@ -104,6 +120,16 @@ fun AppNavigation(
             employeeHomeViewModel.loadProfile(user.uid)
             employeeNotificationsViewModel.loadNotifications(user.uid)
             employeeSettingsViewModel.loadProfile(user.uid)
+        }
+        if (user != null && user.role == "vendor" && user.isProfileComplete) {
+            vendorHomeViewModel.loadProfile(user.uid)
+            vendorCatalogViewModel.loadServices(user.uid)
+            vendorNotificationsViewModel.loadNotifications(user.uid)
+            vendorSettingsViewModel.loadProfile(user.uid)
+        }
+        if (user != null && user.role == "employer" && user.isProfileComplete) {
+            employerHomeViewModel.loadProfile(user.uid)
+            employerSettingsViewModel.loadProfile(user.uid)
         }
     }
 
@@ -281,7 +307,11 @@ fun AppNavigation(
         }
 
         composable(Routes.EMPLOYER_HOME) {
+            val userId = authViewModel.getCurrentUserUid() ?: ""
             EmployerMainScreen(
+                userId = userId,
+                homeViewModel = employerHomeViewModel,
+                settingsViewModel = employerSettingsViewModel,
                 onLogout = {
                     authViewModel.logout()
                     navController.navigate(Routes.AUTH) {
@@ -292,8 +322,14 @@ fun AppNavigation(
         }
 
         composable(Routes.VENDOR_HOME) {
+            val userId = authViewModel.getCurrentUserUid() ?: ""
             VendorMainScreen(
-                onLogout = {
+                userId           = userId,
+                homeViewModel    = vendorHomeViewModel,
+                catalogViewModel  = vendorCatalogViewModel,
+                notificationsViewModel = vendorNotificationsViewModel,
+                settingsViewModel     = vendorSettingsViewModel,
+                onLogout         = {
                     authViewModel.logout()
                     navController.navigate(Routes.AUTH) {
                         popUpTo(0) { inclusive = true }
@@ -303,7 +339,11 @@ fun AppNavigation(
         }
 
         composable(Routes.ADMIN_HOME) {
+            val adminDashboardViewModel: AdminDashboardViewModel = hiltViewModel()
+            val adminManagementViewModel: AdminManagementViewModel = hiltViewModel()
             AdminMainScreen(
+                dashboardViewModel = adminDashboardViewModel,
+                managementViewModel = adminManagementViewModel,
                 onLogout = {
                     authViewModel.logout()
                     navController.navigate(Routes.AUTH) {

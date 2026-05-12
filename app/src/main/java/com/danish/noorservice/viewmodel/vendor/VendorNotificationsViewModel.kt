@@ -29,7 +29,7 @@ class VendorNotificationsViewModel @Inject constructor(
 
     fun loadNotifications(userId: String) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
             try {
                 val announcements = announcementRepository.getUserAnnouncements(userId)

@@ -1,5 +1,7 @@
 package com.danish.noorservice.data.model
 
+import com.google.firebase.firestore.PropertyName
+
 data class Employer(
     val uid: String = "",
     val fullName: String = "",
@@ -10,5 +12,7 @@ data class Employer(
     val address: String = "",
     val about: String = "",
     val photoUrl: String = "",
+    @PropertyName("profileApproved") val isProfileApproved: Boolean = true,
+    @PropertyName("active") val isActive: Boolean = true,
     val createdAt: Long = System.currentTimeMillis()
 )

@@ -90,14 +90,12 @@ fun EmployeeHomeScreen(
                     }
                 }
 
-                // ✅ Refresh button — visible only after initial data load
-                if (uiState.hasLoaded) {
-                    Box(
+                Box(
                         modifier = Modifier
                             .size(36.dp)
                             .clip(CircleShape)
                             .background(Color.White.copy(alpha = 0.18f))
-                            .clickable { viewModel.loadProfile(userId, forceRefresh = true) },
+                            .clickable { viewModel.loadProfile(userId) },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -107,21 +105,16 @@ fun EmployeeHomeScreen(
                             modifier = Modifier.size(18.dp)
                         )
                     }
-                }
             }
         }
 
         // ── Loading / Error / Content ─────────────────────────────────────────
         when {
-            // ✅ FIX: Show shimmer ONLY on the very first load (hasLoaded = false).
-            // Once data has been loaded at least once, we never block the UI with
-            // a loading indicator again — tab switches show stale data instantly
-            // and a forceRefresh silently updates in the background.
-            uiState.isLoading && !uiState.hasLoaded -> {
+            uiState.isLoading -> {
                 HomeScreenShimmer()
             }
 
-            uiState.error != null && !uiState.hasLoaded -> {
+            uiState.error != null -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -132,10 +125,16 @@ fun EmployeeHomeScreen(
                             fontWeight = FontWeight.SemiBold, color = NoorTextPrimary)
                         Text(uiState.error ?: "", fontSize = 12.sp, color = NoorTextHint)
                         Button(
-                            onClick = { viewModel.loadProfile(userId, forceRefresh = true) },
+                            onClick = { viewModel.loadProfile(userId) },
                             colors  = ButtonDefaults.buttonColors(containerColor = NoorBlue)
                         ) { Text("Retry", color = Color.White) }
                     }
+                }
+            }
+
+            uiState.profile == null -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Pull to refresh", color = NoorTextHint, fontSize = 14.sp)
                 }
             }
 

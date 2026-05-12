@@ -5,6 +5,7 @@ data class Announcement(
     val title: String = "",
     val body: String = "",
     val targetAudience: String = "all",
+    val type: String = "info",
     val createdAt: Long = System.currentTimeMillis(),
     val createdBy: String = ""
 )

@@ -1,5 +1,7 @@
 package com.danish.noorservice.data.model
 
+import com.google.firebase.firestore.PropertyName
+
 data class Employee(
     val uid: String = "",
     val fullName: String = "",
@@ -13,8 +15,9 @@ data class Employee(
     val bio: String = "",
     val languages: List<String> = emptyList(),
     val photoUrl: String = "",
-    val isProfileApproved: Boolean = false,
-    val isAvailable: Boolean = true,
+    @PropertyName("profileApproved") val isProfileApproved: Boolean = false,
+    @PropertyName("active") val isActive: Boolean = true,
+    @PropertyName("available") val isAvailable: Boolean = true,
     val dailyRate: String = "",
     val hourlyRate: String = "",
     val monthlyRate: String = "",
@@ -36,5 +39,5 @@ data class ServiceCategory(
     val id: String = "",
     val label: String = "",
     val emoji: String = "",
-    val isActive: Boolean = true
+    @PropertyName("active") val isActive: Boolean = true
 )

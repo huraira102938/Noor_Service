@@ -13,11 +13,10 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class EmployeeHomeState(
-    val isLoading: Boolean = true,
+    val isLoading: Boolean = false,
     val profile: Employee? = null,
     val services: List<EmployeeService> = emptyList(),
-    val error: String? = null,
-    val hasLoaded: Boolean = false
+    val error: String? = null
 )
 
 @HiltViewModel
@@ -28,17 +27,7 @@ class EmployeeHomeViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(EmployeeHomeState())
     val uiState: StateFlow<EmployeeHomeState> = _uiState.asStateFlow()
 
-    /**
-     * Load the employee profile + services from Firestore.
-     *
-     * ✅ FIX: If data has already been loaded once (hasLoaded = true) we skip
-     * the fetch entirely so navigating Home → Notifications → Home does NOT
-     * trigger a second loading spinner.  Call [forceRefresh] = true from the
-     * settings screen after saving changes to get fresh data.
-     */
-    fun loadProfile(userId: String, forceRefresh: Boolean = false) {
-        if (_uiState.value.hasLoaded && !forceRefresh) return
-
+    fun loadProfile(userId: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
@@ -49,8 +38,7 @@ class EmployeeHomeViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     profile   = profile,
-                    services  = services,
-                    hasLoaded = true
+                    services  = services
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(

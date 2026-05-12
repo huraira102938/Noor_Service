@@ -22,8 +22,14 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.compose.AsyncImage
 import com.danish.noorservice.R
+import com.danish.noorservice.ui.components.ShimmerBox
+import com.danish.noorservice.ui.components.rememberShimmerBrush
 import com.danish.noorservice.ui.theme.*
+import com.danish.noorservice.viewmodel.employer.EmployerHomeViewModel
+import com.danish.noorservice.viewmodel.employer.EmployerSettingsViewModel
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Employer Home Screen
@@ -31,12 +37,28 @@ import com.danish.noorservice.ui.theme.*
 // contact with workers.
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Sub-screen sealed class (defined at top so it's resolved before use)
+sealed class EmployerSubScreen {
+    object None          : EmployerSubScreen()
+    object Notifications : EmployerSubScreen()
+    object EditProfile   : EmployerSubScreen()
+}
+
 @Composable
 fun EmployerHomeScreen(
+    userId: String,
+    homeViewModel: EmployerHomeViewModel,
+    settingsViewModel: EmployerSettingsViewModel,
     onBrowse: () -> Unit,
     onSettings: () -> Unit
 ) {
-    var subScreen by remember { mutableStateOf<EmployerSubScreen>(EmployerSubScreen.None) }
+    val uiState by homeViewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(userId) {
+        homeViewModel.loadProfile(userId)
+    }
+
+    var subScreen: EmployerSubScreen by remember { mutableStateOf(EmployerSubScreen.None) }
 
     BackHandler(enabled = subScreen !is EmployerSubScreen.None) {
         subScreen = EmployerSubScreen.None
@@ -49,6 +71,9 @@ fun EmployerHomeScreen(
         }
         is EmployerSubScreen.EditProfile -> {
             EmployerEditProfileScreen(
+                userId = userId,
+                profile = uiState.profile,
+                viewModel = settingsViewModel,
                 onBack  = { subScreen = EmployerSubScreen.None },
                 onSaved = { subScreen = EmployerSubScreen.None }
             )
@@ -62,7 +87,7 @@ fun EmployerHomeScreen(
             .fillMaxSize()
             .background(NoorBackground)
     ) {
-        // ── Top App Bar ───────────────────────────────────────────────────────
+// ── Top App Bar ───────────────────────────────────────────────────────
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -101,12 +126,30 @@ fun EmployerHomeScreen(
             }
         }
 
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(bottom = 16.dp)
-        ) {
+        // Full content area
+        if (uiState.isLoading || uiState.profile == null) {
+            val brush = rememberShimmerBrush()
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                ShimmerBox(modifier = Modifier.fillMaxWidth().height(100.dp).clip(RoundedCornerShape(20.dp)), brush = brush)
+                ShimmerBox(modifier = Modifier.fillMaxWidth().height(80.dp).clip(RoundedCornerShape(14.dp)), brush = brush)
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    ShimmerBox(modifier = Modifier.weight(1f).height(80.dp).clip(RoundedCornerShape(14.dp)), brush = brush)
+                    ShimmerBox(modifier = Modifier.weight(1f).height(80.dp).clip(RoundedCornerShape(14.dp)), brush = brush)
+                }
+                ShimmerBox(modifier = Modifier.fillMaxWidth().height(100.dp).clip(RoundedCornerShape(16.dp)), brush = brush)
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(bottom = 16.dp)
+            ) {
             // ── Employer Profile Card ─────────────────────────────────────────
             Box(
                 modifier = Modifier
@@ -118,7 +161,7 @@ fun EmployerHomeScreen(
                     .clickable { subScreen = EmployerSubScreen.EditProfile }
             ) {
                 Row(
-                    verticalAlignment     = Alignment.CenterVertically,
+                    verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     Box(
@@ -128,12 +171,43 @@ fun EmployerHomeScreen(
                             .background(Color.White.copy(alpha = 0.22f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("DA", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                        val initials = uiState.profile?.fullName?.take(2)?.uppercase() ?: "EM"
+                        if (!uiState.profile?.photoUrl.isNullOrBlank()) {
+                            AsyncImage(
+                                model = uiState.profile!!.photoUrl,
+                                contentDescription = "Profile photo",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.size(58.dp).clip(CircleShape)
+                            )
+                        } else {
+                            Text(
+                                initials,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.White
+                            )
+                        }
                     }
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Danish Awan", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                        Text("DHA Phase 3, Lahore", fontSize = 11.sp,
-                            color = Color.White.copy(alpha = 0.72f))
+                        Text(
+                            uiState.profile?.fullName ?: "—",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        val area = uiState.profile?.area ?: ""
+                        val city = uiState.profile?.city ?: ""
+                        val location = if (area.isNotBlank() && city.isNotBlank()) {
+                            "$area, $city"
+                        } else if (area.isNotBlank()) {
+                            area
+                        } else {
+                            city
+                        }
+                        Text(
+                            location.ifBlank { "—" }, fontSize = 11.sp,
+                            color = Color.White.copy(alpha = 0.72f)
+                        )
                         Spacer(Modifier.height(8.dp))
                         Box(
                             modifier = Modifier
@@ -141,18 +215,20 @@ fun EmployerHomeScreen(
                                 .background(Color.White.copy(alpha = 0.2f))
                                 .padding(horizontal = 10.dp, vertical = 4.dp)
                         ) {
-                            Text("Employer Account", fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold, color = Color.White)
+                            Text(
+                                "Employer Account", fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold, color = Color.White
+                            )
                         }
                     }
                 }
 
                 Text(
                     "✏️ Edit",
-                    fontSize   = 10.sp,
+                    fontSize = 10.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color      = Color.White.copy(alpha = 0.8f),
-                    modifier   = Modifier.align(Alignment.TopEnd)
+                    color = Color.White.copy(alpha = 0.8f),
+                    modifier = Modifier.align(Alignment.TopEnd)
                 )
             }
 
@@ -167,21 +243,21 @@ fun EmployerHomeScreen(
             ) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment     = Alignment.Top
+                    verticalAlignment = Alignment.Top
                 ) {
                     Text("ℹ️", fontSize = 16.sp)
                     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Text(
                             "How it works",
-                            fontSize   = 13.sp,
+                            fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
-                            color      = NoorBlueDark
+                            color = NoorBlueDark
                         )
                         Text(
                             "Browse worker profiles and find your match. To hire, contact the Noor Services admin — " +
                                     "they will connect you with the worker and handle the arrangement.",
-                            fontSize   = 12.sp,
-                            color      = NoorBlueDark,
+                            fontSize = 12.sp,
+                            color = NoorBlueDark,
                             lineHeight = 17.sp
                         )
                     }
@@ -192,12 +268,12 @@ fun EmployerHomeScreen(
 
             // ── Stats Row ─────────────────────────────────────────────────────
             Row(
-                modifier              = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
+                modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                EmployerStatCard("48",  "Workers Listed", NoorBlue,   Modifier.weight(1f))
-                EmployerStatCard("10+", "Services",       NoorGreen,  Modifier.weight(1f))
-                EmployerStatCard("Free", "Access",        NoorOrange, Modifier.weight(1f))
+                EmployerStatCard(uiState.workerCount.toString(),  "Workers Listed", NoorBlue,   Modifier.weight(1f))
+                EmployerStatCard(uiState.serviceCount.toString(), "Services",       NoorGreen,  Modifier.weight(1f))
+                EmployerStatCard(uiState.vendorCount.toString(),  "Vendors Listed", NoorOrange, Modifier.weight(1f))
             }
 
             Spacer(Modifier.height(20.dp))
@@ -268,58 +344,10 @@ fun EmployerHomeScreen(
 
             Spacer(Modifier.height(20.dp))
 
-            // ── Free Access Banner ────────────────────────────────────────────
-            Card(
-                modifier = Modifier
-                    .padding(horizontal = 16.dp)
-                    .fillMaxWidth(),
-                shape  = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF1C1C1E)),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("✨", fontSize = 24.sp)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Full Access — No Charges Yet!",
-                                fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                        }
-                        Spacer(Modifier.height(6.dp))
-                        Text(
-                            "Enjoy completely FREE access to all features. Premium plans coming soon!",
-                            fontSize = 11.sp, color = Color.White.copy(alpha = 0.7f), lineHeight = 14.sp
-                        )
-                    }
-                    Box(
-                        modifier = Modifier.size(60.dp).clip(RoundedCornerShape(12.dp))
-                            .background(NoorOrange.copy(alpha = 0.2f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("🎉", fontSize = 22.sp)
-                            Text("BETA", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                        }
-                    }
-                }
-            }
-
             Spacer(Modifier.height(8.dp))
+            }
         }
     }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Sub-screen sealed class
-// ─────────────────────────────────────────────────────────────────────────────
-
-sealed class EmployerSubScreen {
-    object None          : EmployerSubScreen()
-    object Notifications : EmployerSubScreen()
-    object EditProfile   : EmployerSubScreen()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -414,3 +442,4 @@ fun EmployerActivityItem(emoji: String, bg: Color, title: String, subtitle: Stri
         }
     }
 }
+
