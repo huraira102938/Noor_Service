@@ -4,8 +4,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -44,6 +46,24 @@ fun ServiceSelectionScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val selectedServices = remember { mutableStateListOf<String>().apply { addAll(uiState.selectedServiceIds) } }
 
+    LaunchedEffect(Unit) {
+        viewModel.loadCategories()
+    }
+
+    val serviceCategories = remember(uiState.categories) {
+        if (uiState.categories.isNotEmpty()) {
+            uiState.categories.map { cat ->
+                ServiceCategory(
+                    id = cat.id,
+                    label = cat.label,
+                    emoji = cat.emoji
+                )
+            }
+        } else {
+            allServiceCategories
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -57,64 +77,88 @@ fun ServiceSelectionScreen(
             onBack      = onBack
         )
 
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            NoorSectionCard {
+        if (uiState.isCategoriesLoading) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = NoorBlue)
+            }
+        } else if (serviceCategories.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
                 Text(
-                    text          = "Choose categories",
-                    fontSize      = 13.sp,
-                    fontWeight    = FontWeight.SemiBold,
-                    color         = NoorBlue,
-                    letterSpacing = 0.3.sp
+                    text = "No categories available. Please contact admin.",
+                    color = NoorTextHint,
+                    fontSize = 14.sp
                 )
-                Spacer(Modifier.height(14.dp))
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                NoorSectionCard {
+                    Text(
+                        text          = "Choose categories",
+                        fontSize      = 13.sp,
+                        fontWeight    = FontWeight.SemiBold,
+                        color         = NoorBlue,
+                        letterSpacing = 0.3.sp
+                    )
+                    Spacer(Modifier.height(14.dp))
 
-                FlowRow(
-                    modifier              = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement   = Arrangement.spacedBy(12.dp)
-                ) {
-                    allServiceCategories.forEach { svc ->
-                        NoorSelectableChip(
-                            label    = svc.label,
-                            icon     = svc.emoji,
-                            selected = selectedServices.contains(svc.id),
-                            onClick  = {
-                                if (selectedServices.contains(svc.id))
-                                    selectedServices.remove(svc.id)
-                                else
-                                    selectedServices.add(svc.id)
-                                viewModel.updateSelectedServices(selectedServices.toList())
-                            }
-                        )
+                    FlowRow(
+                        modifier              = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement   = Arrangement.spacedBy(12.dp)
+                    ) {
+                        serviceCategories.forEach { svc ->
+                            NoorSelectableChip(
+                                label    = svc.label,
+                                icon     = svc.emoji,
+                                selected = selectedServices.contains(svc.id),
+                                onClick  = {
+                                    if (selectedServices.contains(svc.id))
+                                        selectedServices.remove(svc.id)
+                                    else
+                                        selectedServices.add(svc.id)
+                                    viewModel.updateSelectedServices(selectedServices.toList())
+                                }
+                            )
+                        }
                     }
                 }
-            }
 
-            if (selectedServices.isEmpty()) {
-                Text(
-                    text     = "Please select at least one service to continue.",
-                    color    = NoorTextHint,
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(horizontal = 4.dp)
+                if (selectedServices.isEmpty()) {
+                    Text(
+                        text     = "Please select at least one service to continue.",
+                        color    = NoorTextHint,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    )
+                }
+
+                NoorPrimaryButton(
+                    text    = "Continue  →",
+                    onClick = {
+                        viewModel.goToStep3()
+                        onNext(selectedServices.toList())
+                    },
+                    enabled = selectedServices.isNotEmpty()
                 )
+
+                Spacer(Modifier.height(16.dp))
             }
-
-            NoorPrimaryButton(
-                text    = "Continue  →",
-                onClick = {
-                    viewModel.goToStep3()
-                    onNext(selectedServices.toList())
-                },
-                enabled = selectedServices.isNotEmpty()
-            )
-
-            Spacer(Modifier.height(16.dp))
         }
     }
 }

@@ -94,6 +94,24 @@ fun EditProfileScreen(
     val profile  = uiState.profile
     val services = uiState.services
 
+    val categoriesMap = remember(uiState.categories) {
+        uiState.categories.associate { it.id to it }
+    }
+
+    val editServiceCategories = remember(categoriesMap) {
+        if (categoriesMap.isNotEmpty()) {
+            categoriesMap.values.map { cat ->
+                ServiceCategory(
+                    id = cat.id,
+                    label = cat.label,
+                    emoji = cat.emoji
+                )
+            }
+        } else {
+            allServiceCategories
+        }
+    }
+
     // ✅ FIX: Show shimmer on initial load instead of a blocking spinner.
     // This can only happen if this screen is ever opened without going through
     // EmployeeSettingsScreen (e.g. deep-link or direct navigation in future).
@@ -440,7 +458,7 @@ fun EditProfileScreen(
                     FlowRow(modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement   = Arrangement.spacedBy(12.dp)) {
-                        allServiceCategories.forEach { svc ->
+                        editServiceCategories.forEach { svc ->
                             val isSelected = selectedServices.contains(svc.id)
                             val isNew      = isSelected && svc.id !in existingServiceIds
                             NoorSelectableChip(
@@ -469,11 +487,13 @@ fun EditProfileScreen(
                         .filter { selectedServices.contains(it) }
                         .forEach { svcId ->
                             val state    = serviceDetailStates[svcId] ?: return@forEach
-                            val category = allServiceCategories.find { it.id == svcId }
+                            val category = categoriesMap[svcId] ?: allServiceCategories.find { it.id == svcId }
+                            val categorySkills = viewModel.getCategorySkills(svcId)
                             EditableServiceCard(
-                                category   = category?.label ?: svcId,
-                                emoji      = category?.emoji  ?: "💼",
+                                category   = viewModel.getServiceName(svcId),
+                                emoji      = viewModel.getServiceEmoji(svcId),
                                 state      = state,
+                                categorySkills = categorySkills,
                                 isExisting = true
                             )
                         }
@@ -490,11 +510,12 @@ fun EditProfileScreen(
                     }
                     newlyAddedIds.forEach { svcId ->
                         val state    = serviceDetailStates[svcId] ?: return@forEach
-                        val category = allServiceCategories.find { it.id == svcId }
+                        val categorySkills = viewModel.getCategorySkills(svcId)
                         EditableServiceCard(
-                            category   = category?.label ?: svcId,
-                            emoji      = category?.emoji  ?: "💼",
+                            category   = viewModel.getServiceName(svcId),
+                            emoji      = viewModel.getServiceEmoji(svcId),
                             state      = state,
+                            categorySkills = categorySkills,
                             isExisting = false,
                             onRemove   = {
                                 selectedServices.remove(svcId)
@@ -584,6 +605,7 @@ private fun EditableServiceCard(
     category: String,
     emoji: String,
     state: ServiceDetailState,
+    categorySkills: List<String> = emptyList(),
     isExisting: Boolean,
     onRemove: (() -> Unit)? = null
 ) {
@@ -619,7 +641,7 @@ private fun EditableServiceCard(
         HorizontalDivider(color = NoorDivider, thickness = 0.8.dp)
         Spacer(Modifier.height(16.dp))
 
-        val skillOptions = editServiceSkillOptions[state.serviceId] ?: emptyList()
+        val skillOptions = if (categorySkills.isNotEmpty()) categorySkills else (editServiceSkillOptions[state.serviceId] ?: emptyList())
         if (skillOptions.isNotEmpty()) {
             EditSubLabel("Skills")
             Spacer(Modifier.height(10.dp))

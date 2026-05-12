@@ -2,6 +2,7 @@ package com.danish.noorservice.viewmodel.vendor
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.danish.noorservice.data.model.Category
 import com.danish.noorservice.data.model.VendorService
 import com.danish.noorservice.data.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -14,6 +15,7 @@ import javax.inject.Inject
 data class VendorCatalogState(
     val isLoading: Boolean = false,
     val services: List<VendorService> = emptyList(),
+    val categories: List<Category> = emptyList(),
     val error: String? = null,
     val savingSuccess: Boolean = false
 )
@@ -33,9 +35,14 @@ class VendorCatalogViewModel @Inject constructor(
 
             try {
                 val services = userRepository.getVendorServices(userId)
+                val allCategories = userRepository.getAllCategories()
+                val vendorCategories = allCategories.filter {
+                    it.categoryType.equals("vendor", ignoreCase = true) && it.isActive
+                }
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    services = services
+                    services = services,
+                    categories = vendorCategories
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
@@ -44,6 +51,16 @@ class VendorCatalogViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    fun getServiceName(serviceId: String): String {
+        val category = _uiState.value.categories.find { it.id == serviceId }
+        return category?.label ?: serviceId.replaceFirstChar { it.uppercaseChar() }.replace("_", " ")
+    }
+
+    fun getServiceEmoji(serviceId: String): String {
+        val category = _uiState.value.categories.find { it.id == serviceId }
+        return category?.emoji ?: "💼"
     }
 
     fun saveService(userId: String, service: VendorService) {

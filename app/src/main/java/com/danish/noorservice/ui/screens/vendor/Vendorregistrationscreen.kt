@@ -112,6 +112,7 @@ fun VendorRegistrationScreen(
     val servicePriceRange    = remember { mutableStateMapOf<String, String>() }
     val serviceMinContract   = remember { mutableStateMapOf<String, String>() }
     val serviceCoverageAreas = remember { mutableStateMapOf<String, SnapshotStateList<String>>() }
+    val serviceSkills        = remember { mutableStateMapOf<String, SnapshotStateList<String>>() }
     val expandedServiceIds   = remember { mutableStateListOf<String>() }
 
     val selectedCities       = remember { mutableStateListOf<String>() }
@@ -123,6 +124,25 @@ fun VendorRegistrationScreen(
     val logoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? -> viewModel.setLogoUri(uri) }
+
+    LaunchedEffect(Unit) {
+        viewModel.loadCategories()
+    }
+
+    val vendorCategories = remember(uiState.categories) {
+        if (uiState.categories.isNotEmpty()) {
+            uiState.categories.map { cat ->
+                VendorServiceCategory(
+                    id = cat.id,
+                    label = cat.label,
+                    emoji = cat.emoji,
+                    description = cat.label
+                )
+            }
+        } else {
+            allVendorServiceCategories
+        }
+    }
 
     val step1Valid = uiState.businessName.isNotBlank() && uiState.contactPerson.isNotBlank() &&
             uiState.phone.isNotBlank() && uiState.city.isNotBlank()
@@ -434,7 +454,7 @@ fun VendorRegistrationScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement   = Arrangement.spacedBy(12.dp)
                     ) {
-                        allVendorServiceCategories.forEach { svc ->
+                        vendorCategories.forEach { svc ->
                             NoorSelectableChip(
                                 label    = svc.label,
                                 icon     = svc.emoji,
@@ -466,7 +486,7 @@ fun VendorRegistrationScreen(
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         selectedServiceIds.forEach { id ->
-                            val svc = allVendorServiceCategories.find { it.id == id } ?: return@forEach
+                            val svc = vendorCategories.find { it.id == id } ?: return@forEach
                             val isExpanded = expandedServiceIds.contains(id)
 
                             Card(

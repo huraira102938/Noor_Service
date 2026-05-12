@@ -52,7 +52,8 @@ data class VendorServiceListing(
     var pricingModel: String,
     var priceRange: String,
     var coverageAreas: List<String>,
-    var highlights: List<String>
+    var highlights: List<String>,
+    var skills: List<String> = emptyList()
 )
 
 val sampleListings = mutableListOf(
@@ -66,7 +67,8 @@ fun VendorService.toListing(emoji: String = "💼", label: String = ""): VendorS
     categoryLabel = label.ifBlank { serviceId.replaceFirstChar { it.uppercaseChar() } },
     emoji = emoji, isActive = isActive, description = description,
     minContractDuration = minContractDuration, pricingModel = pricingModel,
-    priceRange = priceRange, coverageAreas = coverageAreas, highlights = highlights
+    priceRange = priceRange, coverageAreas = coverageAreas, highlights = highlights,
+    skills = skills
 )
 
 fun VendorServiceListing.toService(): VendorService = VendorService(
@@ -77,7 +79,8 @@ fun VendorServiceListing.toService(): VendorService = VendorService(
     coverageAreas     = coverageAreas,
     isActive          = isActive,
     description       = description,
-    highlights        = highlights
+    highlights        = highlights,
+    skills            = skills
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -120,20 +123,37 @@ fun VendorCatalogScreen(
                         color = Color.White.copy(alpha = 0.72f)
                     )
                 }
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.18f))
-                        .clickable { viewModel.loadServices(userId) },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = "Refresh",
-                        tint = Color.White,
-                        modifier = Modifier.size(18.dp)
-                    )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.18f))
+                            .clickable { showAddSheet = true },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Add Service",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.18f))
+                            .clickable { viewModel.loadServices(userId) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Refresh",
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             }
         }
@@ -242,7 +262,12 @@ fun VendorCatalogScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     services.forEach { svc ->
-                        val listing = svc.toListing()
+                        val categorySkills = uiState.categories.find { it.id == svc.serviceId }?.skills?.map { it.name } ?: emptyList()
+                        val allSkills = if (svc.skills.isNotEmpty()) svc.skills else categorySkills
+                        val listing = svc.toListing(
+                            emoji = viewModel.getServiceEmoji(svc.serviceId),
+                            label = viewModel.getServiceName(svc.serviceId)
+                        ).copy(skills = allSkills)
                         ServiceListingCard(
                             listing = listing,
                             isLastListing = services.indexOf(svc) == services.lastIndex,
@@ -267,6 +292,7 @@ fun VendorCatalogScreen(
     if (showAddSheet) {
         AddEditServiceSheet(
             existingListing = null,
+            viewModel = viewModel,
             onDismiss = { showAddSheet = false },
             onSave = { listing ->
                 viewModel.saveService(userId, listing.toService())
@@ -280,6 +306,7 @@ fun VendorCatalogScreen(
     if (editSvc != null) {
         AddEditServiceSheet(
             existingListing = editSvc,
+            viewModel = viewModel,
             onDismiss = { editingService = null },
             onSave = { listing ->
                 viewModel.saveService(userId, listing.toService())
@@ -443,6 +470,23 @@ private fun ServiceListingCard(
                         }
                     }
 
+                    if (listing.skills.isNotEmpty()) {
+                        Spacer(Modifier.height(14.dp))
+                        CatalogDetailLabel("Skills / Specializations")
+                        Spacer(Modifier.height(8.dp))
+                        @OptIn(ExperimentalLayoutApi::class)
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            listing.skills.forEach { skill ->
+                                Box(modifier = Modifier.clip(RoundedCornerShape(20.dp))
+                                    .background(VendorTealLight)
+                                    .padding(horizontal = 10.dp, vertical = 4.dp)) {
+                                    Text(skill, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = VendorTeal)
+                                }
+                            }
+                        }
+                    }
+
                     Spacer(Modifier.height(14.dp))
                     HorizontalDivider(color = NoorDivider, thickness = 0.8.dp)
                     Spacer(Modifier.height(12.dp))
@@ -537,10 +581,27 @@ private fun ServiceListingCard(
 @Composable
 private fun AddEditServiceSheet(
     existingListing: VendorServiceListing?,
+    viewModel: VendorCatalogViewModel,
     onDismiss: () -> Unit,
     onSave: (VendorServiceListing) -> Unit
 ) {
     val isEditing = existingListing != null
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    val vendorCategories = remember(uiState.categories) {
+        if (uiState.categories.isNotEmpty()) {
+            uiState.categories.map { cat ->
+                VendorServiceCategory(
+                    id = cat.id,
+                    label = cat.label,
+                    emoji = cat.emoji,
+                    description = cat.label
+                )
+            }
+        } else {
+            allVendorServiceCategories
+        }
+    }
 
     var selectedCategoryId by remember { mutableStateOf(existingListing?.categoryId ?: "") }
     var description        by remember { mutableStateOf(existingListing?.description ?: "") }
@@ -555,6 +616,8 @@ private fun AddEditServiceSheet(
     var highlightsText by remember {
         mutableStateOf(existingListing?.highlights?.joinToString("\n") ?: "")
     }
+
+    val selectedCategory = vendorCategories.find { it.id == selectedCategoryId }
 
     val isValid = selectedCategoryId.isNotBlank() && pricingModel.isNotBlank() &&
             priceRange.isNotBlank() && minContract.isNotBlank()
@@ -618,18 +681,39 @@ private fun AddEditServiceSheet(
                 ) {
                     // Category picker
                     NoorSectionCard {
-                        VendorSectionLabel("Service Category *")
+                        VendorSectionLabel(if (isEditing) "Service Category" else "Service Category *")
                         Spacer(Modifier.height(10.dp))
-                        @OptIn(ExperimentalLayoutApi::class)
-                        FlowRow(modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement   = Arrangement.spacedBy(10.dp)) {
-                            allVendorServiceCategories.forEach { svc ->
-                                NoorSelectableChip(
-                                    label    = svc.label,
-                                    icon     = svc.emoji,
-                                    selected = selectedCategoryId == svc.id,
-                                    onClick  = { selectedCategoryId = svc.id })
+                        if (isEditing && selectedCategory != null) {
+                            // Show as read-only when editing
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(VendorTealLight)
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Text(selectedCategory.emoji, fontSize = 24.sp)
+                                Column {
+                                    Text(selectedCategory.label, fontSize = 14.sp,
+                                        fontWeight = FontWeight.SemiBold, color = NoorTextPrimary)
+                                    Text("Service type cannot be changed", fontSize = 11.sp,
+                                        color = NoorTextHint)
+                                }
+                            }
+                        } else {
+                            @OptIn(ExperimentalLayoutApi::class)
+                            FlowRow(modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement   = Arrangement.spacedBy(10.dp)) {
+                                vendorCategories.forEach { svc ->
+                                    NoorSelectableChip(
+                                        label    = svc.label,
+                                        icon     = svc.emoji,
+                                        selected = selectedCategoryId == svc.id,
+                                        onClick  = { selectedCategoryId = svc.id })
+                                }
                             }
                         }
                     }

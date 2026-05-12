@@ -80,32 +80,8 @@ fun EmployerNotificationsScreen(onBack: () -> Unit) {
                             Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White, modifier = Modifier.size(20.dp))
                         }
                         Column {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text("Notifications", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White, letterSpacing = (-0.3).sp)
-                                if (unreadCount > 0) {
-                                    Box(
-                                        modifier = Modifier.clip(RoundedCornerShape(20.dp)).background(NoorOrange).padding(horizontal = 8.dp, vertical = 2.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) { Text("$unreadCount new", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White) }
-                                }
-                            }
+                            Text("Notifications", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White, letterSpacing = (-0.3).sp)
                             Text("Booking & message updates", fontSize = 12.sp, color = Color.White.copy(alpha = 0.72f))
-                        }
-                    }
-
-                    if (unreadCount > 0) {
-                        Box(
-                            modifier = Modifier.clip(RoundedCornerShape(20.dp)).background(Color.White.copy(alpha = 0.16f))
-                                .clickable {
-                                    val updated = notifications.map { it.copy(isRead = true) }
-                                    notifications.clear(); notifications.addAll(updated)
-                                }
-                                .padding(horizontal = 12.dp, vertical = 7.dp)
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                                Icon(Icons.Default.DoneAll, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
-                                Text("Mark all read", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
-                            }
                         }
                     }
                 }
@@ -154,6 +130,7 @@ private fun EmployerNotifRow(
     notif: EmployerNotifItem,
     onMarkRead: (String) -> Unit
 ) {
+    var expanded by remember { mutableStateOf(false) }
     val bgColor = if (!notif.isRead) NoorBlueLight else NoorSurface
     val (iconEmoji, iconBg) = when (notif.type) {
         EmployerNotifType.BOOKING -> "📋" to NoorOrangeLight
@@ -161,34 +138,36 @@ private fun EmployerNotifRow(
         EmployerNotifType.SYSTEM  -> "🔔" to NoorBlueLight
     }
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(bgColor)
-            .clickable { if (!notif.isRead) onMarkRead(notif.id) }
-            .padding(horizontal = 16.dp, vertical = 13.dp),
-        verticalAlignment    = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Box(
-            modifier = Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(iconBg),
-            contentAlignment = Alignment.Center
-        ) { Text(iconEmoji, fontSize = 20.sp) }
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(bgColor)
+                .clickable { expanded = !expanded }
+                .padding(horizontal = 16.dp, vertical = 13.dp),
+            verticalAlignment    = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(iconBg),
+                contentAlignment = Alignment.Center
+            ) { Text(iconEmoji, fontSize = 20.sp) }
 
-        Column(modifier = Modifier.weight(1f)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
-                Text(notif.title, fontSize = 13.sp, fontWeight = if (!notif.isRead) FontWeight.Bold else FontWeight.SemiBold,
-                    color = NoorTextPrimary, modifier = Modifier.weight(1f))
-                Spacer(Modifier.width(8.dp))
-                Text(notif.time, fontSize = 10.sp, color = NoorTextHint)
+            Column(modifier = Modifier.weight(1f)) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                    Text(notif.title, fontSize = 13.sp, fontWeight = if (!notif.isRead) FontWeight.Bold else FontWeight.SemiBold,
+                        color = NoorTextPrimary, modifier = Modifier.weight(1f))
+                    Spacer(Modifier.width(8.dp))
+                    Text(notif.time, fontSize = 10.sp, color = NoorTextHint)
+                }
+                Spacer(Modifier.height(4.dp))
+                Text(notif.body, fontSize = 12.sp, color = NoorTextSecondary, lineHeight = 17.sp, maxLines = if (expanded) Int.MAX_VALUE else 2)
             }
-            Spacer(Modifier.height(4.dp))
-            Text(notif.body, fontSize = 12.sp, color = NoorTextSecondary, lineHeight = 17.sp, maxLines = 2)
-        }
 
-        if (!notif.isRead) {
-            Box(modifier = Modifier.padding(top = 4.dp).size(8.dp).clip(CircleShape).background(NoorOrange))
+            if (!notif.isRead) {
+                Box(modifier = Modifier.padding(top = 4.dp).size(8.dp).clip(CircleShape).background(NoorOrange))
+            }
         }
+        HorizontalDivider(modifier = Modifier.padding(start = 72.dp, end = 16.dp), color = NoorDivider, thickness = 0.6.dp)
     }
-    HorizontalDivider(modifier = Modifier.padding(start = 72.dp, end = 16.dp), color = NoorDivider, thickness = 0.6.dp)
 }

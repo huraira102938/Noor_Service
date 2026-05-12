@@ -271,13 +271,6 @@ fun EmployeeSettingsScreen(
                     onClick = { subScreen = SettingsSubScreen.EDIT_PROFILE }
                 )
                 HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
-                SettingsNavItem(
-                    emoji   = "🔒",
-                    emojiBg = Color(0xFFF3EEF9),
-                    title   = "Change Password",
-                    onClick = { subScreen = SettingsSubScreen.CHANGE_PASSWORD }
-                )
-                HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
                 SettingsNavItem(emoji = "📄", emojiBg = NoorBackground, title = "Terms & Conditions", onClick = {})
                 HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
                 SettingsNavItem(emoji = "🛡️", emojiBg = NoorBackground, title = "Privacy Policy", onClick = {})

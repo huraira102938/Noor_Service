@@ -3,6 +3,7 @@ package com.danish.noorservice.viewmodel.employee
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.danish.noorservice.data.model.Category
 import com.danish.noorservice.data.model.Employee
 import com.danish.noorservice.data.model.EmployeeService
 import com.danish.noorservice.data.repository.AuthRepository
@@ -20,6 +21,7 @@ data class EmployeeSettingsState(
     val isSaving: Boolean = false,
     val profile: Employee? = null,
     val services: List<EmployeeService> = emptyList(),
+    val categories: List<Category> = emptyList(),
     val isActive: Boolean = true,
     val error: String? = null,
     val saveSuccess: Boolean = false,
@@ -52,10 +54,15 @@ class EmployeeSettingsViewModel @Inject constructor(
             try {
                 val profile  = userRepository.getEmployeeProfile(userId)
                 val services = userRepository.getEmployeeServices(userId)
+                val allCategories = userRepository.getAllCategories()
+                val individualCategories = allCategories.filter {
+                    it.categoryType.equals("individual", ignoreCase = true) && it.isActive
+                }
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     profile   = profile,
                     services  = services,
+                    categories = individualCategories,
                     isActive  = profile?.isAvailable ?: true,
                     hasLoaded = true
                 )
@@ -67,6 +74,21 @@ class EmployeeSettingsViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    fun getServiceName(serviceId: String): String {
+        val category = _uiState.value.categories.find { it.id == serviceId }
+        return category?.label ?: serviceId.replaceFirstChar { it.uppercaseChar() }.replace("_", " ")
+    }
+
+    fun getServiceEmoji(serviceId: String): String {
+        val category = _uiState.value.categories.find { it.id == serviceId }
+        return category?.emoji ?: "💼"
+    }
+
+    fun getCategorySkills(serviceId: String): List<String> {
+        val category = _uiState.value.categories.find { it.id == serviceId }
+        return category?.skills?.map { it.name } ?: emptyList()
     }
 
     fun reset() {

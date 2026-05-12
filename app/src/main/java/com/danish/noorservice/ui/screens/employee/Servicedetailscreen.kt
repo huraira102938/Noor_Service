@@ -22,7 +22,7 @@ import com.danish.noorservice.viewmodel.employee.EmployeeRegistrationViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.collectLatest
 
-private val serviceSkillOptions = mapOf(
+private val fallbackSkillOptions = mapOf(
     "driver"     to listOf("City Driving", "Highway", "Heavy Vehicle", "Motorcycle", "Car Maintenance"),
     "security"   to listOf("CCTV Operation", "First Aid", "Patrolling", "Firearms Certified"),
     "houseBoy"   to listOf("Cleaning", "Laundry", "Ironing", "Groceries", "Minor Repairs"),
@@ -71,6 +71,14 @@ fun ServiceDetailScreen(
         selectedServiceIds.associateWith { ServiceDetailState(it) }.toMutableMap()
     }
 
+    val categorySkillsMap = remember(uiState.categories) {
+        uiState.categories.associate { it.id to it.skills.map { skill -> skill.name } }
+    }
+
+    val categoriesMap = remember(uiState.categories) {
+        uiState.categories.associate { it.id to it }
+    }
+
     val allValid by remember {
         derivedStateOf {
             detailStates.values.all { s ->
@@ -116,14 +124,17 @@ fun ServiceDetailScreen(
         ) {
             selectedServiceIds.forEach { svcId ->
                 val state = detailStates[svcId] ?: return@forEach
+                val firestoreCategory = categoriesMap[svcId]
                 val category = allServiceCategories.find { it.id == svcId }
+                val skills = categorySkillsMap[svcId] ?: emptyList()
                 ServiceDetailCard(
-                    category = category?.label ?: svcId,
-                    emoji    = category?.emoji  ?: "💼",
+                    category = firestoreCategory?.label ?: category?.label ?: svcId,
+                    emoji    = firestoreCategory?.emoji ?: category?.emoji  ?: "💼",
                     state    = state,
-                    onSkillsSelected = { skills ->
+                    categorySkills = skills,
+                    onSkillsSelected = { sk ->
                         state.selectedSkills.clear()
-                        state.selectedSkills.addAll(skills)
+                        state.selectedSkills.addAll(sk)
                     },
                     onDetailUpdate = { key, value ->
                         when (key) {
@@ -178,6 +189,7 @@ private fun ServiceDetailCard(
     category: String,
     emoji: String,
     state: ServiceDetailState,
+    categorySkills: List<String>,
     onSkillsSelected: (List<String>) -> Unit,
     onDetailUpdate: (String, String) -> Unit
 ) {
@@ -205,7 +217,7 @@ private fun ServiceDetailCard(
         HorizontalDivider(color = NoorDivider, thickness = 0.8.dp)
         Spacer(Modifier.height(16.dp))
 
-        val skillOptions = serviceSkillOptions[state.serviceId] ?: emptyList()
+        val skillOptions = if (categorySkills.isNotEmpty()) categorySkills else (fallbackSkillOptions[state.serviceId] ?: emptyList())
         if (skillOptions.isNotEmpty()) {
             SubLabel("Skills")
             Spacer(Modifier.height(10.dp))

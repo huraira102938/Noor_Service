@@ -33,5 +33,6 @@ data class VendorService(
     val coverageAreas: List<String> = emptyList(),
     @PropertyName("active") val isActive: Boolean = true,
     val description: String = "",
-    val highlights: List<String> = emptyList()
+    val highlights: List<String> = emptyList(),
+    val skills: List<String> = emptyList()
 )

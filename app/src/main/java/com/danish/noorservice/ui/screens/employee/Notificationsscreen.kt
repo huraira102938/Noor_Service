@@ -176,6 +176,7 @@ private fun AnnouncementRow(
     announcement: Announcement,
     userAnnouncement: UserAnnouncement
 ) {
+    var expanded by remember { mutableStateOf(false) }
     val isRead  = userAnnouncement.isRead
     val bgColor = if (!isRead) NoorBlueLight else NoorSurface
 
@@ -191,52 +192,55 @@ private fun AnnouncementRow(
         }
     }
 
-    Row(
-        modifier  = Modifier
-            .fillMaxWidth()
-            .background(bgColor)
-            .padding(horizontal = 16.dp, vertical = 13.dp),
-        verticalAlignment     = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(NoorBlueLight),
-            contentAlignment = Alignment.Center
-        ) { Text("📢", fontSize = 20.sp) }
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier  = Modifier
+                .fillMaxWidth()
+                .background(bgColor)
+                .clickable { expanded = !expanded }
+                .padding(horizontal = 16.dp, vertical = 13.dp),
+            verticalAlignment     = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(NoorBlueLight),
+                contentAlignment = Alignment.Center
+            ) { Text("📢", fontSize = 20.sp) }
 
-        Column(modifier = Modifier.weight(1f)) {
-            Row(
-                modifier              = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment     = Alignment.Top
-            ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    modifier              = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment     = Alignment.Top
+                ) {
+                    Text(
+                        text       = announcement.title,
+                        fontSize   = 13.sp,
+                        fontWeight = if (!isRead) FontWeight.Bold else FontWeight.SemiBold,
+                        color      = NoorTextPrimary,
+                        modifier   = Modifier.weight(1f)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(timeLabel, fontSize = 10.sp, color = NoorTextHint)
+                }
+                Spacer(Modifier.height(4.dp))
                 Text(
-                    text       = announcement.title,
-                    fontSize   = 13.sp,
-                    fontWeight = if (!isRead) FontWeight.Bold else FontWeight.SemiBold,
-                    color      = NoorTextPrimary,
-                    modifier   = Modifier.weight(1f)
+                    text      = announcement.body,
+                    fontSize  = 12.sp,
+                    color     = NoorTextSecondary,
+                    lineHeight = 17.sp,
+                    maxLines  = if (expanded) Int.MAX_VALUE else 2
                 )
-                Spacer(Modifier.width(8.dp))
-                Text(timeLabel, fontSize = 10.sp, color = NoorTextHint)
             }
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text      = announcement.body,
-                fontSize  = 12.sp,
-                color     = NoorTextSecondary,
-                lineHeight = 17.sp,
-                maxLines  = 2
-            )
         }
-    }
 
-    HorizontalDivider(
-        modifier  = Modifier.padding(start = 72.dp, end = 16.dp),
-        color     = NoorDivider,
-        thickness = 0.6.dp
-    )
+        HorizontalDivider(
+            modifier  = Modifier.padding(start = 72.dp, end = 16.dp),
+            color     = NoorDivider,
+            thickness = 0.6.dp
+        )
+    }
 }

@@ -144,6 +144,7 @@ fun EmployeeHomeScreen(
                     modifier  = Modifier.weight(1f),
                     profile   = uiState.profile,
                     services  = uiState.services,
+                    viewModel = viewModel,
                     onNavigateToNotifications = onNavigateToNotifications
                 )
             }
@@ -160,6 +161,7 @@ private fun EmployeeHomeContent(
     modifier: Modifier = Modifier,
     profile: Employee?,
     services: List<EmployeeService>,
+    viewModel: EmployeeHomeViewModel,
     onNavigateToNotifications: () -> Unit
 ) {
     val initials = profile?.fullName
@@ -430,7 +432,7 @@ private fun EmployeeHomeContent(
                         services.forEach { svc ->
                             Surface(shape = RoundedCornerShape(10.dp), color = NoorBlueLight,
                                 modifier = Modifier.wrapContentSize()) {
-                                Text(svc.serviceId.replaceFirstChar { it.uppercaseChar() },
+                                Text(viewModel.getServiceName(svc.serviceId),
                                     fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
                                     color    = NoorBlue,
                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp))

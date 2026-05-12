@@ -145,6 +145,7 @@ when {
                     modifier  = Modifier.weight(1f),
                     profile   = uiState.profile,
                     services  = uiState.services,
+                    viewModel = viewModel,
                     onNavigateToNotifications = onNavigateToNotifications
                 )
             }
@@ -162,6 +163,7 @@ fun VendorHomeContent(
     modifier: Modifier = Modifier,
     profile: Vendor?,
     services: List<VendorService>,
+    viewModel: VendorHomeViewModel,
     onNavigateToNotifications: () -> Unit
 ) {
     Column(
@@ -365,11 +367,16 @@ fun VendorHomeContent(
                                     .clip(RoundedCornerShape(10.dp))
                                     .background(if (svc.isActive) VendorTealLight else NoorBackground),
                                 contentAlignment = Alignment.Center
-                            ) { Text("💼", fontSize = 18.sp) }
+                            ) { Text(viewModel.getServiceEmoji(svc.serviceId), fontSize = 18.sp) }
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(svc.serviceId.replaceFirstChar { it.uppercaseChar() }, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                                Text(viewModel.getServiceName(svc.serviceId), fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
                                     color = NoorTextPrimary)
-                                Text(svc.priceRange, fontSize = 11.sp, color = NoorTextHint)
+                                if (svc.priceRange.isNotBlank()) {
+                                    Text(svc.priceRange, fontSize = 11.sp, color = NoorTextHint)
+                                }
+                                if (svc.pricingModel.isNotBlank()) {
+                                    Text(svc.pricingModel, fontSize = 10.sp, color = VendorTeal)
+                                }
                             }
                             Box(
                                 modifier = Modifier
@@ -381,6 +388,32 @@ fun VendorHomeContent(
                                     fontWeight = FontWeight.SemiBold, color = if (svc.isActive) VendorTeal else NoorTextHint)
                             }
                         }
+
+                        if (svc.skills.isNotEmpty()) {
+                            Spacer(Modifier.height(8.dp))
+                            Text("Skills:", fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = NoorTextHint)
+                            Spacer(Modifier.height(4.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                svc.skills.take(4).forEach { skill ->
+                                    Surface(shape = RoundedCornerShape(6.dp), color = VendorTealLight,
+                                        modifier = Modifier.wrapContentSize()) {
+                                        Text(skill, fontSize = 9.sp, fontWeight = FontWeight.Medium,
+                                            color = VendorTeal, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                    }
+                                }
+                            }
+                        }
+
+                        if (svc.minContractDuration.isNotBlank()) {
+                            Spacer(Modifier.height(6.dp))
+                            Text("Min Contract: ${svc.minContractDuration}", fontSize = 10.sp, color = NoorTextSecondary)
+                        }
+
+                        if (svc.coverageAreas.isNotEmpty()) {
+                            Spacer(Modifier.height(4.dp))
+                            Text("Coverage: ${svc.coverageAreas.take(3).joinToString(", ")}${if (svc.coverageAreas.size > 3) " +${svc.coverageAreas.size - 3}" else ""}", fontSize = 10.sp, color = NoorTextSecondary)
+                        }
+
                         HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
                     }
                 }

@@ -3,6 +3,7 @@ package com.danish.noorservice.viewmodel.vendor
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.danish.noorservice.data.model.Category
 import com.danish.noorservice.data.model.Vendor
 import com.danish.noorservice.data.model.VendorService
 import com.danish.noorservice.data.repository.ImageRepository
@@ -19,7 +20,9 @@ import javax.inject.Inject
 data class VendorRegistrationState(
     val currentStep: Int = 1,
     val isLoading: Boolean = false,
+    val isCategoriesLoading: Boolean = false,
     val error: String? = null,
+    val categories: List<Category> = emptyList(),
 
     // Step 1
     val businessName: String = "",
@@ -47,7 +50,8 @@ data class VendorServiceInput(
     val pricingModel: String = "",
     val priceRange: String = "",
     val minContractDuration: String = "",
-    val coverageAreas: List<String> = emptyList()
+    val coverageAreas: List<String> = emptyList(),
+    val skills: List<String> = emptyList()
 )
 
 sealed class VendorRegistrationEvent {
@@ -71,6 +75,42 @@ class VendorRegistrationViewModel @Inject constructor(
 
     fun setUserId(uid: String) {
         userId = uid
+    }
+
+    fun loadCategories() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isCategoriesLoading = true)
+            try {
+                val allCategories = userRepository.getAllCategories()
+                val vendorCategories = allCategories.filter {
+                    it.categoryType.equals("vendor", ignoreCase = true) && it.isActive
+                }
+                _uiState.value = _uiState.value.copy(
+                    categories = vendorCategories,
+                    isCategoriesLoading = false
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isCategoriesLoading = false,
+                    error = e.message
+                )
+            }
+        }
+    }
+
+    fun getServiceName(serviceId: String): String {
+        val category = _uiState.value.categories.find { it.id == serviceId }
+        return category?.label ?: serviceId.replaceFirstChar { it.uppercaseChar() }.replace("_", " ")
+    }
+
+    fun getServiceEmoji(serviceId: String): String {
+        val category = _uiState.value.categories.find { it.id == serviceId }
+        return category?.emoji ?: "💼"
+    }
+
+    fun getCategorySkills(serviceId: String): List<String> {
+        val category = _uiState.value.categories.find { it.id == serviceId }
+        return category?.skills?.map { it.name } ?: emptyList()
     }
 
     // Step 1 fields

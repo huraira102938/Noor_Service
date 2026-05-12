@@ -1023,8 +1023,10 @@ fun VendorNotificationsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    if (standalone) {
-        LaunchedEffect(Unit) {}
+    if (standalone && uiState.announcements.isEmpty()) {
+        LaunchedEffect(Unit) {
+            viewModel.loadNotifications(userId)
+        }
     }
 
     Column(modifier = Modifier.fillMaxSize().background(NoorBackground)) {
@@ -1074,21 +1076,6 @@ fun VendorNotificationsScreen(
                                     color         = Color.White,
                                     letterSpacing = (-0.3).sp
                                 )
-                                if (uiState.unreadCount > 0) {
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(20.dp))
-                                            .background(NoorOrange)
-                                            .padding(horizontal = 8.dp, vertical = 2.dp)
-                                    ) {
-                                        Text(
-                                            "${uiState.unreadCount} new",
-                                            fontSize   = 10.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color      = Color.White
-                                        )
-                                    }
-                                }
                             }
                             Text(
                                 "Inquiries, approvals & updates",
@@ -1113,33 +1100,6 @@ fun VendorNotificationsScreen(
                                 tint               = Color.White,
                                 modifier           = Modifier.size(18.dp)
                             )
-                        }
-                        if (uiState.unreadCount > 0) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(20.dp))
-                                    .background(Color.White.copy(alpha = 0.16f))
-                                    .clickable { viewModel.markAllAsRead(userId) }
-                                    .padding(horizontal = 12.dp, vertical = 7.dp)
-                            ) {
-                                Row(
-                                    verticalAlignment     = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(5.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Default.DoneAll,
-                                        contentDescription = null,
-                                        tint               = Color.White,
-                                        modifier           = Modifier.size(14.dp)
-                                    )
-                                    Text(
-                                        "Mark all read",
-                                        fontSize   = 11.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color      = Color.White
-                                    )
-                                }
-                            }
                         }
                     }
                 }
@@ -1265,7 +1225,6 @@ private fun VendorAnnouncementRow(
         modifier = Modifier
             .fillMaxWidth()
             .background(bgColor)
-            .clickable { if (!isRead) onMarkRead() }
             .padding(horizontal = 16.dp, vertical = 13.dp),
         verticalAlignment     = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(12.dp)

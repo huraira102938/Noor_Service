@@ -3,6 +3,7 @@ package com.danish.noorservice.viewmodel.employee
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.danish.noorservice.data.model.Category
 import com.danish.noorservice.data.model.Employee
 import com.danish.noorservice.data.model.EmployeeService
 import com.danish.noorservice.data.repository.ImageRepository
@@ -19,6 +20,7 @@ import javax.inject.Inject
 data class EmployeeRegistrationState(
     val currentStep: Int = 1,
     val isLoading: Boolean = false,
+    val isCategoriesLoading: Boolean = false,
     val error: String? = null,
     val fullName: String = "",
     val gender: String = "",
@@ -34,7 +36,8 @@ data class EmployeeRegistrationState(
     val monthlyRate: String = "",
     val photoUri: Uri? = null,
     val selectedServiceIds: List<String> = emptyList(),
-    val serviceDetails: Map<String, ServiceDetailInput> = emptyMap()
+    val serviceDetails: Map<String, ServiceDetailInput> = emptyMap(),
+    val categories: List<Category> = emptyList()
 )
 
 data class ServiceDetailInput(
@@ -66,6 +69,27 @@ class EmployeeRegistrationViewModel @Inject constructor(
     private var userId: String = ""
 
     fun setUserId(uid: String) { userId = uid }
+
+    fun loadCategories() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isCategoriesLoading = true)
+            try {
+                val allCategories = userRepository.getAllCategories()
+                val individualCategories = allCategories.filter {
+                    it.categoryType.equals("individual", ignoreCase = true) && it.isActive
+                }
+                _uiState.value = _uiState.value.copy(
+                    categories = individualCategories,
+                    isCategoriesLoading = false
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isCategoriesLoading = false,
+                    error = e.message
+                )
+            }
+        }
+    }
 
 fun updateFullName(value: String)  { _uiState.value = _uiState.value.copy(fullName  = value) }
     fun updateGender(value: String)    { _uiState.value = _uiState.value.copy(gender    = value) }

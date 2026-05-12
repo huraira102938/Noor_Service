@@ -2,6 +2,7 @@ package com.danish.noorservice.viewmodel.employee
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.danish.noorservice.data.model.Category
 import com.danish.noorservice.data.model.Employee
 import com.danish.noorservice.data.model.EmployeeService
 import com.danish.noorservice.data.repository.UserRepository
@@ -16,6 +17,7 @@ data class EmployeeHomeState(
     val isLoading: Boolean = false,
     val profile: Employee? = null,
     val services: List<EmployeeService> = emptyList(),
+    val categories: List<Category> = emptyList(),
     val error: String? = null,
     val hasLoaded: Boolean = false
 )
@@ -45,11 +47,16 @@ class EmployeeHomeViewModel @Inject constructor(
             try {
                 val profile  = userRepository.getEmployeeProfile(userId)
                 val services = userRepository.getEmployeeServices(userId)
+                val allCategories = userRepository.getAllCategories()
+                val individualCategories = allCategories.filter {
+                    it.categoryType.equals("individual", ignoreCase = true) && it.isActive
+                }
 
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     profile   = profile,
                     services  = services,
+                    categories = individualCategories,
                     hasLoaded = true
                 )
             } catch (e: Exception) {
@@ -60,6 +67,11 @@ class EmployeeHomeViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    fun getServiceName(serviceId: String): String {
+        val category = _uiState.value.categories.find { it.id == serviceId }
+        return category?.label ?: serviceId.replaceFirstChar { it.uppercaseChar() }.replace("_", " ")
     }
 
     fun reset() {
