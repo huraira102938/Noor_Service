@@ -22,9 +22,21 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.danish.noorservice.ui.theme.*
+import com.danish.noorservice.viewmodel.vendor.VendorCatalogViewModel
+import com.danish.noorservice.viewmodel.vendor.VendorHomeViewModel
 
 @Composable
-fun VendorRegistrationSuccessScreen(onGoToHome: () -> Unit) {
+fun VendorRegistrationSuccessScreen(
+    userId: String,
+    homeViewModel: VendorHomeViewModel? = null,
+    catalogViewModel: VendorCatalogViewModel? = null,
+    onGoToHome: () -> Unit
+) {
+    LaunchedEffect(Unit) {
+        homeViewModel?.loadProfile(userId)
+        catalogViewModel?.loadServices(userId)
+    }
+
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val scale by infiniteTransition.animateFloat(
         initialValue  = 1f,

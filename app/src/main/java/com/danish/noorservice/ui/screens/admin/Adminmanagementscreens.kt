@@ -36,11 +36,9 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.Image
 import androidx.compose.ui.layout.ContentScale
 import com.danish.noorservice.ui.screens.employer.AdminProposalStore
+import com.danish.noorservice.data.model.Category
 import com.danish.noorservice.ui.screens.employer.WorkerProfile
 import com.danish.noorservice.ui.screens.employer.sampleWorkers
-import com.danish.noorservice.ui.screens.employee.allServiceCategories
-import com.danish.noorservice.ui.screens.vendor.allVendorServiceCategories
-import com.danish.noorservice.ui.components.ShimmerBox
 import com.danish.noorservice.ui.components.rememberShimmerBrush
 import com.danish.noorservice.ui.theme.*
 import java.text.SimpleDateFormat
@@ -55,7 +53,8 @@ enum class WorkerApprovalStatus { PENDING, APPROVED, SUSPENDED }
 
 data class AdminWorkerEntry(
     val profile: WorkerProfile,
-    var approvalStatus: WorkerApprovalStatus = WorkerApprovalStatus.APPROVED
+    var approvalStatus: WorkerApprovalStatus = WorkerApprovalStatus.APPROVED,
+    val categories: List<Category> = emptyList()
 )
 
 private val adminWorkerEntries = mutableStateListOf(
@@ -77,78 +76,10 @@ data class AdminEmployerRecord(
     val area: String,
     val email: String,
     val phone: String,
-    val cnic: String,
-    val dob: String,
-    val gender: String,
     val address: String,
     val joinedDate: String,
     var isVerified: Boolean,
-    val proposalCount: Int,
-    val bio: String,
-    val languages: List<String>
-)
-
-private val sampleEmployers = mutableStateListOf(
-    AdminEmployerRecord(
-        "e1", "Danish Awan", "DA", NoorOrange,
-        "Lahore", "DHA Phase 3",
-        "newservicesprovided@gmail.com", "0300-9254605",
-        "35202-1234567-9", "10/05/1990", "Male",
-        "House 7, Street 12, DHA Phase 3, Lahore",
-        "Mar 2025", true, 3,
-        "Looking for reliable domestic service workers in Lahore.",
-        listOf("Urdu", "Punjabi", "English")
-    ),
-    AdminEmployerRecord(
-        "e2", "Hina Tariq", "HT", Color(0xFF9C27B0),
-        "Lahore", "Gulberg II",
-        "hina.tariq@email.com", "0321-5556677",
-        "35201-9876543-2", "22/08/1985", "Female",
-        "Flat 3B, Gulberg II, Lahore",
-        "Jan 2025", true, 1,
-        "Seeking experienced cook and maid for residential use.",
-        listOf("Urdu", "English")
-    ),
-    AdminEmployerRecord(
-        "e3", "Farhan Ahmed", "FA", NoorBlue,
-        "Lahore", "Johar Town",
-        "farhan@email.com", "0333-1122334",
-        "35202-3344556-1", "15/03/1992", "Male",
-        "House 44B, Johar Town, Lahore",
-        "Feb 2025", false, 2,
-        "Need a driver and security guard for office and home.",
-        listOf("Urdu", "Punjabi")
-    ),
-    AdminEmployerRecord(
-        "e4", "Sara Anwar", "SA", Color(0xFFE91E63),
-        "Lahore", "Model Town",
-        "sara.anwar@email.com", "0312-7788990",
-        "35202-6655443-0", "05/11/1988", "Female",
-        "House 2, Block C, Model Town, Lahore",
-        "Apr 2025", false, 0,
-        "Looking for a babysitter and elder care provider.",
-        listOf("Urdu", "English")
-    ),
-    AdminEmployerRecord(
-        "e5", "Asad Malik", "AM", NoorGreen,
-        "Islamabad", "F-7",
-        "asad.malik@gmail.com", "0311-4455667",
-        "61101-1234567-3", "20/07/1983", "Male",
-        "Street 5, F-7/2, Islamabad",
-        "Dec 2024", true, 4,
-        "Running a business and need office boy and cleaning staff.",
-        listOf("Urdu", "Punjabi", "English", "Pashto")
-    ),
-    AdminEmployerRecord(
-        "e6", "Nadia Baig", "NB", Color(0xFF795548),
-        "Lahore", "Bahria Town",
-        "nadia.baig@email.com", "0342-9988776",
-        "35202-8877665-4", "14/01/1991", "Female",
-        "Sector C, Bahria Town, Lahore",
-        "Mar 2025", true, 1,
-        "Need a gardener and housemaid for villa maintenance.",
-        listOf("Urdu", "Punjabi")
-    ),
+    val bio: String
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -188,90 +119,10 @@ data class AdminVendorRecord(
     val services: List<AdminVendorServiceDetail>,
     val isIsoCertified: Boolean,
     val hasNotableClients: Boolean,
-    val notableClients: String
+    val notableClients: String,
+    val categories: List<Category> = emptyList()
 )
 
-private val sampleVendorRecords = mutableStateListOf(
-    AdminVendorRecord(
-        "v1", "Al-Noor Facility Services", "Ahmad Raza", VendorTeal, "",
-        "Lahore", 3, "Jan 2025", VendorVerificationStatus.VERIFIED,
-        "info@alnoor.com", "0300-1234567", "51–200",
-        "1234567-8", "REG-2015-00123",
-        "Plot 12, Sector B, DHA Phase 3, Lahore",
-        "Plot 12, Sector B, DHA Phase 3, Lahore",
-        listOf("Lahore", "Islamabad", "Faisalabad"),
-        "Providing integrated facility management services across Lahore for 8+ years.",
-        listOf(
-            AdminVendorServiceDetail("Cleaning & Janitorial", "🧹", "Monthly Contract", "PKR 15,000–80,000/mo", "1 Month", listOf("Lahore", "Islamabad")),
-            AdminVendorServiceDetail("Staffing Solutions", "👥", "Monthly Contract", "PKR 25,000–500,000/mo", "3 Months", listOf("Lahore", "Faisalabad")),
-            AdminVendorServiceDetail("Security Services", "🛡️", "Per Shift", "PKR 1,200–2,000/shift", "6 Months", listOf("Lahore"))
-        ),
-        isIsoCertified = true, hasNotableClients = true,
-        notableClients = "PTCL, Engro Corp, National Bank of Pakistan"
-    ),
-    AdminVendorRecord(
-        "v2", "City-Guard Security", "Tariq Hassan", Color(0xFF37474F), "",
-        "Lahore", 1, "Mar 2025", VendorVerificationStatus.PENDING,
-        "info@cityguard.pk", "0321-9876543", "11–50",
-        "7654321-0", "REG-2020-00456",
-        "Office 5, Block A, Gulberg III, Lahore",
-        "Office 5, Block A, Gulberg III, Lahore",
-        listOf("Lahore"),
-        "Professional armed and unarmed security services for commercial and residential clients.",
-        listOf(
-            AdminVendorServiceDetail("Security Services", "🛡️", "Per Shift", "PKR 1,000–1,800/shift", "3 Months", listOf("Lahore"))
-        ),
-        isIsoCertified = false, hasNotableClients = false,
-        notableClients = ""
-    ),
-    AdminVendorRecord(
-        "v3", "CleanPro Services", "Bilal Qureshi", NoorBlue, "",
-        "Karachi", 2, "Feb 2025", VendorVerificationStatus.VERIFIED,
-        "cleanpro@gmail.com", "0333-1122334", "1–10",
-        "9988776-5", "REG-2022-00789",
-        "Suite 3, Block 7, Clifton, Karachi",
-        "Suite 3, Block 7, Clifton, Karachi",
-        listOf("Karachi"),
-        "Eco-friendly cleaning solutions for offices and commercial spaces in Karachi.",
-        listOf(
-            AdminVendorServiceDetail("Cleaning & Janitorial", "🧹", "Monthly Contract", "PKR 10,000–50,000/mo", "1 Month", listOf("Karachi")),
-            AdminVendorServiceDetail("Pest Control", "🪲", "One-time / Annual", "PKR 5,000–25,000", "None", listOf("Karachi"))
-        ),
-        isIsoCertified = false, hasNotableClients = true,
-        notableClients = "Dolmen Mall, Ocean Mall Karachi"
-    ),
-    AdminVendorRecord(
-        "v4", "Swift Staffing", "Amir Shah", NoorOrange, "",
-        "Islamabad", 2, "Apr 2025", VendorVerificationStatus.PENDING,
-        "swift@staffing.pk", "0311-5544332", "51–200",
-        "1122334-5", "REG-2019-00321",
-        "Blue Area, F-6, Islamabad",
-        "Blue Area, F-6, Islamabad",
-        listOf("Islamabad", "Rawalpindi"),
-        "Bulk workforce supply and HR outsourcing for corporate clients.",
-        listOf(
-            AdminVendorServiceDetail("Staffing Solutions", "👥", "Monthly Contract", "PKR 30,000–600,000/mo", "3 Months", listOf("Islamabad", "Rawalpindi")),
-            AdminVendorServiceDetail("Office Support", "💼", "Monthly Contract", "PKR 15,000–80,000/mo", "1 Month", listOf("Islamabad"))
-        ),
-        isIsoCertified = true, hasNotableClients = false,
-        notableClients = ""
-    ),
-    AdminVendorRecord(
-        "v5", "EcoClean Corp", "Fatima Noor", NoorGreen, "",
-        "Faisalabad", 1, "Jan 2025", VendorVerificationStatus.REJECTED,
-        "eco@clean.pk", "0342-7766554", "1–10",
-        "6655443-2", "REG-2023-00654",
-        "Narwala Road, Faisalabad",
-        "Narwala Road, Faisalabad",
-        listOf("Faisalabad"),
-        "Sustainable cleaning services for small businesses in Faisalabad.",
-        listOf(
-            AdminVendorServiceDetail("Cleaning & Janitorial", "🧹", "Monthly Contract", "PKR 8,000–30,000/mo", "1 Month", listOf("Faisalabad"))
-        ),
-        isIsoCertified = false, hasNotableClients = false,
-        notableClients = ""
-    ),
-)
 
 // ═════════════════════════════════════════════════════════════════════════════
 // WORKERS SCREEN
@@ -333,8 +184,18 @@ fun AdminWorkersScreen(
                 employee.isProfileApproved && employee.isActive -> WorkerApprovalStatus.APPROVED
                 employee.isProfileApproved && !employee.isActive -> WorkerApprovalStatus.SUSPENDED
                 else -> WorkerApprovalStatus.PENDING
-            }
+            },
+            categories = uiState.workerCategories
         )
+    }
+
+    var pendingAction by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(uiState.isLoading, pendingAction) {
+        if (pendingAction != null && !uiState.isLoading) {
+            selectedWorker = null
+            pendingAction = null
+        }
     }
 
     if (selectedWorker != null) {
@@ -343,16 +204,16 @@ fun AdminWorkersScreen(
             managementViewModel = managementViewModel,
             onBack             = { selectedWorker = null },
             onApprove          = { entry ->
+                pendingAction = entry.profile.id
                 managementViewModel.updateProfileApproval(entry.profile.id, "employee", true)
-                selectedWorker = null
             },
             onSuspend          = { entry ->
+                pendingAction = entry.profile.id
                 managementViewModel.updateUserActive(entry.profile.id, "employee", false)
-                selectedWorker = null
             },
             onActivate         = { entry ->
+                pendingAction = entry.profile.id
                 managementViewModel.updateUserActive(entry.profile.id, "employee", true)
-                selectedWorker = null
             }
         )
         return
@@ -488,96 +349,128 @@ private fun AdminWorkerCard(
         colors    = CardDefaults.cardColors(containerColor = NoorSurface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Row(
-            modifier              = Modifier.padding(14.dp),
-            verticalAlignment     = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            if (entry.profile.photoUrl.isNotBlank()) {
-                AsyncImage(
-                    model         = entry.profile.photoUrl,
-                    contentDescription = "Worker photo",
-                    modifier      = Modifier.size(48.dp).clip(CircleShape),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                Box(
-                    modifier           = Modifier.size(48.dp).clip(CircleShape).background(entry.profile.avatarColor),
-                    contentAlignment   = Alignment.Center
-                ) {
-                    Text(entry.profile.initials, fontSize = 15.sp,
-                        fontWeight = FontWeight.ExtraBold, color = Color.White)
-                }
-            }
-
-            Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    verticalAlignment     = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Text(entry.profile.name, fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold, color = NoorTextPrimary)
+        Column(modifier = Modifier.padding(14.dp)) {
+            // Top Section with Avatar, Info, and Available Badge
+            Row(
+                modifier              = Modifier.fillMaxWidth(),
+                verticalAlignment     = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Avatar
+                if (entry.profile.photoUrl.isNotBlank()) {
+                    AsyncImage(
+                        model         = entry.profile.photoUrl,
+                        contentDescription = "Worker photo",
+                        modifier      = Modifier.size(48.dp).clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
                     Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(statusBg)
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                        modifier           = Modifier.size(48.dp).clip(CircleShape).background(entry.profile.avatarColor),
+                        contentAlignment   = Alignment.Center
                     ) {
-                        Text(statusLabel, fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold, color = statusColor)
+                        Text(entry.profile.initials, fontSize = 15.sp,
+                            fontWeight = FontWeight.ExtraBold, color = Color.White)
                     }
                 }
-                Text(
-                    "${entry.profile.workerUsername} · ${entry.profile.area}, ${entry.profile.city}",
-                    fontSize = 11.sp, color = NoorTextHint
-                )
-                Spacer(Modifier.height(6.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    entry.profile.serviceIds.take(2).forEach { id ->
-                        val svc = allServiceCategories.find { it.id == id }
-                        if (svc != null) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(NoorBlueLight)
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                            ) {
-                                Text("${svc.emoji} ${svc.label}", fontSize = 9.sp,
-                                    fontWeight = FontWeight.SemiBold, color = NoorBlue)
+
+                // Middle Content (Name, Status, Location, Services)
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                        verticalAlignment     = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(entry.profile.name, fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold, color = NoorTextPrimary)
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(statusBg)
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(statusLabel, fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold, color = statusColor)
+                        }
+                    }
+                    Text(
+                        "${entry.profile.workerUsername} · ${entry.profile.area}, ${entry.profile.city}",
+                        fontSize = 11.sp, color = NoorTextHint
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        entry.profile.serviceIds.take(2).forEach { id ->
+                            val svc = entry.categories.find { it.id == id }
+                            if (svc != null) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(NoorBlueLight)
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text("${svc.emoji} ${svc.label}", fontSize = 9.sp,
+                                        fontWeight = FontWeight.SemiBold, color = NoorBlue)
+                                }
                             }
                         }
                     }
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(NoorBackground)
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    ) {
-                        Text("⏱ ${entry.profile.experience}", fontSize = 9.sp,
-                            fontWeight = FontWeight.SemiBold, color = NoorTextSecondary)
-                    }
                 }
-            }
 
-            Column(horizontalAlignment = Alignment.End) {
-                Text(entry.profile.dailyRate, fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold, color = NoorBlue)
+                // Available Badge - Top Right Corner
                 if (entry.profile.isAvailable) {
                     Box(
                         modifier = Modifier
-                            .padding(top = 4.dp)
                             .clip(RoundedCornerShape(20.dp))
                             .background(NoorGreenLight)
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
                         Text("Available", fontSize = 9.sp,
                             fontWeight = FontWeight.Bold, color = NoorGreen)
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Bottom Section - Price and Details
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Price with "per day" text
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        entry.profile.dailyRate,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = NoorBlue
+                    )
+                    Text(
+                        "per day",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = NoorTextHint
+                    )
+                }
+
+                // Click to see full details
+                Text(
+                    "Click to see full details",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = NoorTextHint,
+                    style = androidx.compose.ui.text.TextStyle(
+                        textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline
+                    )
+                )
+            }
         }
     }
 }
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Worker Detail Screen
@@ -678,7 +571,6 @@ private fun AdminWorkerDetailScreen(
             // Quick stats
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 AdminInfoTile("💰", "Daily Rate", p.dailyRate,  modifier = Modifier.weight(1f))
-                AdminInfoTile("⏱",  "Experience", p.experience, modifier = Modifier.weight(1f))
                 AdminInfoTile("🕐", "Time Slot",  p.timeSlot,   modifier = Modifier.weight(1f))
             }
 
@@ -689,7 +581,6 @@ private fun AdminWorkerDetailScreen(
                 AdminDetailRow("🎂", "Date of Birth",     p.dob.ifBlank { "Not provided" })
                 AdminDetailRow("📍", "City",              p.city)
                 AdminDetailRow("🏠", "Permanent Address", p.address.ifBlank { "Not provided" })
-                AdminDetailRow("🗓", "Member Since",      p.joinedDate)
             }
 
             // Languages
@@ -724,7 +615,7 @@ private fun AdminWorkerDetailScreen(
                             HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
                             Spacer(Modifier.height(8.dp))
                         }
-                        val category = allServiceCategories.find { it.id == service.serviceId }
+                        val category = entry.categories.find { it.id == service.serviceId }
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -802,7 +693,6 @@ private fun AdminWorkerDetailScreen(
                 AdminDetailRow("⏱", "Experience",        p.experience)
                 AdminDetailRow("🪪", "Licence / Cert.",  p.licenceType.ifBlank { "N/A" })
                 AdminDetailRow("📅", "Availability",     if (p.isAvailable) "Available" else "Not Available")
-                AdminDetailRow("🗓", "Available Days",   p.availableDays.joinToString(", ").ifBlank { "Not specified" })
                 AdminDetailRow("🕐", "Preferred Time Slot", p.timeSlot)
                 if (p.additionalNote.isNotBlank()) {
                     Spacer(Modifier.height(6.dp))
@@ -943,7 +833,6 @@ fun AdminEmployersScreen(
     }
 
     var query            by remember { mutableStateOf("") }
-    var showVerifiedOnly by remember { mutableStateOf(false) }
     var selectedEmployer by remember { mutableStateOf<AdminEmployerRecord?>(null) }
 
     val employerRecords = uiState.employers.map { employer ->
@@ -961,39 +850,27 @@ fun AdminEmployersScreen(
             area          = employer.area,
             email         = employer.email,
             phone         = employer.phone,
-            cnic          = "",               // not in Employer model
-            dob           = "",               // not in Employer model
-            gender        = "",               // not in Employer model
             address       = employer.address,
             joinedDate    =  SimpleDateFormat("MMM yyyy", Locale.getDefault())
                 .format(Date(employer.createdAt)),
-            isVerified    = false,            // not in Employer model — always false
-            proposalCount = 0,
-            bio           = employer.about,   // ← "about" not "bio"
-            languages     = emptyList()       // not in Employer model
+            isVerified    = true,            // employers are always verified by default
+            bio           = employer.about
         )
     }
 
     if (selectedEmployer != null) {
         AdminEmployerDetailScreen(
-            record         = selectedEmployer!!,
-            onBack         = { selectedEmployer = null },
-            onToggleVerify = { record ->
-                val idx = sampleEmployers.indexOfFirst { it.id == record.id }
-                if (idx != -1) sampleEmployers[idx] =
-                    sampleEmployers[idx].copy(isVerified = !record.isVerified)
-                selectedEmployer = null
-            }
+            record = selectedEmployer!!,
+            onBack = { selectedEmployer = null }
         )
         return
     }
 
     val filtered = employerRecords.filter { e ->
-        val matchQuery  = query.isBlank() ||
+        val matchQuery = query.isBlank() ||
                 e.name.contains(query, ignoreCase = true) ||
                 e.city.contains(query, ignoreCase = true)
-        val matchVerify = !showVerifiedOnly || e.isVerified
-        matchQuery && matchVerify
+        matchQuery
     }
 
     Column(modifier = Modifier.fillMaxSize().background(NoorBackground)) {
@@ -1010,7 +887,7 @@ fun AdminEmployersScreen(
                 Text("Employers", fontSize = 22.sp, fontWeight = FontWeight.Bold,
                     color = Color.White, letterSpacing = (-0.3).sp)
                 Text(
-                    "${employerRecords.size} registered · ${employerRecords.count { it.isVerified }} verified",
+                    "${employerRecords.size} registered",
                     fontSize = 12.sp, color = Color.White.copy(alpha = 0.72f)
                 )
                 Spacer(Modifier.height(14.dp))
@@ -1048,28 +925,6 @@ fun AdminEmployersScreen(
             }
         } // end header Box
 
-        // ── Verified-only toggle ──────────────────────────────────────────────
-        Row(
-            modifier              = Modifier
-                .fillMaxWidth()
-                .background(NoorSurface)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment     = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text("Verified only", fontSize = 12.sp,
-                color = NoorTextSecondary, fontWeight = FontWeight.Medium)
-            Switch(
-                checked         = showVerifiedOnly,
-                onCheckedChange = { showVerifiedOnly = it },
-                colors          = SwitchDefaults.colors(
-                    checkedThumbColor   = Color.White,
-                    checkedTrackColor   = AdminPurple,
-                    uncheckedThumbColor = Color.White,
-                    uncheckedTrackColor = NoorBorder
-                )
-            )
-        }
         HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
 
         // ── List ──────────────────────────────────────────────────────────────
@@ -1146,7 +1001,7 @@ private fun AdminEmployerCard(record: AdminEmployerRecord, onClick: () -> Unit) 
                             .background(AdminPurpleLight)
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
-                        Text("📋 ${record.proposalCount} proposals", fontSize = 9.sp,
+                        Text("📋 proposals", fontSize = 9.sp,
                             fontWeight = FontWeight.SemiBold, color = AdminPurple)
                     }
                     Box(
@@ -1173,8 +1028,7 @@ private fun AdminEmployerCard(record: AdminEmployerRecord, onClick: () -> Unit) 
 @Composable
 private fun AdminEmployerDetailScreen(
     record: AdminEmployerRecord,
-    onBack: () -> Unit,
-    onToggleVerify: (AdminEmployerRecord) -> Unit
+    onBack: () -> Unit
 ) {
     val employerProposals = AdminProposalStore.proposals.filter { true }
 
@@ -1231,52 +1085,19 @@ private fun AdminEmployerDetailScreen(
             }
         } // end header Box
 
-        // ── Scrollable body ───────────────────────────────────────────────────
+// ── Scrollable body ───────────────────────────────────────────────────
         Column(
             modifier            = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
 
-            // Personal Details
-            AdminDetailSection("Personal Details") {
-                AdminDetailRow("🪪", "CNIC",          record.cnic.ifBlank { "Not provided" })
-                AdminDetailRow("📞", "Phone Number",  record.phone.ifBlank { "Not provided" })
-                AdminDetailRow("🎂", "Date of Birth", record.dob.ifBlank { "Not provided" })
-                AdminDetailRow("👤", "Gender",        record.gender.ifBlank { "Not provided" })
-                AdminDetailRow("🗓", "Member Since",  record.joinedDate.ifBlank { "Not provided" })
-            }
-
             // Contact & Location
             AdminDetailSection("Contact & Location") {
-                AdminDetailRow("📧", "Email",              record.email)
-                AdminDetailRow("📍", "City",               record.city)
-                AdminDetailRow("🏘", "Area",               record.area)
-                AdminDetailRow("🏠", "Permanent Address",  record.address.ifBlank { "Not provided" })
-            }
-
-            // Languages
-            AdminDetailSection("Languages Spoken") {
-                @OptIn(ExperimentalLayoutApi::class)
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement   = Arrangement.spacedBy(8.dp)
-                ) {
-                    if (record.languages.isEmpty()) {
-                        Text("No languages listed.", fontSize = 12.sp, color = NoorTextHint)
-                    } else {
-                        record.languages.forEach { lang ->
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(20.dp))
-                                    .background(AdminPurpleLight)
-                                    .padding(horizontal = 10.dp, vertical = 5.dp)
-                            ) {
-                                Text("🗣 $lang", fontSize = 11.sp,
-                                    fontWeight = FontWeight.SemiBold, color = AdminPurple)
-                            }
-                        }
-                    }
-                }
+                AdminDetailRow("📧", "Email", record.email.ifBlank { "Not provided" })
+                AdminDetailRow("📞", "Phone Number", record.phone.ifBlank { "Not provided" })
+                AdminDetailRow("📍", "City", record.city.ifBlank { "Not provided" })
+                AdminDetailRow("🏘", "Area", record.area.ifBlank { "Not provided" })
+                AdminDetailRow("🏠", "Address", record.address.ifBlank { "Not provided" })
             }
 
             // About
@@ -1287,76 +1108,13 @@ private fun AdminEmployerDetailScreen(
                 }
             }
 
-            // Activity
-            AdminDetailSection("Activity") {
-                AdminDetailRow("📋", "Total Proposals", "${record.proposalCount}")
+            // Member Since
+            AdminDetailSection("Account Info") {
+                AdminDetailRow("🗓", "Member Since", record.joinedDate.ifBlank { "Not provided" })
+                AdminDetailRow("🏷", "User ID", record.id.take(8))
             }
-
-            // Proposals
-            if (employerProposals.isNotEmpty()) {
-                AdminDetailSection("Proposals (${employerProposals.size})") {
-                    employerProposals.take(4).forEach { p ->
-                        Row(
-                            modifier              = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                            verticalAlignment     = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Box(
-                                modifier         = Modifier.size(32.dp).clip(CircleShape).background(p.avatarColor),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(p.workerInitials, fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold, color = Color.White)
-                            }
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(p.workerName, fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold, color = NoorTextPrimary)
-                                Text("${p.jobTitle} · ${p.location}",
-                                    fontSize = 10.sp, color = NoorTextHint)
-                            }
-                            val (sc, sl) = when (p.status) {
-                                AdminProposalStatus.PENDING  -> Pair(NoorOrange, "Pending")
-                                AdminProposalStatus.ACCEPTED -> Pair(NoorGreen,  "Accepted")
-                                AdminProposalStatus.DECLINED -> Pair(NoorRed,    "Declined")
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(sc.copy(alpha = 0.12f))
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                            ) {
-                                Text(sl, fontSize = 9.sp,
-                                    fontWeight = FontWeight.Bold, color = sc)
-                            }
-                        }
-                        HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
-                    }
-                }
-            }
-
-            // Action button
-            Button(
-                onClick  = { onToggleVerify(record) },
-                modifier = Modifier.fillMaxWidth().height(50.dp),
-                shape    = RoundedCornerShape(12.dp),
-                colors   = ButtonDefaults.buttonColors(
-                    containerColor = if (record.isVerified) NoorRed else AdminPurple
-                )
-            ) {
-                Icon(
-                    if (record.isVerified) Icons.Default.Block else Icons.Default.Verified,
-                    contentDescription = null, modifier = Modifier.size(16.dp)
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    if (record.isVerified) "Revoke Verification" else "Verify Employer",
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-
-            Spacer(Modifier.height(8.dp))
-        } // end scrollable body
-    } // end outer Column
+        }
+    }
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -1383,7 +1141,7 @@ fun AdminVendorsScreen(
     val vendorRecords = uiState.vendors.map { vendor ->
         val services = vendorServices[vendor.uid] ?: emptyList()
         val adminServices = services.map { svc ->
-            val category = allVendorServiceCategories.find { it.id == svc.serviceId }
+            val category = uiState.vendorCategories.find { it.id == svc.serviceId }
             val displayName = category?.label ?: svc.serviceId.replace("_", " ").replaceFirstChar { it.uppercase() }
             AdminVendorServiceDetail(
                 categoryLabel = displayName,
@@ -1421,7 +1179,8 @@ fun AdminVendorsScreen(
             services           = adminServices,
             isIsoCertified     = vendor.isoCertified,
             hasNotableClients  = vendor.notableClients.isNotEmpty(),
-            notableClients     = vendor.notableClients.joinToString(", ")
+            notableClients     = vendor.notableClients.joinToString(", "),
+            categories         = uiState.vendorCategories
         )
     }
 
@@ -1651,7 +1410,7 @@ private fun AdminVendorDetailScreen(
     var showRejectDialog by remember { mutableStateOf(false) }
     var showSuspendDialog by remember { mutableStateOf(false) }
     var selectedImageUrl by remember { mutableStateOf<String?>(null) }
-    
+
     val vendorServicesFromVM by managementViewModel.vendorServices.collectAsState()
     val vendorServices = vendorServicesFromVM[vendorId] ?: emptyList()
 
@@ -1803,7 +1562,7 @@ private fun AdminVendorDetailScreen(
                             HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
                             Spacer(Modifier.height(10.dp))
                         }
-                        val category = allVendorServiceCategories.find { it.id == svc.serviceId }
+                        val category = record.categories.find { it.id == svc.serviceId }
                         val displayName = category?.label ?: svc.serviceId.replace("_", " ").replaceFirstChar { it.uppercase() }
                         val displayEmoji = category?.emoji ?: "🛠"
                         Row(
@@ -1875,6 +1634,28 @@ private fun AdminVendorDetailScreen(
                                             .padding(horizontal = 8.dp, vertical = 3.dp)
                                     ) {
                                         Text("✨ $highlight", fontSize = 10.sp, color = VendorTeal)
+                                    }
+                                }
+                            }
+                        }
+                        if (svc.skills.isNotEmpty()) {
+                            Spacer(Modifier.height(6.dp))
+                            Text("Skills:", fontSize = 11.sp,
+                                color = NoorTextHint, fontWeight = FontWeight.Medium)
+                            Spacer(Modifier.height(4.dp))
+                            @OptIn(ExperimentalLayoutApi::class)
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement   = Arrangement.spacedBy(6.dp)
+                            ) {
+                                svc.skills.forEach { skill ->
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(20.dp))
+                                            .background(NoorOrangeLight)
+                                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                                    ) {
+                                        Text("⚡ $skill", fontSize = 10.sp, color = NoorOrange)
                                     }
                                 }
                             }

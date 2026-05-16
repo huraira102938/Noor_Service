@@ -13,9 +13,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.danish.noorservice.ui.theme.*
 import com.danish.noorservice.viewmodel.admin.AdminDashboardViewModel
 import com.danish.noorservice.viewmodel.admin.AdminManagementViewModel
+import com.danish.noorservice.viewmodel.admin.AdminProposalViewModel
 import kotlinx.coroutines.launch
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -56,6 +58,11 @@ fun AdminMainScreen(
     onLogout: () -> Unit,
     initialTab: Int = 0
 ) {
+    val proposalViewModel: AdminProposalViewModel = hiltViewModel()
+
+    LaunchedEffect(Unit) {
+        proposalViewModel.loadAllProposals()
+    }
     var selectedTab       by remember { mutableIntStateOf(initialTab) }
     var lastBackPressTime by remember { mutableStateOf(0L) }
     val scope             = rememberCoroutineScope()
@@ -71,7 +78,9 @@ fun AdminMainScreen(
     val pendingProposals by remember {
         derivedStateOf {
             com.danish.noorservice.ui.screens.employer.AdminProposalStore.proposals
-                .count { it.status == com.danish.noorservice.ui.screens.employer.AdminProposalStatus.PENDING }
+                .count { it.status == com.danish.noorservice.ui.screens.employer.AdminProposalStatus.PENDING } +
+            com.danish.noorservice.ui.screens.employer.VendorProposalStore.proposals
+                .count { it.status == com.danish.noorservice.ui.screens.employer.VendorProposalStatus.PENDING }
         }
     }
 
@@ -120,7 +129,10 @@ fun AdminMainScreen(
         ) {
             when {
                 showProposalInbox -> {
-                    AdminProposalInboxScreen(onBack = { showProposalInbox = false })
+                    AdminProposalInboxScreen(
+                        onBack = { showProposalInbox = false },
+                        proposalViewModel = proposalViewModel
+                    )
                 }
                 showAnnouncements -> {
                     AdminNotificationsScreen(onBack = { showAnnouncements = false })
@@ -135,6 +147,7 @@ fun AdminMainScreen(
                     when (selectedTab) {
                         0 -> AdminDashboardScreen(
                             viewModel = dashboardViewModel,
+                            proposalViewModel = proposalViewModel,
                             onNavigate = { selectedTab = it },
                             onNavigateToProposalInbox = { showProposalInbox = true },
                             onNavigateToAnnouncements = { showAnnouncements = true },

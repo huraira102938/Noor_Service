@@ -43,6 +43,12 @@ fun EmployeeSettingsScreen(
     val uiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
     var subScreen by remember { mutableStateOf(SettingsSubScreen.NONE) }
 
+    LaunchedEffect(userId) {
+        if (userId.isNotBlank()) {
+            settingsViewModel.loadProfile(userId)
+        }
+    }
+
     when (subScreen) {
         SettingsSubScreen.EDIT_PROFILE -> {
             // ✅ FIX: Pass the SAME viewModel instance so EditProfileScreen

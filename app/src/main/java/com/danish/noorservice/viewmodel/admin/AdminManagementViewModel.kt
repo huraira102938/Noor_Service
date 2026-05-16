@@ -2,6 +2,7 @@ package com.danish.noorservice.viewmodel.admin
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.danish.noorservice.data.model.Category
 import com.danish.noorservice.data.model.Employee
 import com.danish.noorservice.data.model.EmployeeService
 import com.danish.noorservice.data.model.Employer
@@ -21,6 +22,8 @@ data class AdminManagementState(
     val workers: List<Employee> = emptyList(),
     val employers: List<Employer> = emptyList(),
     val vendors: List<Vendor> = emptyList(),
+    val workerCategories: List<Category> = emptyList(),
+    val vendorCategories: List<Category> = emptyList(),
     val error: String? = null
 )
 
@@ -48,8 +51,8 @@ class AdminManagementViewModel @Inject constructor(
     private val _vendorServices = MutableStateFlow<Map<String, List<VendorService>>>(emptyMap())
     val vendorServices: StateFlow<Map<String, List<VendorService>>> = _vendorServices.asStateFlow()
 
-    fun loadAllData() {
-        if (_uiState.value.hasLoaded && !_uiState.value.isLoading) return
+    fun loadAllData(forceReload: Boolean = false) {
+        if (!forceReload && _uiState.value.hasLoaded && !_uiState.value.isLoading) return
 
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
@@ -58,13 +61,18 @@ class AdminManagementViewModel @Inject constructor(
                 val employees = userRepository.getAllEmployees()
                 val employers = userRepository.getAllEmployers()
                 val vendors = userRepository.getAllVendors()
+                val categories = userRepository.getAllCategories()
+                val workerCategories = categories.filter { it.categoryType == "individual" || it.categoryType.isEmpty() }
+                val vendorCategories = categories.filter { it.categoryType == "vendor" }
 
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     hasLoaded = true,
                     workers = employees,
                     employers = employers,
-                    vendors = vendors
+                    vendors = vendors,
+                    workerCategories = workerCategories,
+                    vendorCategories = vendorCategories
                 )
 
                 loadEmployeeServices(employees.map { it.uid })
@@ -115,8 +123,12 @@ class AdminManagementViewModel @Inject constructor(
     fun updateProfileApproval(userId: String, role: String, isApproved: Boolean) {
         viewModelScope.launch {
             try {
-                userRepository.updateProfileApproval(userId, role, isApproved)
-                loadAllData()
+                val result = userRepository.updateProfileApproval(userId, role, isApproved)
+                if (result.isSuccess) {
+                    loadAllData(forceReload = true)
+                } else {
+                    _uiState.value = _uiState.value.copy(error = result.exceptionOrNull()?.message)
+                }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = e.message)
             }
@@ -126,8 +138,12 @@ class AdminManagementViewModel @Inject constructor(
     fun updateUserActive(userId: String, role: String, isActive: Boolean) {
         viewModelScope.launch {
             try {
-                userRepository.updateUserActive(userId, role, isActive)
-                loadAllData()
+                val result = userRepository.updateUserActive(userId, role, isActive)
+                if (result.isSuccess) {
+                    loadAllData(forceReload = true)
+                } else {
+                    _uiState.value = _uiState.value.copy(error = result.exceptionOrNull()?.message)
+                }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = e.message)
             }

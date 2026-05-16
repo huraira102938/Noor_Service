@@ -1,8 +1,14 @@
 package com.danish.noorservice.ui.screens.employer
 
+import android.content.Intent
+import android.net.Uri
+import android.util.Log
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -23,6 +29,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -33,10 +41,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
 import com.danish.noorservice.data.model.Employee
 import com.danish.noorservice.data.model.EmployeeService
-import com.danish.noorservice.ui.screens.employee.allServiceCategories
+import com.danish.noorservice.data.model.WorkerServiceDetail
 import com.danish.noorservice.ui.components.EmployeeBrowseShimmer
 import com.danish.noorservice.ui.theme.*
 import com.danish.noorservice.viewmodel.employer.EmployerBrowseViewModel
+import com.danish.noorservice.viewmodel.employer.EmployerProposalViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -57,6 +66,7 @@ private fun Employee.toWorkerProfile(serviceIdsOverride: List<String>? = null): 
         name = fullName,
         initials = initials.ifEmpty { "W" },
         avatarColor = avatarColors[colorIndex],
+        photoUrl = photoUrl,
         workerUsername = "@NS-${uid.take(4).uppercase()}",
         city = city,
         area = address.take(50),
@@ -105,6 +115,7 @@ data class WorkerProfile(
 
     // ── Personal Details (new) ─────────────────────────────────────────────
     val phone: String = "",
+    val email: String = "",
     val cnic: String = "",
     val dob: String = "",
     val address: String = "",
@@ -296,13 +307,15 @@ val sampleWorkers = listOf(
 
 @Composable
 fun EmployerBrowseScreen(
-    viewModel: EmployerBrowseViewModel = hiltViewModel()
+    viewModel: EmployerBrowseViewModel = hiltViewModel(),
+    proposalViewModel: EmployerProposalViewModel = hiltViewModel(),
+    employerProfile: com.danish.noorservice.data.model.Employer? = null
 ) {
+    Log.d("EmployerBrowse", "EmployerBrowseScreen: received employerProfile=${employerProfile?.fullName}/${employerProfile?.phone}/${employerProfile?.uid}")
     val uiState by viewModel.uiState.collectAsState()
     var openWorker    by remember { mutableStateOf<WorkerProfile?>(null) }
     var query         by remember { mutableStateOf("") }
     var selectedCatId by remember { mutableStateOf<String?>(null) }
-    var showAvailOnly by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.loadEmployees()
@@ -316,6 +329,9 @@ fun EmployerBrowseScreen(
         EmployerWorkerDetailScreen(
             worker = selectedWorker,
             services = uiState.employeeServices,
+            categories = uiState.categories,
+            proposalViewModel = proposalViewModel,
+            employerProfile = employerProfile,
             onBack = {
                 openWorker = null
                 viewModel.clearSelectedEmployee()
@@ -329,16 +345,15 @@ fun EmployerBrowseScreen(
     }
     val filtered = realWorkers.filter { w ->
         val matchCat   = selectedCatId == null || w.serviceIds.contains(selectedCatId)
-        val matchAvail = !showAvailOnly || w.isAvailable
         val matchQuery = query.isBlank() ||
                 w.name.contains(query, ignoreCase = true) ||
                 w.area.contains(query, ignoreCase = true) ||
                 w.workerUsername.contains(query, ignoreCase = true) ||
                 w.serviceIds.any { id ->
-                    allServiceCategories.find { it.id == id }
+                    uiState.categories.find { it.id == id }
                         ?.label?.contains(query, ignoreCase = true) == true
                 }
-        matchCat && matchAvail && matchQuery
+        matchCat && matchQuery
     }
 
     Column(modifier = Modifier.fillMaxSize().background(NoorBackground)) {
@@ -389,7 +404,7 @@ fun EmployerBrowseScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             item { BrowseChip("All", selectedCatId == null) { selectedCatId = null } }
-            items(allServiceCategories) { svc ->
+            items(uiState.categories) { svc ->
                 BrowseChip(
                     label    = "${svc.emoji} ${svc.label}",
                     selected = selectedCatId == svc.id,
@@ -397,28 +412,6 @@ fun EmployerBrowseScreen(
                 )
             }
         }
-
-        // ── Available-only toggle ─────────────────────────────────────────────
-        Row(
-            modifier             = Modifier.fillMaxWidth().background(NoorSurface)
-                .padding(horizontal = 16.dp, vertical = 6.dp),
-            verticalAlignment    = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text("Available now only", fontSize = 12.sp, color = NoorTextSecondary,
-                fontWeight = FontWeight.Medium)
-            Switch(
-                checked         = showAvailOnly,
-                onCheckedChange = { showAvailOnly = it },
-                colors          = SwitchDefaults.colors(
-                    checkedThumbColor   = Color.White,
-                    checkedTrackColor   = NoorBlue,
-                    uncheckedThumbColor = Color.White,
-                    uncheckedTrackColor = NoorBorder
-                )
-            )
-        }
-        HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
 
         // ── Results ───────────────────────────────────────────────────────────
         if (uiState.isLoading || uiState.employees.isEmpty()) {
@@ -443,7 +436,7 @@ fun EmployerBrowseScreen(
                         fontSize = 11.sp, color = NoorTextHint, fontWeight = FontWeight.SemiBold)
                 }
                 items(filtered) { worker ->
-                    WorkerCard(worker = worker, onClick = { openWorker = worker })
+                    WorkerCard(worker = worker, categories = uiState.categories, onClick = { openWorker = worker })
                 }
             }
         }
@@ -455,7 +448,11 @@ fun EmployerBrowseScreen(
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-fun WorkerCard(worker: WorkerProfile, onClick: () -> Unit) {
+fun WorkerCard(
+    worker: WorkerProfile,
+    categories: List<com.danish.noorservice.data.model.Category> = emptyList(),
+    onClick: () -> Unit
+) {
     Card(
         modifier  = Modifier.fillMaxWidth().clickable { onClick() },
         shape     = RoundedCornerShape(16.dp),
@@ -469,8 +466,17 @@ fun WorkerCard(worker: WorkerProfile, onClick: () -> Unit) {
                     modifier = Modifier.size(54.dp).clip(CircleShape).background(worker.avatarColor),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(worker.initials, fontSize = 18.sp,
-                        fontWeight = FontWeight.ExtraBold, color = Color.White)
+                    if (worker.photoUrl.isNotBlank()) {
+                        AsyncImage(
+                            model = worker.photoUrl,
+                            contentDescription = "Worker photo",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.size(54.dp).clip(CircleShape)
+                        )
+                    } else {
+                        Text(worker.initials, fontSize = 18.sp,
+                            fontWeight = FontWeight.ExtraBold, color = Color.White)
+                    }
                 }
 
                 Column(modifier = Modifier.weight(1f)) {
@@ -504,9 +510,9 @@ fun WorkerCard(worker: WorkerProfile, onClick: () -> Unit) {
             HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
             Spacer(Modifier.height(10.dp))
 
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                worker.serviceIds.take(2).forEach { id ->
-                    val svc = allServiceCategories.find { it.id == id }
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                worker.serviceIds.forEach { id ->
+                    val svc = categories.find { it.id == id }
                     if (svc != null) {
                         Box(modifier = Modifier.clip(RoundedCornerShape(8.dp))
                             .background(NoorBlueLight).padding(horizontal = 8.dp, vertical = 4.dp)
@@ -514,10 +520,6 @@ fun WorkerCard(worker: WorkerProfile, onClick: () -> Unit) {
                             fontWeight = FontWeight.SemiBold, color = NoorBlue) }
                     }
                 }
-                Box(modifier = Modifier.clip(RoundedCornerShape(8.dp))
-                    .background(NoorBackground).padding(horizontal = 8.dp, vertical = 4.dp)
-                ) { Text("⏱ ${worker.experience}", fontSize = 10.sp,
-                    fontWeight = FontWeight.SemiBold, color = NoorTextSecondary) }
                 Box(modifier = Modifier.clip(RoundedCornerShape(8.dp))
                     .background(NoorBackground).padding(horizontal = 8.dp, vertical = 4.dp)
                 ) { Text("🕐 ${worker.timeSlot}", fontSize = 10.sp,
@@ -531,13 +533,38 @@ fun WorkerCard(worker: WorkerProfile, onClick: () -> Unit) {
 // Worker Detail Screen
 // ─────────────────────────────────────────────────────────────────────────────
 
+private const val ADMIN_PHONE_BROWSE = "03123339015"
+
+@Composable
+private fun WhatsAppAdminButtonWorker(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    Button(
+        onClick = {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/9231233339015"))
+            context.startActivity(intent)
+        },
+        modifier = modifier.fillMaxWidth().height(54.dp),
+        shape = RoundedCornerShape(14.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)),
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+    ) {
+        Text("💬", fontSize = 20.sp)
+        Spacer(Modifier.width(8.dp))
+        Text("Contact Admin on WhatsApp", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+    }
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun EmployerWorkerDetailScreen(
     worker: WorkerProfile,
     services: List<EmployeeService>,
+    categories: List<com.danish.noorservice.data.model.Category> = emptyList(),
+    proposalViewModel: EmployerProposalViewModel? = null,
+    employerProfile: com.danish.noorservice.data.model.Employer? = null,
     onBack: () -> Unit
 ) {
+    Log.d("EmployerBrowse", "EmployerWorkerDetailScreen: received employerProfile=${employerProfile?.fullName}/${employerProfile?.phone}")
     var showProposalDialog by remember { mutableStateOf(false) }
     // Proposal is considered sent if already in store for this worker
     var proposalSent by remember {
@@ -573,8 +600,17 @@ fun EmployerWorkerDetailScreen(
                             .background(worker.avatarColor),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(worker.initials, fontSize = 24.sp,
-                            fontWeight = FontWeight.ExtraBold, color = Color.White)
+                        if (worker.photoUrl.isNotBlank()) {
+                            AsyncImage(
+                                model = worker.photoUrl,
+                                contentDescription = "Worker photo",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.size(70.dp).clip(CircleShape)
+                            )
+                        } else {
+                            Text(worker.initials, fontSize = 24.sp,
+                                fontWeight = FontWeight.ExtraBold, color = Color.White)
+                        }
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         Row(verticalAlignment = Alignment.CenterVertically,
@@ -622,7 +658,6 @@ fun EmployerWorkerDetailScreen(
             Row(modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 WorkerInfoTile("💰", "Daily Rate",  worker.dailyRate,  Modifier.weight(1f))
-                WorkerInfoTile("⏱",  "Experience",  worker.experience, Modifier.weight(1f))
                 WorkerInfoTile("🕐",  "Time Slot",   worker.timeSlot,   Modifier.weight(1f))
             }
 
@@ -630,7 +665,7 @@ fun EmployerWorkerDetailScreen(
             if (services.isNotEmpty()) {
                 WorkerDetailSection("Services Offered") {
                     services.forEach { empService ->
-                        val category = allServiceCategories.find { it.id == empService.serviceId }
+                        val category = categories.find { it.id == empService.serviceId }
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp),
@@ -769,12 +804,21 @@ fun EmployerWorkerDetailScreen(
             }
 
             Spacer(Modifier.height(8.dp))
+
+            // WhatsApp button
+            WhatsAppAdminButtonWorker()
+
+            Spacer(Modifier.height(8.dp))
         }
     }
 
     if (showProposalDialog) {
         SendProposalToAdminDialog(
             worker    = worker,
+            categories = categories,
+            services   = services,
+            proposalViewModel = proposalViewModel,
+            employerProfile = employerProfile,
             onDismiss = { showProposalDialog = false },
             onSent    = {
                 showProposalDialog = false
@@ -791,8 +835,12 @@ fun EmployerWorkerDetailScreen(
 @Composable
 private fun SendProposalToAdminDialog(
     worker: WorkerProfile,
+    categories: List<com.danish.noorservice.data.model.Category> = emptyList(),
+    services: List<EmployeeService> = emptyList(),
     onDismiss: () -> Unit,
-    onSent: () -> Unit
+    onSent: () -> Unit,
+    proposalViewModel: EmployerProposalViewModel? = null,
+    employerProfile: com.danish.noorservice.data.model.Employer? = null
 ) {
     var jobTitle   by remember { mutableStateOf("") }
     var location   by remember { mutableStateOf("") }
@@ -805,7 +853,7 @@ private fun SendProposalToAdminDialog(
             schedule.isNotBlank() && offerPrice.isNotBlank()
 
     val serviceLabel = worker.serviceIds.firstOrNull()?.let { id ->
-        allServiceCategories.find { it.id == id }?.label
+        categories.find { it.id == id }?.label
     } ?: "Service"
 
     AlertDialog(
@@ -908,25 +956,30 @@ private fun SendProposalToAdminDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    val now = SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date())
-                    AdminProposalStore.proposals.add(
-                        0,
-                        AdminProposal(
-                            id             = UUID.randomUUID().toString(),
-                            workerName     = worker.name,
-                            workerUsername = worker.workerUsername,
-                            workerInitials = worker.initials,
-                            avatarColor    = worker.avatarColor,
-                            jobTitle       = jobTitle.trim(),
-                            service        = serviceLabel,
-                            location       = location.trim(),
-                            schedule       = schedule.trim(),
-                            startDate      = startDate.trim().ifBlank { "TBD" },
-                            offerPrice     = offerPrice.trim(),
-                            note           = note.trim(),
-                            sentAt         = now,
-                            status         = AdminProposalStatus.PENDING
+                    Log.d("EmployerBrowse", "SendProposalToAdminDialog onClick: employerProfile=${employerProfile?.fullName}/${employerProfile?.phone}")
+                    val workerServices = services.map { svc ->
+                        val cat = categories.find { it.id == svc.serviceId }
+                        WorkerServiceDetail(
+                            serviceId = svc.serviceId,
+                            skills = svc.skills,
+                            experience = svc.experience,
+                            availabilityDays = svc.availabilityDays,
+                            availabilityTime = svc.availabilityTime,
+                            additionalNote = svc.additionalNote,
+                            dailyRate = svc.dailyRate
                         )
+                    }
+                    proposalViewModel?.sendWorkerProposal(
+                        worker = worker,
+                        services = workerServices,
+                        jobTitle = jobTitle.trim(),
+                        serviceLabel = serviceLabel,
+                        location = location.trim(),
+                        schedule = schedule.trim(),
+                        startDate = startDate.trim().ifBlank { "TBD" },
+                        offerPrice = offerPrice.trim(),
+                        note = note.trim(),
+                        employerProfile = employerProfile
                     )
                     onSent()
                 },

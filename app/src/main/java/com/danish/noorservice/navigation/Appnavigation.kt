@@ -28,6 +28,7 @@ import com.danish.noorservice.viewmodel.employee.EmployeeNotificationsViewModel
 import com.danish.noorservice.viewmodel.employee.EmployeeRegistrationViewModel
 import com.danish.noorservice.viewmodel.employee.EmployeeSettingsViewModel
 import com.danish.noorservice.viewmodel.employer.EmployerHomeViewModel
+import com.danish.noorservice.viewmodel.employer.EmployerNotificationsViewModel
 import com.danish.noorservice.viewmodel.employer.EmployerRegistrationViewModel
 import com.danish.noorservice.viewmodel.employer.EmployerSettingsViewModel
 import com.danish.noorservice.viewmodel.vendor.VendorCatalogViewModel
@@ -37,6 +38,10 @@ import com.danish.noorservice.viewmodel.vendor.VendorSettingsViewModel
 import com.danish.noorservice.viewmodel.vendor.VendorRegistrationViewModel
 import com.danish.noorservice.viewmodel.admin.AdminDashboardViewModel
 import com.danish.noorservice.viewmodel.admin.AdminManagementViewModel
+import com.google.firebase.firestore.FirebaseFirestore
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 object Routes {
     const val AUTH                  = "auth"
@@ -108,8 +113,10 @@ fun AppNavigation(
     val vendorCatalogViewModel: VendorCatalogViewModel = hiltViewModel()
     val vendorNotificationsViewModel: VendorNotificationsViewModel = hiltViewModel()
     val vendorSettingsViewModel: VendorSettingsViewModel = hiltViewModel()
+    val vendorRegViewModel: VendorRegistrationViewModel = hiltViewModel()
 
     val employerHomeViewModel: EmployerHomeViewModel = hiltViewModel()
+    val employerNotificationsViewModel: EmployerNotificationsViewModel = hiltViewModel()
     val employerSettingsViewModel: EmployerSettingsViewModel = hiltViewModel()
 
     // As soon as we know who is logged in, start fetching their data.
@@ -129,6 +136,7 @@ fun AppNavigation(
         }
         if (user != null && user.role == "employer") {
             employerHomeViewModel.loadProfile(user.uid)
+            employerNotificationsViewModel.loadNotifications(user.uid)
             employerSettingsViewModel.loadProfile(user.uid)
         }
     }
@@ -184,6 +192,7 @@ fun AppNavigation(
         }
 
         composable(Routes.ROLE_SELECTION) {
+            val scope = rememberCoroutineScope()
             RoleSelectionScreen(
                 onRoleSelected = { role ->
                     authViewModel.setSelectedRole(role)
@@ -195,7 +204,32 @@ fun AppNavigation(
                             navController.navigate(Routes.PERSONAL_INFO)
                         }
                         "employer" -> navController.navigate(Routes.EMPLOYER_REGISTRATION)
-                        "vendor"   -> navController.navigate(Routes.VENDOR_REGISTRATION)
+                        "vendor"   -> {
+                            val uid = authViewModel.getCurrentUserUid() ?: ""
+                            if (uid.isNotBlank()) {
+                                scope.launch {
+                                    try {
+                                        val profileComplete = FirebaseFirestore.getInstance()
+                                            .collection("users").document(uid)
+                                            .get().await()
+                                            .getBoolean("isProfileComplete") ?: false
+                                        if (profileComplete) {
+                                            navController.navigate(Routes.VENDOR_HOME) {
+                                                popUpTo(Routes.AUTH) { inclusive = true }
+                                            }
+                                        } else {
+                                            vendorRegViewModel.setUserId(uid)
+                                            navController.navigate(Routes.VENDOR_REGISTRATION)
+                                        }
+                                    } catch (e: Exception) {
+                                        vendorRegViewModel.setUserId(uid)
+                                        navController.navigate(Routes.VENDOR_REGISTRATION)
+                                    }
+                                }
+                            } else {
+                                navController.navigate(Routes.VENDOR_REGISTRATION)
+                            }
+                        }
                         "admin"    -> navController.navigate(Routes.ADMIN_HOME) {
                             popUpTo(Routes.AUTH) { inclusive = true }
                         }
@@ -255,6 +289,7 @@ fun AppNavigation(
 
         composable(Routes.SUCCESS) {
             RegistrationSuccessScreen(
+                homeViewModel = employeeHomeViewModel,
                 onGoToHome = {
                     navController.navigate(Routes.EMPLOYEE_HOME) {
                         popUpTo(0) { inclusive = true }
@@ -264,7 +299,6 @@ fun AppNavigation(
         }
 
         composable(Routes.VENDOR_REGISTRATION) {
-            val vendorRegViewModel: VendorRegistrationViewModel = hiltViewModel()
             val uid = authViewModel.getCurrentUserUid() ?: ""
             LaunchedEffect(uid) {
                 if (uid.isNotBlank()) vendorRegViewModel.setUserId(uid)
@@ -281,7 +315,11 @@ fun AppNavigation(
         }
 
         composable(Routes.VENDOR_SUCCESS) {
+            val uid = authViewModel.getCurrentUserUid() ?: ""
             VendorRegistrationSuccessScreen(
+                userId = uid,
+                homeViewModel = vendorHomeViewModel,
+                catalogViewModel = vendorCatalogViewModel,
                 onGoToHome = {
                     navController.navigate(Routes.VENDOR_HOME) {
                         popUpTo(0) { inclusive = true }
@@ -311,6 +349,7 @@ fun AppNavigation(
             EmployerMainScreen(
                 userId = userId,
                 homeViewModel = employerHomeViewModel,
+                notificationsViewModel = employerNotificationsViewModel,
                 settingsViewModel = employerSettingsViewModel,
                 onLogout = {
                     authViewModel.logout()

@@ -595,12 +595,17 @@ private fun AddEditServiceSheet(
                     id = cat.id,
                     label = cat.label,
                     emoji = cat.emoji,
-                    description = cat.label
+                    description = cat.label,
+                    skills = cat.skills.map { it.name }
                 )
             }
         } else {
-            allVendorServiceCategories
+            emptyList()
         }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.loadCategories()
     }
 
     var selectedCategoryId by remember { mutableStateOf(existingListing?.categoryId ?: "") }
@@ -615,6 +620,11 @@ private fun AddEditServiceSheet(
     }
     var highlightsText by remember {
         mutableStateOf(existingListing?.highlights?.joinToString("\n") ?: "")
+    }
+    val selectedSkills = remember {
+        mutableStateListOf<String>().also { list ->
+            existingListing?.skills?.let { list.addAll(it) }
+        }
     }
 
     val selectedCategory = vendorCategories.find { it.id == selectedCategoryId }
@@ -801,11 +811,39 @@ private fun AddEditServiceSheet(
                             singleLine = false, maxLines = 6)
                     }
 
+                    // Skills
+                    if (selectedCategory != null && selectedCategory.skills.isNotEmpty()) {
+                        NoorSectionCard {
+                            VendorSectionLabel("Skills (optional)")
+                            Spacer(Modifier.height(4.dp))
+                            Text("Select the skills you offer for this service.",
+                                fontSize = 11.sp, color = NoorTextHint, lineHeight = 16.sp)
+                            Spacer(Modifier.height(10.dp))
+                            @OptIn(ExperimentalLayoutApi::class)
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement   = Arrangement.spacedBy(8.dp)
+                            ) {
+                                selectedCategory.skills.forEach { skill ->
+                                    NoorSelectableChip(
+                                        label    = skill,
+                                        icon     = "⚡",
+                                        selected = selectedSkills.contains(skill),
+                                        onClick  = {
+                                            if (selectedSkills.contains(skill)) selectedSkills.remove(skill)
+                                            else selectedSkills.add(skill)
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
                     VendorPrimaryButton(
                         text    = if (isEditing) "Save Changes  ✓" else "Add to Catalog  ✓",
                         enabled = isValid,
                         onClick = {
-                            val svc = allVendorServiceCategories.find { it.id == selectedCategoryId }
+                            val svc = vendorCategories.find { it.id == selectedCategoryId }
                             val highlights = highlightsText
                                 .lines()
                                 .map { it.trim() }
@@ -822,7 +860,8 @@ private fun AddEditServiceSheet(
                                     pricingModel = pricingModel,
                                     priceRange = priceRange,
                                     coverageAreas = coverageAreas.toList(),
-                                    highlights = highlights
+                                    highlights = highlights,
+                                    skills = selectedSkills.toList()
                                 )
                             )
                         }

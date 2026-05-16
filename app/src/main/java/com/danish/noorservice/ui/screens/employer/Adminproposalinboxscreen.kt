@@ -1,7 +1,9 @@
 package com.danish.noorservice.ui.screens.employer
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -26,6 +28,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.danish.noorservice.ui.theme.*
+import com.danish.noorservice.viewmodel.employer.EmployerProposalViewModel
+import com.danish.noorservice.data.repository.ProposalRepository
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Data model
@@ -42,7 +46,7 @@ data class AdminProposal(
     val workerName: String,
     val workerUsername: String,
     val workerInitials: String,
-    val workerPhone: String = "",        // ← NEW
+    val workerPhone: String = "",
     val avatarColor: Color,
     val jobTitle: String,
     val service: String,
@@ -52,10 +56,36 @@ data class AdminProposal(
     val offerPrice: String,
     val note: String,
     val sentAt: String,
-    // ── Employer info (NEW) ──────────────────────────────────────────────
     val employerName: String = "",
     val employerPhone: String = "",
-    val status: AdminProposalStatus = AdminProposalStatus.PENDING
+    val employerEmail: String = "",
+    val employerCity: String = "",
+    val employerArea: String = "",
+    val employerAddress: String = "",
+    val status: AdminProposalStatus = AdminProposalStatus.PENDING,
+    val workerCity: String = "",
+    val workerArea: String = "",
+    val workerPhoneFull: String = "",
+    val workerEmail: String = "",
+    val workerCnic: String = "",
+    val workerDob: String = "",
+    val workerGender: String = "",
+    val workerAddress: String = "",
+    val workerServiceIds: List<String> = emptyList(),
+    val workerSkills: List<String> = emptyList(),
+    val workerLanguages: List<String> = emptyList(),
+    val workerExperience: String = "",
+    val workerLicenceType: String = "",
+    val workerAvailableDays: List<String> = emptyList(),
+    val workerTimeSlot: String = "",
+    val workerAdditionalNote: String = "",
+    val workerIsAvailable: Boolean = true,
+    val workerJoinedDate: String = "",
+    val workerDailyRate: String = "",
+    val workerHourlyRate: String = "",
+    val workerMonthlyRate: String = "",
+    val workerBio: String = "",
+    val workerPhotoUrl: String = ""
 )
 
 object AdminProposalStore {
@@ -67,14 +97,14 @@ object AdminProposalStore {
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-fun AdminProposalInboxScreen() {
-
-
-
+fun AdminProposalInboxScreen(viewModel: EmployerProposalViewModel = hiltViewModel()) {
     val proposals = AdminProposalStore.proposals
-
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("All", "Pending", "Accepted", "Declined")
+
+    LaunchedEffect(Unit) {
+        viewModel.syncStores()
+    }
 
     val filtered = when (selectedTab) {
         1    -> proposals.filter { it.status == AdminProposalStatus.PENDING }
@@ -155,13 +185,7 @@ fun AdminProposalInboxScreen() {
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(filtered, key = { it.id }) { proposal ->
-                    AdminProposalCard(
-                        proposal = proposal,
-                        onCancel = {
-                            val idx = AdminProposalStore.proposals.indexOfFirst { p -> p.id == it.id }
-                            if (idx != -1) AdminProposalStore.proposals.removeAt(idx)
-                        }
-                    )
+                    AdminProposalCard(proposal = proposal)
                 }
             }
         }
@@ -173,12 +197,9 @@ fun AdminProposalInboxScreen() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun AdminProposalCard(
-    proposal: AdminProposal,
-    onCancel: (AdminProposal) -> Unit
-) {
-    var showDetails   by remember { mutableStateOf(false) }
-    var showCancelDlg by remember { mutableStateOf(false) }
+private fun AdminProposalCard(proposal: AdminProposal) {
+    Log.d("EmployerProposals", "AdminProposalCard: employerName=${proposal.employerName}, workerName=${proposal.workerName}")
+    var showDetails by remember { mutableStateOf(false) }
 
     val (accentColor, pillBg, statusLabel, statusEmoji) = when (proposal.status) {
         AdminProposalStatus.PENDING  -> listOf(NoorBlue,  NoorBlueLight,  "Pending",  "⏳")
@@ -268,90 +289,12 @@ private fun AdminProposalCard(
                     ProposalDetailTag("💰", proposal.offerPrice)
                     ProposalDetailTag("🕐", "Sent ${proposal.sentAt}")
                 }
-
-                // Cancel — PENDING only
-                if (proposal.status == AdminProposalStatus.PENDING) {
-                    Spacer(Modifier.height(10.dp))
-                    OutlinedButton(
-                        onClick  = { showCancelDlg = true },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape    = RoundedCornerShape(10.dp),
-                        colors   = ButtonDefaults.outlinedButtonColors(contentColor = NoorRed),
-                        border   = ButtonDefaults.outlinedButtonBorder.copy(
-                            brush = Brush.linearGradient(listOf(NoorRed, NoorRed))
-                        )
-                    ) {
-                        Icon(Icons.Default.Close, contentDescription = null,
-                            modifier = Modifier.size(14.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("Cancel Proposal", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                    }
-                }
-
-                // Accepted strip
-                if (proposal.status == AdminProposalStatus.ACCEPTED) {
-                    Spacer(Modifier.height(10.dp))
-                    Box(
-                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                            .background(NoorGreenLight).padding(10.dp)
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment     = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Default.Check, contentDescription = null,
-                                tint = NoorGreen, modifier = Modifier.size(16.dp))
-                            Text(
-                                "Admin has accepted and connected you with this worker. Expect a call soon.",
-                                fontSize = 11.sp, color = NoorGreen,
-                                fontWeight = FontWeight.Medium, lineHeight = 16.sp
-                            )
-                        }
-                    }
-                }
             }
         }
     }
 
     if (showDetails) {
         ProposalDetailsDialog(proposal = proposal, onDismiss = { showDetails = false })
-    }
-
-    if (showCancelDlg) {
-        AlertDialog(
-            onDismissRequest = { showCancelDlg = false },
-            shape            = RoundedCornerShape(20.dp),
-            containerColor   = NoorSurface,
-            title = {
-                Text("Cancel Proposal?", fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp, color = NoorTextPrimary)
-            },
-            text = {
-                Text(
-                    "This will withdraw your proposal for ${proposal.workerName} (${proposal.workerUsername}). " +
-                            "The admin will no longer receive it.",
-                    fontSize = 13.sp, color = NoorTextSecondary, lineHeight = 20.sp
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick  = { showCancelDlg = false; onCancel(proposal) },
-                    shape    = RoundedCornerShape(10.dp),
-                    colors   = ButtonDefaults.buttonColors(containerColor = NoorRed),
-                    modifier = Modifier.height(40.dp)
-                ) {
-                    Text("Yes, Cancel", color = Color.White, fontWeight = FontWeight.SemiBold)
-                }
-            },
-            dismissButton = {
-                OutlinedButton(onClick = { showCancelDlg = false },
-                    shape    = RoundedCornerShape(10.dp),
-                    modifier = Modifier.height(40.dp)
-                ) {
-                    Text("No, Keep", fontWeight = FontWeight.SemiBold)
-                }
-            }
-        )
     }
 }
 
@@ -458,9 +401,8 @@ private fun ProposalDetailsDialog(
 @Composable
 private fun ProposalDetailTag(icon: String, label: String) {
     Row(
-        modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(NoorBackground)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-        verticalAlignment     = Alignment.CenterVertically,
+        modifier = Modifier.padding(horizontal = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Text(icon,  fontSize = 11.sp)

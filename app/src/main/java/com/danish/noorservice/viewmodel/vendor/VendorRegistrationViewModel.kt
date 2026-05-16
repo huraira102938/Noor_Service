@@ -206,7 +206,8 @@ class VendorRegistrationViewModel @Inject constructor(
                         pricingModel        = detail.pricingModel,
                         priceRange          = detail.priceRange,
                         minContractDuration = detail.minContractDuration,
-                        coverageAreas       = detail.coverageAreas
+                        coverageAreas       = detail.coverageAreas,
+                        skills              = detail.skills
                     )
                 }
 

@@ -3,6 +3,7 @@ package com.danish.noorservice.ui.screens.employee
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,14 +22,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.danish.noorservice.ui.components.NoorPrimaryButton
 import com.danish.noorservice.ui.theme.*
+import com.danish.noorservice.viewmodel.employee.EmployeeHomeViewModel
+import androidx.lifecycle.compose.LocalLifecycleOwner
 
 @Composable
 fun RegistrationSuccessScreen(
+    homeViewModel: EmployeeHomeViewModel? = null,
     onGoToHome: () -> Unit
 ) {
-    // Pulse animation for the check icon
+    val uiState by homeViewModel?.uiState?.collectAsStateWithLifecycle() ?: remember { mutableStateOf(null) }
+
+    LaunchedEffect(Unit) {
+        homeViewModel?.loadProfile("")
+    }
+
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val scale by infiniteTransition.animateFloat(
         initialValue = 1f,

@@ -214,6 +214,12 @@ fun VendorSettingsScreen(
     val uiState   by settingsViewModel.uiState.collectAsStateWithLifecycle()
     var subScreen by remember { mutableStateOf(VendorSettingsSubScreen.NONE) }
 
+    LaunchedEffect(userId) {
+        if (userId.isNotBlank()) {
+            settingsViewModel.loadProfile(userId)
+        }
+    }
+
     when (subScreen) {
         VendorSettingsSubScreen.EDIT_PROFILE -> {
             VendorEditProfileScreen(
@@ -257,19 +263,32 @@ fun VendorSettingsScreen(
                 .statusBarsPadding()
                 .padding(horizontal = 20.dp, vertical = 18.dp)
         ) {
-            Column {
-                Text(
-                    "Settings",
-                    fontSize      = 22.sp,
-                    fontWeight    = FontWeight.Bold,
-                    color         = Color.White,
-                    letterSpacing = (-0.3).sp
-                )
-                Text(
-                    "Manage your vendor account",
-                    fontSize = 12.sp,
-                    color    = Color.White.copy(alpha = 0.72f)
-                )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        "Settings",
+                        fontSize      = 22.sp,
+                        fontWeight    = FontWeight.Bold,
+                        color         = Color.White,
+                        letterSpacing = (-0.3).sp
+                    )
+                    Text(
+                        "Manage your vendor account",
+                        fontSize = 12.sp,
+                        color    = Color.White.copy(alpha = 0.72f)
+                    )
+                }
+                IconButton(onClick = { settingsViewModel.loadProfile(userId) }) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Refresh",
+                        tint = Color.White
+                    )
+                }
             }
         }
 

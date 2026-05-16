@@ -2,6 +2,7 @@ package com.danish.noorservice.viewmodel.employer
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.danish.noorservice.data.model.Category
 import com.danish.noorservice.data.model.Employee
 import com.danish.noorservice.data.model.EmployeeService
 import com.danish.noorservice.data.repository.UserRepository
@@ -18,6 +19,7 @@ data class EmployerBrowseState(
     val employeeServiceIds: Map<String, List<String>> = emptyMap(),
     val selectedEmployee: Employee? = null,
     val employeeServices: List<EmployeeService> = emptyList(),
+    val categories: List<Category> = emptyList(),
     val searchCity: String = "",
     val selectedService: String = "",
     val hasLoaded: Boolean = false,
@@ -40,9 +42,14 @@ class EmployerBrowseViewModel @Inject constructor(
 
             try {
                 val employees = userRepository.getAllApprovedEmployees()
+                val filteredEmployees = employees.filter {
+                    it.isProfileApproved && it.isActive && it.isAvailable
+                }
+                val categories = userRepository.getAllCategories()
+                val individualCategories = categories.filter { it.categoryType == "individual" || it.categoryType.isEmpty() }
                 val employeeServiceIds = mutableMapOf<String, List<String>>()
-                
-                employees.forEach { employee ->
+
+                filteredEmployees.forEach { employee ->
                     try {
                         val services = userRepository.getEmployeeServices(employee.uid)
                         employeeServiceIds[employee.uid] = services.map { it.serviceId }
@@ -53,8 +60,9 @@ class EmployerBrowseViewModel @Inject constructor(
 
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    employees = employees,
+                    employees = filteredEmployees,
                     employeeServiceIds = employeeServiceIds,
+                    categories = individualCategories,
                     hasLoaded = true
                 )
             } catch (e: Exception) {

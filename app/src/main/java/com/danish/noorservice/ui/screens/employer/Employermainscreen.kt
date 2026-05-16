@@ -1,5 +1,6 @@
 package com.danish.noorservice.ui.screens.employer
 
+import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -26,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.danish.noorservice.ui.theme.*
 import com.danish.noorservice.viewmodel.employer.EmployerHomeViewModel
+import com.danish.noorservice.viewmodel.employer.EmployerNotificationsViewModel
 import com.danish.noorservice.viewmodel.employer.EmployerSettingsViewModel
 import kotlinx.coroutines.launch
 
@@ -50,6 +52,7 @@ private val employerNavItems = listOf(
 fun EmployerMainScreen(
     userId: String,
     homeViewModel: EmployerHomeViewModel,
+    notificationsViewModel: EmployerNotificationsViewModel,
     settingsViewModel: EmployerSettingsViewModel,
     onLogout: () -> Unit,
     initialTab: Int = 0
@@ -108,12 +111,17 @@ fun EmployerMainScreen(
                 0 -> EmployerHomeScreen(
                     userId = userId,
                     homeViewModel = homeViewModel,
+                    notificationsViewModel = notificationsViewModel,
                     settingsViewModel = settingsViewModel,
                     onBrowse = { selectedTab = 1 },
                     onSettings = { selectedTab = 4 }
                 )
-                1 -> EmployerBrowseScreen()
-                2 -> EmployerVendorBrowseScreen()
+                1 -> {
+                    val profile = homeViewModel.uiState.value.profile
+                    Log.d("EmployerMain", "EmployerBrowseScreen profile=${profile?.fullName}/${profile?.phone}")
+                    EmployerBrowseScreen(employerProfile = profile)
+                }
+                2 -> EmployerVendorBrowseScreen(employerProfile = homeViewModel.uiState.value.profile)
                 3 -> EmployerProposalsCombinedScreen()
                 4 -> EmployerSettingsScreen(
                     userId = userId,

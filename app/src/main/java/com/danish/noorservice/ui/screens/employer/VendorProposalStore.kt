@@ -19,7 +19,29 @@ data class VendorProposal(
     val budget: String,
     val note: String,
     val sentAt: String,
-    val status: VendorProposalStatus = VendorProposalStatus.PENDING
+    val status: VendorProposalStatus = VendorProposalStatus.PENDING,
+    val employerName: String = "",
+    val employerPhone: String = "",
+    val employerEmail: String = "",
+    val employerCity: String = "",
+    val employerArea: String = "",
+    val employerAddress: String = "",
+    val vendorId: String = "",
+    val vendorContactPerson: String = "",
+    val vendorPhoneFull: String = "",
+    val vendorEmail: String = "",
+    val vendorNtn: String = "",
+    val vendorRegNumber: String = "",
+    val vendorAddress: String = "",
+    val vendorLogoUrl: String = "",
+    val vendorBio: String = "",
+    val vendorOperatingCities: List<String> = emptyList(),
+    val vendorServiceScale: String = "",
+    val vendorYearsInBusiness: Int = 0,
+    val vendorIsoCertified: Boolean = false,
+    val vendorNotableClients: List<String> = emptyList(),
+    val vendorHeadOffice: String = "",
+    val vendorWorkforceScale: String = ""
 )
 
 object VendorProposalStore {

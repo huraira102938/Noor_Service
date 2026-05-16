@@ -45,6 +45,12 @@ fun VendorHomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
+    LaunchedEffect(userId) {
+        if (userId.isNotBlank()) {
+            viewModel.loadProfile(userId)
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()

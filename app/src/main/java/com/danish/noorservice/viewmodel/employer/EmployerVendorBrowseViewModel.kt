@@ -3,6 +3,7 @@ package com.danish.noorservice.viewmodel.employer
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.danish.noorservice.data.model.Category
 import com.danish.noorservice.data.model.Vendor
 import com.danish.noorservice.data.model.VendorService
 import com.danish.noorservice.data.repository.UserRepository
@@ -19,6 +20,7 @@ data class EmployerVendorBrowseState(
     val vendorServices: Map<String, List<VendorService>> = emptyMap(),
     val selectedVendor: Vendor? = null,
     val selectedVendorServices: List<VendorService> = emptyList(),
+    val vendorCategories: List<Category> = emptyList(),
     val searchCity: String = "",
     val selectedService: String = "",
     val hasLoaded: Boolean = false,
@@ -42,7 +44,10 @@ class EmployerVendorBrowseViewModel @Inject constructor(
             try {
                 Log.d("EmployerVendorBrowse", "Loading vendors...")
                 val allVendors = userRepository.getAllApprovedVendors()
+                val categories = userRepository.getAllCategories()
+                val vendorCategories = categories.filter { it.categoryType == "vendor" }
                 Log.d("EmployerVendorBrowse", "Found ${allVendors.size} total vendors")
+                Log.d("EmployerVendorBrowse", "Found ${vendorCategories.size} vendor categories")
                 
                 // Filter: profileApproved AND active
                 val vendors = allVendors.filter { it.isProfileApproved && it.isActive }
@@ -66,6 +71,7 @@ class EmployerVendorBrowseViewModel @Inject constructor(
                     isLoading = false,
                     vendors = vendors,
                     vendorServices = vendorServicesMap,
+                    vendorCategories = vendorCategories,
                     hasLoaded = true
                 )
             } catch (e: Exception) {

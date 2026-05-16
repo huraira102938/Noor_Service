@@ -22,7 +22,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
-import com.danish.noorservice.ui.screens.employee.ChangePasswordScreen
 import com.danish.noorservice.ui.theme.*
 import com.danish.noorservice.viewmodel.employer.EmployerSettingsViewModel
 
@@ -31,7 +30,7 @@ import com.danish.noorservice.viewmodel.employer.EmployerSettingsViewModel
 // ─────────────────────────────────────────────────────────────────────────────
 
 private enum class EmployerSettingsSubScreen {
-    NONE, EDIT_PROFILE, CHANGE_PASSWORD
+    NONE, EDIT_PROFILE
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -63,18 +62,10 @@ fun EmployerSettingsScreen(
             )
             return
         }
-        EmployerSettingsSubScreen.CHANGE_PASSWORD -> {
-            ChangePasswordScreen(
-                onBack            = { subScreen = EmployerSettingsSubScreen.NONE },
-                onPasswordChanged = { subScreen = EmployerSettingsSubScreen.NONE }
-            )
-            return
-        }
         EmployerSettingsSubScreen.NONE -> {}
     }
 
     var showLogoutDialog  by remember { mutableStateOf(false) }
-    var showDeleteDialog  by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize().background(NoorBackground)) {
 
@@ -151,10 +142,6 @@ fun EmployerSettingsScreen(
                     subScreen = EmployerSettingsSubScreen.EDIT_PROFILE
                 }
                 HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
-                EmployerSettingsNavItem("🔒", Color(0xFFF3EEF9), "Change Password") {
-                    subScreen = EmployerSettingsSubScreen.CHANGE_PASSWORD
-                }
-                HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
                 EmployerSettingsNavItem("📄", NoorBackground, "Terms & Conditions") {}
                 HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
                 EmployerSettingsNavItem("🛡️", NoorBackground, "Privacy Policy") {}
@@ -163,9 +150,6 @@ fun EmployerSettingsScreen(
             // ── Session ───────────────────────────────────────────────────────
             EmployerSettingsGroup("Session") {
                 EmployerSettingsNavItem("🚪", NoorBlueLight, "Log Out") { showLogoutDialog = true }
-                HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
-                EmployerSettingsNavItem("🗑️", NoorRedLight, "Delete Account",
-                    titleColor = NoorRed) { showDeleteDialog = true }
             }
 
             Spacer(Modifier.height(8.dp))
@@ -185,29 +169,6 @@ fun EmployerSettingsScreen(
             },
             dismissButton    = {
                 TextButton(onClick = { showLogoutDialog = false }) {
-                    Text("Cancel", color = NoorTextHint)
-                }
-            }
-        )
-    }
-
-    if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            shape            = RoundedCornerShape(20.dp),
-            title            = { Text("Delete Account", fontWeight = FontWeight.Bold,
-                fontSize = 16.sp, color = NoorRed) },
-            text             = {
-                Text("This will permanently delete your account and all data. This cannot be undone.",
-                    fontSize = 13.sp, color = NoorTextSecondary)
-            },
-            confirmButton    = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Delete", color = NoorRed, fontWeight = FontWeight.SemiBold)
-                }
-            },
-            dismissButton    = {
-                TextButton(onClick = { showDeleteDialog = false }) {
                     Text("Cancel", color = NoorTextHint)
                 }
             }

@@ -32,6 +32,9 @@ import com.danish.noorservice.ui.screens.employer.AdminProposalStatus
 import com.danish.noorservice.ui.screens.employer.AdminProposalStore
 import com.danish.noorservice.ui.screens.employer.sampleWorkers
 import com.danish.noorservice.ui.theme.*
+import com.danish.noorservice.viewmodel.admin.AdminDashboardViewModel
+import com.danish.noorservice.viewmodel.admin.AdminProposalViewModel
+import com.danish.noorservice.viewmodel.admin.AdminManagementViewModel
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Dashboard Screen
@@ -39,7 +42,8 @@ import com.danish.noorservice.ui.theme.*
 
 @Composable
 fun AdminDashboardScreen(
-    viewModel: com.danish.noorservice.viewmodel.admin.AdminDashboardViewModel? = null,
+    viewModel: AdminDashboardViewModel? = null,
+    proposalViewModel: AdminProposalViewModel? = null,
     onNavigate: (tab: Int) -> Unit = {},
     onNavigateToProposalInbox: () -> Unit = {},
     onNavigateToAnnouncements: () -> Unit = {},
@@ -51,11 +55,14 @@ fun AdminDashboardScreen(
 
     LaunchedEffect(Unit) {
         dashboardViewModel.loadDashboard()
+        proposalViewModel?.loadAllProposals()
     }
 
     val pendingProposals by remember {
         derivedStateOf {
-            AdminProposalStore.proposals.count { it.status == AdminProposalStatus.PENDING }
+            AdminProposalStore.proposals.count { it.status == AdminProposalStatus.PENDING } +
+            com.danish.noorservice.ui.screens.employer.VendorProposalStore.proposals
+                .count { it.status == com.danish.noorservice.ui.screens.employer.VendorProposalStatus.PENDING }
         }
     }
 
@@ -202,7 +209,9 @@ fun AdminDashboardScreen(
                 modifier              = Modifier.padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                AdminStatCard("0", "Proposals Received", "📋", NoorGreen, NoorGreenLight,
+                AdminStatCard(
+                    "${AdminProposalStore.proposals.size + com.danish.noorservice.ui.screens.employer.VendorProposalStore.proposals.size}",
+                    "Proposals Received", "📋", NoorGreen, NoorGreenLight,
                     modifier = Modifier.weight(1f))
                 AdminStatCard("$pendingProposals", "Pending Actions", "⚡", NoorRed, NoorRedLight,
                     modifier = Modifier.weight(1f))
@@ -276,20 +285,10 @@ fun AdminDashboardScreen(
                             sentAt         = proposal.sentAt,
                             avatarColor    = proposal.avatarColor,
                             initials       = proposal.workerInitials,
-                            onConnect = {
-                                val idx = AdminProposalStore.proposals.indexOfFirst { p -> p.id == proposal.id }
-                                if (idx != -1) {
-                                    AdminProposalStore.proposals[idx] = AdminProposalStore.proposals[idx]
-                                        .copy(status = AdminProposalStatus.ACCEPTED)  // ← was CONNECTED
-                                }
-                            },
-                            onDecline = {
-                                val idx = AdminProposalStore.proposals.indexOfFirst { p -> p.id == proposal.id }
-                                if (idx != -1) {
-                                    AdminProposalStore.proposals[idx] = AdminProposalStore.proposals[idx]
-                                        .copy(status = AdminProposalStatus.DECLINED)
-                                }
-                            }
+                            proposalId     = proposal.id,
+                            proposalViewModel = proposalViewModel,
+                            onConnect = { proposalViewModel?.acceptWorkerProposal(proposal.id) },
+                            onDecline = { proposalViewModel?.declineWorkerProposal(proposal.id) }
                         )
                     }
                 Spacer(Modifier.height(8.dp))
@@ -400,6 +399,8 @@ fun AdminStatCard(
 private fun DashboardProposalCard(
     workerName: String, workerUsername: String, jobTitle: String,
     sentAt: String, avatarColor: Color, initials: String,
+    proposalId: String = "",
+    proposalViewModel: AdminProposalViewModel? = null,
     onConnect: () -> Unit, onDecline: () -> Unit
 ) {
     Card(

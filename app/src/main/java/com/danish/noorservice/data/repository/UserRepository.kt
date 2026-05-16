@@ -230,15 +230,15 @@ suspend fun getAllEmployees(): List<Employee> {
             when (role) {
                 "employee" -> {
                     firestore.collection("employees").document(userId)
-                        .update("isProfileApproved", isApproved).await()
+                        .update("profileApproved", isApproved).await()
                 }
                 "vendor" -> {
                     firestore.collection("vendors").document(userId)
-                        .update("isProfileApproved", isApproved).await()
+                        .update("profileApproved", isApproved).await()
                 }
                 "employer" -> {
                     firestore.collection("employers").document(userId)
-                        .update("isProfileApproved", isApproved).await()
+                        .update("profileApproved", isApproved).await()
                 }
             }
             Result.success(Unit)
@@ -252,15 +252,15 @@ suspend fun getAllEmployees(): List<Employee> {
             when (role) {
                 "employee" -> {
                     firestore.collection("employees").document(userId)
-                        .update("isActive", isActive).await()
+                        .update("active", isActive).await()
                 }
                 "vendor" -> {
                     firestore.collection("vendors").document(userId)
-                        .update("isActive", isActive).await()
+                        .update("active", isActive).await()
                 }
                 "employer" -> {
                     firestore.collection("employers").document(userId)
-                        .update("isActive", isActive).await()
+                        .update("active", isActive).await()
                 }
             }
             Result.success(Unit)
@@ -276,6 +276,15 @@ suspend fun getAllEmployees(): List<Employee> {
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    suspend fun getIsProfileComplete(uid: String): Boolean {
+        return try {
+            val doc = firestore.collection("users").document(uid).get().await()
+            doc.getBoolean("isProfileComplete") ?: false
+        } catch (e: Exception) {
+            false
         }
     }
 

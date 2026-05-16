@@ -2,6 +2,7 @@ package com.danish.noorservice.viewmodel.employer
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.danish.noorservice.data.model.Category
 import com.danish.noorservice.data.model.Employer
 import com.danish.noorservice.data.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -17,6 +18,10 @@ data class EmployerHomeState(
     val workerCount: Int = 0,
     val vendorCount: Int = 0,
     val serviceCount: Int = 0,
+    val serviceList: List<String> = emptyList(),
+    val categories: List<Category> = emptyList(),
+    val vendorCategories: List<Category> = emptyList(),
+    val workerServiceCategories: List<Category> = emptyList(),
     val hasLoaded: Boolean = false,
     val error: String? = null
 )
@@ -40,15 +45,16 @@ class EmployerHomeViewModel @Inject constructor(
                 
                 val employees = userRepository.getAllApprovedEmployees()
                 val vendors = userRepository.getAllApprovedVendors()
-                
+                val categories = userRepository.getAllCategories()
+                val allWorkerCategories = categories.filter { it.categoryType == "individual" || it.categoryType.isEmpty() }
+                val vendorCategories = categories.filter { it.categoryType == "vendor" }
+
                 val workerCount = employees.size
                 val vendorCount = vendors.filter { it.isProfileApproved && it.isActive }.size
-                
-                var serviceCount = 0
-                employees.forEach { employee ->
-                    val services = userRepository.getEmployeeServices(employee.uid)
-                    serviceCount += services.size
-                }
+
+                val serviceCount = categories.count { cat -> cat.isActive }
+
+                val workerServiceCategories = allWorkerCategories
 
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
@@ -56,6 +62,10 @@ class EmployerHomeViewModel @Inject constructor(
                     workerCount = workerCount,
                     vendorCount = vendorCount,
                     serviceCount = serviceCount,
+                    serviceList = allWorkerCategories.map { it.id },
+                    categories = allWorkerCategories,
+                    vendorCategories = vendorCategories,
+                    workerServiceCategories = workerServiceCategories,
                     hasLoaded = true
                 )
             } catch (e: Exception) {

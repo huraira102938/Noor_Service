@@ -29,7 +29,6 @@ class VendorCatalogViewModel @Inject constructor(
     val uiState: StateFlow<VendorCatalogState> = _uiState.asStateFlow()
 
     fun loadServices(userId: String) {
-
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
@@ -49,6 +48,20 @@ class VendorCatalogViewModel @Inject constructor(
                     isLoading = false,
                     error = e.message
                 )
+            }
+        }
+    }
+
+    fun loadCategories() {
+        viewModelScope.launch {
+            try {
+                val allCategories = userRepository.getAllCategories()
+                val vendorCategories = allCategories.filter {
+                    it.categoryType.equals("vendor", ignoreCase = true) && it.isActive
+                }
+                _uiState.value = _uiState.value.copy(categories = vendorCategories)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(error = e.message)
             }
         }
     }

@@ -53,20 +53,8 @@ data class VendorServiceCategory(
     val id: String,
     val label: String,
     val emoji: String,
-    val description: String
-)
-
-val allVendorServiceCategories = listOf(
-    VendorServiceCategory("staffing",     "Staffing Solutions",     "👥", "Bulk workforce supply & temp staffing"),
-    VendorServiceCategory("security",     "Security Services",      "🛡️", "Trained guards, CCTV, access control"),
-    VendorServiceCategory("cleaning",     "Cleaning & Janitorial",  "🧹", "Office, industrial & residential cleaning"),
-    VendorServiceCategory("catering",     "Catering & Mess",        "🍽️", "Corporate meal plans & canteen management"),
-    VendorServiceCategory("maintenance",  "Facility Maintenance",   "🔧", "Plumbing, electrical, HVAC & civil works"),
-    VendorServiceCategory("it_support",   "IT Support",             "💻", "Network, hardware & helpdesk services"),
-    VendorServiceCategory("transport",    "Transport & Logistics",  "🚌", "Staff transport & fleet management"),
-    VendorServiceCategory("landscaping",  "Landscaping",            "🌿", "Garden maintenance & outdoor spaces"),
-    VendorServiceCategory("pest_control", "Pest Control",           "🐛", "Residential & commercial pest management"),
-    VendorServiceCategory("training",     "Training & Development", "📚", "Workforce training & skill development"),
+    val description: String,
+    val skills: List<String> = emptyList()
 )
 
 private val serviceScaleOptions   = listOf("1–10 staff", "11–50 staff", "51–200 staff", "200+ staff")
@@ -136,11 +124,12 @@ fun VendorRegistrationScreen(
                     id = cat.id,
                     label = cat.label,
                     emoji = cat.emoji,
-                    description = cat.label
+                    description = cat.label,
+                    skills = cat.skills.map { it.name }
                 )
             }
         } else {
-            allVendorServiceCategories
+            emptyList()
         }
     }
 
@@ -561,7 +550,7 @@ fun VendorRegistrationScreen(
                                                         selected = servicePricingModel[id] == opt,
                                                         onClick  = {
                                                             servicePricingModel[id] = opt
-                                                            syncServiceDetail(id, servicePricingModel, servicePriceRange, serviceMinContract, serviceCoverageAreas, viewModel)
+                                                            syncServiceDetail(id, servicePricingModel, servicePriceRange, serviceMinContract, serviceCoverageAreas, serviceSkills, viewModel)
                                                         }
                                                     )
                                                 }
@@ -573,7 +562,7 @@ fun VendorRegistrationScreen(
                                                 value = servicePriceRange[id] ?: "",
                                                 onValueChange = {
                                                     servicePriceRange[id] = it
-                                                    syncServiceDetail(id, servicePricingModel, servicePriceRange, serviceMinContract, serviceCoverageAreas, viewModel)
+                                                    syncServiceDetail(id, servicePricingModel, servicePriceRange, serviceMinContract, serviceCoverageAreas, serviceSkills, viewModel)
                                                 },
                                                 label       = "Price Range *",
                                                 placeholder = "e.g. PKR 15,000 – 80,000 / month"
@@ -596,7 +585,7 @@ fun VendorRegistrationScreen(
                                                         selected = serviceMinContract[id] == opt,
                                                         onClick  = {
                                                             serviceMinContract[id] = opt
-                                                            syncServiceDetail(id, servicePricingModel, servicePriceRange, serviceMinContract, serviceCoverageAreas, viewModel)
+                                                            syncServiceDetail(id, servicePricingModel, servicePriceRange, serviceMinContract, serviceCoverageAreas, serviceSkills, viewModel)
                                                         }
                                                     )
                                                 }
@@ -622,9 +611,36 @@ fun VendorRegistrationScreen(
                                                             val current = serviceCoverageAreas.getOrPut(id) { mutableStateListOf() }
                                                             if (current.contains(area)) current.remove(area)
                                                             else current.add(area)
-                                                            syncServiceDetail(id, servicePricingModel, servicePriceRange, serviceMinContract, serviceCoverageAreas, viewModel)
+                                                            syncServiceDetail(id, servicePricingModel, servicePriceRange, serviceMinContract, serviceCoverageAreas, serviceSkills, viewModel)
                                                         }
                                                     )
+                                                }
+                                            }
+
+                                            if (svc.skills.isNotEmpty()) {
+                                                Spacer(Modifier.height(14.dp))
+                                                Text("Skills Offered", fontSize = 11.sp,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = NoorTextHint, letterSpacing = 0.4.sp)
+                                                Spacer(Modifier.height(8.dp))
+                                                @OptIn(ExperimentalLayoutApi::class)
+                                                FlowRow(
+                                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                                    verticalArrangement   = Arrangement.spacedBy(8.dp)
+                                                ) {
+                                                    svc.skills.forEach { skill ->
+                                                        val selectedSkills = serviceSkills.getOrPut(id) { mutableStateListOf() }
+                                                        NoorSelectableChip(
+                                                            label    = skill, icon = "⚡",
+                                                            selected = selectedSkills.contains(skill),
+                                                            onClick  = {
+                                                                val skills = serviceSkills.getOrPut(id) { mutableStateListOf() }
+                                                                if (skills.contains(skill)) skills.remove(skill)
+                                                                else skills.add(skill)
+                                                                syncServiceDetailWithSkills(id, servicePricingModel, servicePriceRange, serviceMinContract, serviceCoverageAreas, serviceSkills, viewModel)
+                                                            }
+                                                        )
+                                                    }
                                                 }
                                             }
                                         }
@@ -877,6 +893,7 @@ private fun syncServiceDetail(
     priceRangeMap:    Map<String, String>,
     minContractMap:   Map<String, String>,
     coverageAreasMap: Map<String, SnapshotStateList<String>>,
+    skillsMap: Map<String, SnapshotStateList<String>>,
     viewModel: VendorRegistrationViewModel
 ) {
     viewModel.updateServiceDetail(
@@ -885,7 +902,29 @@ private fun syncServiceDetail(
             pricingModel        = pricingModelMap[id] ?: "",
             priceRange          = priceRangeMap[id] ?: "",
             minContractDuration = minContractMap[id] ?: "",
-            coverageAreas       = coverageAreasMap[id]?.toList() ?: emptyList()
+            coverageAreas       = coverageAreasMap[id]?.toList() ?: emptyList(),
+            skills              = skillsMap[id]?.toList() ?: emptyList()
+        )
+    )
+}
+
+private fun syncServiceDetailWithSkills(
+    id: String,
+    pricingModelMap:  Map<String, String>,
+    priceRangeMap:    Map<String, String>,
+    minContractMap:   Map<String, String>,
+    coverageAreasMap: Map<String, SnapshotStateList<String>>,
+    skillsMap: Map<String, SnapshotStateList<String>>,
+    viewModel: VendorRegistrationViewModel
+) {
+    viewModel.updateServiceDetail(
+        id,
+        VendorServiceInput(
+            pricingModel        = pricingModelMap[id] ?: "",
+            priceRange          = priceRangeMap[id] ?: "",
+            minContractDuration = minContractMap[id] ?: "",
+            coverageAreas       = coverageAreasMap[id]?.toList() ?: emptyList(),
+            skills              = skillsMap[id]?.toList() ?: emptyList()
         )
     )
 }

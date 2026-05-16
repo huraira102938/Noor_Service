@@ -1,14 +1,22 @@
 package com.danish.noorservice.ui.screens.employer
 
+import android.content.Intent
+import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,6 +26,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -29,6 +38,7 @@ import com.danish.noorservice.ui.components.ShimmerBox
 import com.danish.noorservice.ui.components.rememberShimmerBrush
 import com.danish.noorservice.ui.theme.*
 import com.danish.noorservice.viewmodel.employer.EmployerHomeViewModel
+import com.danish.noorservice.viewmodel.employer.EmployerNotificationsViewModel
 import com.danish.noorservice.viewmodel.employer.EmployerSettingsViewModel
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -48,6 +58,7 @@ sealed class EmployerSubScreen {
 fun EmployerHomeScreen(
     userId: String,
     homeViewModel: EmployerHomeViewModel,
+    notificationsViewModel: EmployerNotificationsViewModel,
     settingsViewModel: EmployerSettingsViewModel,
     onBrowse: () -> Unit,
     onSettings: () -> Unit
@@ -66,7 +77,11 @@ fun EmployerHomeScreen(
 
     when (subScreen) {
         is EmployerSubScreen.Notifications -> {
-            EmployerNotificationsScreen(onBack = { subScreen = EmployerSubScreen.None })
+            EmployerNotificationsScreen(
+                userId = userId,
+                viewModel = notificationsViewModel,
+                onBack = { subScreen = EmployerSubScreen.None }
+            )
             return
         }
         is EmployerSubScreen.EditProfile -> {
@@ -278,6 +293,52 @@ fun EmployerHomeScreen(
 
             Spacer(Modifier.height(20.dp))
 
+            if (uiState.workerServiceCategories.isNotEmpty()) {
+                Text("Available Workers Services", fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                    color = NoorTextPrimary, modifier = Modifier.padding(horizontal = 16.dp))
+                Spacer(Modifier.height(12.dp))
+                LazyRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(uiState.workerServiceCategories) { category ->
+                        Box(modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(NoorBlueLight)
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                        ) {
+                            Text("${category.emoji} ${category.label}", fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold, color = NoorBlueDark)
+                        }
+                    }
+                }
+                Spacer(Modifier.height(20.dp))
+            }
+
+            if (uiState.vendorCategories.isNotEmpty()) {
+                Text("Available Vendor Services", fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                    color = NoorTextPrimary, modifier = Modifier.padding(horizontal = 16.dp))
+                Spacer(Modifier.height(12.dp))
+                LazyRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(uiState.vendorCategories) { category ->
+                        Box(modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(NoorOrangeLight)
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                        ) {
+                            Text("${category.emoji} ${category.label}", fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold, color = NoorOrange)
+                        }
+                    }
+                }
+                Spacer(Modifier.height(20.dp))
+            }
+
             // ── Quick Actions ─────────────────────────────────────────────────
             Text("Quick Actions", fontSize = 15.sp, fontWeight = FontWeight.Bold,
                 color = NoorTextPrimary, modifier = Modifier.padding(horizontal = 16.dp))
@@ -336,9 +397,8 @@ fun EmployerHomeScreen(
                         lineHeight = 17.sp
                     )
                     HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
-                    AdminContactRow(emoji = "📞", label = "Phone / WhatsApp", value = "+92 300 000 0000")
-                    AdminContactRow(emoji = "📧", label = "Email", value = "admin@noorservices.pk")
-                    AdminContactRow(emoji = "⏰", label = "Office Hours", value = "Mon–Sat, 9 AM – 6 PM")
+                    AdminContactRow(emoji = "📞", label = "Phone / WhatsApp", value = "03123339015", onPhoneClick = true)
+                    AdminContactRow(emoji = "📧", label = "Email", value = "noorservicesprovider@gmail.com", onEmailClick = true)
                 }
             }
 
@@ -403,16 +463,32 @@ private fun QuickActionCard(
 }
 
 @Composable
-private fun AdminContactRow(emoji: String, label: String, value: String) {
+private fun AdminContactRow(emoji: String, label: String, value: String, onPhoneClick: Boolean = false, onEmailClick: Boolean = false) {
+    val context = LocalContext.current
     Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (onPhoneClick) Modifier.clickable {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/9231233339015"))
+                    context.startActivity(intent)
+                }
+                else if (onEmailClick) Modifier.clickable {
+                    val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:${value}"))
+                    context.startActivity(intent)
+                }
+                else Modifier
+            ),
         verticalAlignment    = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Text(emoji, fontSize = 16.sp)
-        Column {
+        Column(modifier = Modifier.weight(1f)) {
             Text(label, fontSize = 10.sp, color = NoorTextHint, fontWeight = FontWeight.Medium)
             Text(value, fontSize = 13.sp, color = NoorTextPrimary, fontWeight = FontWeight.SemiBold)
         }
+        if (onPhoneClick) Text("💬", fontSize = 18.sp)
+        if (onEmailClick) Icon(Icons.Default.Email, contentDescription = "Email", tint = NoorBlue, modifier = Modifier.size(18.dp))
     }
 }
 
