@@ -23,22 +23,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
 import com.danish.noorservice.ui.theme.*
-import com.danish.noorservice.viewmodel.employer.EmployerProposalViewModel
-import com.danish.noorservice.data.repository.ProposalRepository
+import com.danish.noorservice.viewmodel.admin.AdminProposalViewModel
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Data model
 // ─────────────────────────────────────────────────────────────────────────────
 
 enum class AdminProposalStatus {
-    PENDING,    // waiting for admin to act
-    ACCEPTED,   // admin connected employer with worker
-    DECLINED    // admin declined
+    PENDING,
+    ACCEPTED,
+    DECLINED
 }
 
 data class AdminProposal(
@@ -85,11 +86,13 @@ data class AdminProposal(
     val workerHourlyRate: String = "",
     val workerMonthlyRate: String = "",
     val workerBio: String = "",
-    val workerPhotoUrl: String = ""
+    val workerPhotoUrl: String = "",
+    val employerPhotoUrl: String = "",
+    val proposalType: String = ""
 )
 
 object AdminProposalStore {
-    val proposals = mutableStateListOf<AdminProposal>()
+    val proposals = androidx.compose.runtime.mutableStateListOf<AdminProposal>()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -97,13 +100,18 @@ object AdminProposalStore {
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-fun AdminProposalInboxScreen(viewModel: EmployerProposalViewModel = hiltViewModel()) {
-    val proposals = AdminProposalStore.proposals
-    var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("All", "Pending", "Accepted", "Declined")
+fun AdminProposalInboxScreen(
+    onBack: () -> Unit = {},
+    proposalViewModel: AdminProposalViewModel = hiltViewModel()
+) {
+    val proposals    = AdminProposalStore.proposals
+    val uiState      by proposalViewModel.uiState.collectAsState()
+    var selectedTab  by remember { mutableIntStateOf(0) }
+    val tabs         = listOf("All", "Pending", "Accepted", "Declined")
 
+    // Re-sync whenever screen opens
     LaunchedEffect(Unit) {
-        viewModel.syncStores()
+        proposalViewModel.loadAllProposals()
     }
 
     val filtered = when (selectedTab) {
@@ -118,6 +126,7 @@ fun AdminProposalInboxScreen(viewModel: EmployerProposalViewModel = hiltViewMode
             .fillMaxSize()
             .background(NoorBackground)
     ) {
+        // ── Header ────────────────────────────────────────────────────────────
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -165,7 +174,16 @@ fun AdminProposalInboxScreen(viewModel: EmployerProposalViewModel = hiltViewMode
             }
         }
 
-        if (filtered.isEmpty()) {
+        // ── Loading indicator ─────────────────────────────────────────────────
+        if (uiState.isLoading) {
+            LinearProgressIndicator(
+                modifier = Modifier.fillMaxWidth(),
+                color    = NoorBlue
+            )
+        }
+
+        // ── List or empty state ───────────────────────────────────────────────
+        if (filtered.isEmpty() && !uiState.isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -185,7 +203,10 @@ fun AdminProposalInboxScreen(viewModel: EmployerProposalViewModel = hiltViewMode
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(filtered, key = { it.id }) { proposal ->
-                    AdminProposalCard(proposal = proposal)
+                    AdminProposalCard(
+                        proposal          = proposal,
+                        proposalViewModel = proposalViewModel
+                    )
                 }
             }
         }
@@ -197,14 +218,21 @@ fun AdminProposalInboxScreen(viewModel: EmployerProposalViewModel = hiltViewMode
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun AdminProposalCard(proposal: AdminProposal) {
-    Log.d("EmployerProposals", "AdminProposalCard: employerName=${proposal.employerName}, workerName=${proposal.workerName}")
-    var showDetails by remember { mutableStateOf(false) }
+private fun AdminProposalCard(
+    proposal: AdminProposal,
+    proposalViewModel: AdminProposalViewModel
+) {
+    var showDetails        by remember { mutableStateOf(false) }
 
     val (accentColor, pillBg, statusLabel, statusEmoji) = when (proposal.status) {
         AdminProposalStatus.PENDING  -> listOf(NoorBlue,  NoorBlueLight,  "Pending",  "⏳")
         AdminProposalStatus.ACCEPTED -> listOf(NoorGreen, NoorGreenLight, "Accepted", "✅")
         AdminProposalStatus.DECLINED -> listOf(NoorRed,   NoorRedLight,   "Declined", "❌")
+    }
+
+    val (typeEmoji, typeLabel, typeBg, typeColor) = when (proposal.proposalType) {
+        "vendor" -> listOf("🏢", "Vendor", VendorTealLight, VendorTeal)
+        else     -> listOf("👷", "Worker", NoorBlueLight,   NoorBlue)
     }
 
     Card(
@@ -233,14 +261,24 @@ private fun AdminProposalCard(proposal: AdminProposal) {
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         modifier              = Modifier.weight(1f)
                     ) {
-                        Box(
-                            modifier = Modifier.size(42.dp).clip(CircleShape)
-                                .background(proposal.avatarColor),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(proposal.workerInitials, fontSize = 14.sp,
-                                fontWeight = FontWeight.ExtraBold, color = Color.White)
+                        if (proposal.workerPhotoUrl.isNotBlank()) {
+                            AsyncImage(
+                                model              = proposal.workerPhotoUrl,
+                                contentDescription = "Worker photo",
+                                modifier           = Modifier.size(42.dp).clip(CircleShape),
+                                contentScale       = ContentScale.Crop
+                            )
+                        } else {
+                            Box(
+                                modifier         = Modifier.size(42.dp).clip(CircleShape)
+                                    .background(proposal.avatarColor),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(proposal.workerInitials, fontSize = 14.sp,
+                                    fontWeight = FontWeight.ExtraBold, color = Color.White)
+                            }
                         }
+
                         Column {
                             Text(proposal.workerName, fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold, color = NoorTextPrimary,
@@ -257,15 +295,32 @@ private fun AdminProposalCard(proposal: AdminProposal) {
                             }
                         }
                     }
-                    Spacer(Modifier.width(8.dp))
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(pillBg as Color)
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
+
+                    Spacer(Modifier.width(6.dp))
+
+                    // Type + Status pills
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment     = Alignment.CenterVertically
                     ) {
-                        Text("$statusEmoji $statusLabel", fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold, color = accentColor)
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(typeBg as Color)
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text("$typeEmoji $typeLabel", fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold, color = typeColor as Color)
+                        }
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(pillBg as Color)
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text("$statusEmoji $statusLabel", fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold, color = accentColor)
+                        }
                     }
                 }
 
@@ -289,6 +344,7 @@ private fun AdminProposalCard(proposal: AdminProposal) {
                     ProposalDetailTag("💰", proposal.offerPrice)
                     ProposalDetailTag("🕐", "Sent ${proposal.sentAt}")
                 }
+
             }
         }
     }
@@ -296,12 +352,11 @@ private fun AdminProposalCard(proposal: AdminProposal) {
     if (showDetails) {
         ProposalDetailsDialog(proposal = proposal, onDismiss = { showDetails = false })
     }
-}
 
+}
 // ─────────────────────────────────────────────────────────────────────────────
 // Proposal Details Dialog
 // ─────────────────────────────────────────────────────────────────────────────
-
 @Composable
 private fun ProposalDetailsDialog(
     proposal: AdminProposal,
@@ -336,6 +391,133 @@ private fun ProposalDetailsDialog(
                 modifier            = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+
+                // ── Employer & Worker profiles ─────────────────────────────────
+                DetailCard {
+                    Text("People Involved", fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold, color = NoorBlue)
+                    Spacer(Modifier.height(10.dp))
+
+                    // Employer row
+                    Row(
+                        verticalAlignment     = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier              = Modifier.fillMaxWidth()
+                    ) {
+                        if (proposal.employerPhotoUrl.isNotBlank()) {
+                            AsyncImage(
+                                model              = proposal.employerPhotoUrl,
+                                contentDescription = "Employer photo",
+                                modifier           = Modifier.size(48.dp).clip(CircleShape),
+                                contentScale       = ContentScale.Crop
+                            )
+                        } else {
+                            Box(
+                                modifier         = Modifier.size(48.dp).clip(CircleShape)
+                                    .background(NoorOrange),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    proposal.employerName
+                                        .split(" ")
+                                        .take(2)
+                                        .mapNotNull { it.firstOrNull()?.uppercase() }
+                                        .joinToString("")
+                                        .ifEmpty { "E" },
+                                    fontSize   = 16.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color      = Color.White
+                                )
+                            }
+                        }
+                        Column {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(NoorOrangeLight)
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text("🏠 Employer", fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold, color = NoorOrange)
+                            }
+                            Spacer(Modifier.height(3.dp))
+                            Text(
+                                proposal.employerName.ifBlank { "Unknown Employer" },
+                                fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                                color = NoorTextPrimary
+                            )
+                            if (proposal.employerPhone.isNotBlank()) {
+                                Text(proposal.employerPhone, fontSize = 11.sp, color = NoorTextHint)
+                            }
+                            if (proposal.employerCity.isNotBlank()) {
+                                Text(
+                                    "${proposal.employerArea}, ${proposal.employerCity}",
+                                    fontSize = 11.sp, color = NoorTextHint
+                                )
+                            }
+                        }
+                    }
+
+                    // Arrow connector
+                    Box(
+                        modifier         = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Box(Modifier.width(2.dp).height(8.dp).background(NoorDivider))
+                            Text("⬇", fontSize = 14.sp, color = NoorTextHint)
+                            Box(Modifier.width(2.dp).height(8.dp).background(NoorDivider))
+                        }
+                    }
+
+                    // Worker row
+                    Row(
+                        verticalAlignment     = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier              = Modifier.fillMaxWidth()
+                    ) {
+                        if (proposal.workerPhotoUrl.isNotBlank()) {
+                            AsyncImage(
+                                model              = proposal.workerPhotoUrl,
+                                contentDescription = "Worker photo",
+                                modifier           = Modifier.size(48.dp).clip(CircleShape),
+                                contentScale       = ContentScale.Crop
+                            )
+                        } else {
+                            Box(
+                                modifier         = Modifier.size(48.dp).clip(CircleShape)
+                                    .background(proposal.avatarColor),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(proposal.workerInitials, fontSize = 16.sp,
+                                    fontWeight = FontWeight.ExtraBold, color = Color.White)
+                            }
+                        }
+                        Column {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(NoorBlueLight)
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text("👷 Worker", fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold, color = NoorBlue)
+                            }
+                            Spacer(Modifier.height(3.dp))
+                            Text(proposal.workerName, fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold, color = NoorTextPrimary)
+                            Text(proposal.workerUsername, fontSize = 11.sp, color = NoorTextHint)
+                            if (proposal.workerCity.isNotBlank()) {
+                                Text(
+                                    "${proposal.workerArea}, ${proposal.workerCity}",
+                                    fontSize = 11.sp, color = NoorTextHint
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // ── Job Information ───────────────────────────────────────────
                 DetailCard {
                     Text("Job Information", fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold, color = NoorBlue)
@@ -348,6 +530,7 @@ private fun ProposalDetailsDialog(
                     DetailInfoRow("💰", "Offer Price", proposal.offerPrice)
                 }
 
+                // ── Note ─────────────────────────────────────────────────────
                 if (proposal.note.isNotBlank()) {
                     DetailCard {
                         Text("📝 Note to Admin", fontSize = 12.sp,
@@ -358,6 +541,7 @@ private fun ProposalDetailsDialog(
                     }
                 }
 
+                // ── Status ────────────────────────────────────────────────────
                 DetailCard {
                     Row(
                         modifier              = Modifier.fillMaxWidth(),
@@ -367,13 +551,14 @@ private fun ProposalDetailsDialog(
                         Text("Status", fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold, color = NoorBlue)
                         val (color, label, emoji) = when (proposal.status) {
-                            AdminProposalStatus.PENDING  -> listOf(NoorBlue,  "Pending",  "⏳")
-                            AdminProposalStatus.ACCEPTED -> listOf(NoorGreen, "Accepted", "✅")
-                            AdminProposalStatus.DECLINED -> listOf(NoorRed,   "Declined", "❌")
+                            AdminProposalStatus.PENDING  -> Triple(NoorBlue,  "Pending",  "⏳")
+                            AdminProposalStatus.ACCEPTED -> Triple(NoorGreen, "Accepted", "✅")
+                            AdminProposalStatus.DECLINED -> Triple(NoorRed,   "Declined", "❌")
                         }
                         Box(
-                            modifier = Modifier.clip(RoundedCornerShape(20.dp))
-                                .background((color as Color).copy(alpha = 0.12f))
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(color.copy(alpha = 0.12f))
                                 .padding(horizontal = 10.dp, vertical = 5.dp)
                         ) {
                             Text("$emoji $label", fontSize = 11.sp,
@@ -384,8 +569,10 @@ private fun ProposalDetailsDialog(
             }
         },
         confirmButton = {
-            Button(onClick = onDismiss, shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = NoorBlue),
+            Button(
+                onClick  = onDismiss,
+                shape    = RoundedCornerShape(10.dp),
+                colors   = ButtonDefaults.buttonColors(containerColor = NoorBlue),
                 modifier = Modifier.height(40.dp)
             ) {
                 Text("Close", color = Color.White, fontWeight = FontWeight.SemiBold)
@@ -401,8 +588,8 @@ private fun ProposalDetailsDialog(
 @Composable
 private fun ProposalDetailTag(icon: String, label: String) {
     Row(
-        modifier = Modifier.padding(horizontal = 2.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        modifier              = Modifier.padding(horizontal = 2.dp),
+        verticalAlignment     = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Text(icon,  fontSize = 11.sp)

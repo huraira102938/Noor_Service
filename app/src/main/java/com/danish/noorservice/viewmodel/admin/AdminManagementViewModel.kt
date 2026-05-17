@@ -58,19 +58,19 @@ class AdminManagementViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true)
 
             try {
-                val employees = userRepository.getAllEmployees()
-                val employers = userRepository.getAllEmployers()
-                val vendors = userRepository.getAllVendors()
-                val categories = userRepository.getAllCategories()
+                val employees        = userRepository.getAllEmployees()
+                val employers        = userRepository.getAllEmployers()
+                val vendors          = userRepository.getAllVendors()
+                val categories       = userRepository.getAllCategories()
                 val workerCategories = categories.filter { it.categoryType == "individual" || it.categoryType.isEmpty() }
                 val vendorCategories = categories.filter { it.categoryType == "vendor" }
 
                 _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    hasLoaded = true,
-                    workers = employees,
-                    employers = employers,
-                    vendors = vendors,
+                    isLoading        = false,
+                    hasLoaded        = true,
+                    workers          = employees,
+                    employers        = employers,
+                    vendors          = vendors,
                     workerCategories = workerCategories,
                     vendorCategories = vendorCategories
                 )
@@ -80,7 +80,7 @@ class AdminManagementViewModel @Inject constructor(
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    error = e.message
+                    error     = e.message
                 )
             }
         }
@@ -92,12 +92,8 @@ class AdminManagementViewModel @Inject constructor(
             workerIds.forEach { workerId ->
                 try {
                     val services = userRepository.getEmployeeServices(workerId)
-                    if (services.isNotEmpty()) {
-                        servicesMap[workerId] = services
-                    }
-                } catch (e: Exception) {
-                    // Ignore errors for individual services
-                }
+                    if (services.isNotEmpty()) servicesMap[workerId] = services
+                } catch (e: Exception) { /* ignore */ }
             }
             _employeeServices.value = servicesMap
         }
@@ -109,14 +105,31 @@ class AdminManagementViewModel @Inject constructor(
             vendorIds.forEach { vendorId ->
                 try {
                     val services = userRepository.getVendorServices(vendorId)
-                    if (services.isNotEmpty()) {
-                        servicesMap[vendorId] = services
-                    }
-                } catch (e: Exception) {
-                    // Ignore errors for individual services
-                }
+                    if (services.isNotEmpty()) servicesMap[vendorId] = services
+                } catch (e: Exception) { /* ignore */ }
             }
             _vendorServices.value = servicesMap
+        }
+    }
+
+    // ── Approve + Activate together (both flags → true) ───────────────────────
+    fun approveAndActivateUser(userId: String, role: String) {
+        viewModelScope.launch {
+            try {
+                val approvalResult = userRepository.updateProfileApproval(userId, role, true)
+                val activeResult   = userRepository.updateUserActive(userId, role, true)
+
+                if (approvalResult.isSuccess && activeResult.isSuccess) {
+                    loadAllData(forceReload = true)
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        error = approvalResult.exceptionOrNull()?.message
+                            ?: activeResult.exceptionOrNull()?.message
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(error = e.message)
+            }
         }
     }
 

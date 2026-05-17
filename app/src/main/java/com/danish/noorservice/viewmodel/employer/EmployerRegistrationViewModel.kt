@@ -20,6 +20,7 @@ data class EmployerRegistrationState(
     val error: String? = null,
 
     val fullName: String = "",
+    val phone: String = "",
     val email: String = "",
     val city: String = "",
     val area: String = "",
@@ -55,6 +56,10 @@ class EmployerRegistrationViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(fullName = value)
     }
 
+    fun updatePhone(value: String) {
+        _uiState.value = _uiState.value.copy(phone = value)
+    }
+
     fun updateEmail(value: String) {
         _uiState.value = _uiState.value.copy(email = value)
     }
@@ -82,7 +87,13 @@ class EmployerRegistrationViewModel @Inject constructor(
     }
 
     fun isFormValid(): Boolean {
-        return _uiState.value.fullName.isNotBlank() && _uiState.value.city.isNotBlank()
+        val s = _uiState.value
+        return s.fullName.isNotBlank()
+                && s.phone.isNotBlank()
+                && s.email.isNotBlank()
+                && s.city.isNotBlank()
+                && s.area.isNotBlank()
+                && s.address.isNotBlank()
     }
 
     fun saveEmployerProfile() {
@@ -90,28 +101,25 @@ class EmployerRegistrationViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
             try {
+                // Photo is optional — only upload if user picked one
                 var photoUrl = ""
                 _uiState.value.photoUri?.let { uri ->
                     photoUrl = imageRepository.uploadProfileImage(uri, userId)
                 }
 
                 val employer = Employer(
-                    uid = userId,
+                    uid      = userId,
                     fullName = _uiState.value.fullName,
-                    email = _uiState.value.email,
-                    phone = "",
-                    city = _uiState.value.city,
-                    area = _uiState.value.area,
-                    address = _uiState.value.address,
-                    about = _uiState.value.about,
+                    phone    = _uiState.value.phone,
+                    email    = _uiState.value.email,
+                    city     = _uiState.value.city,
+                    area     = _uiState.value.area,
+                    address  = _uiState.value.address,
+                    about    = _uiState.value.about,
                     photoUrl = photoUrl
                 )
 
                 userRepository.saveEmployerProfile(employer)
-
-                // ✅ FIX: Mark profile complete in Firestore so the app
-                // routes to EmployerHome on next launch instead of back
-                // to the registration screen.
                 userRepository.updateUserProfileComplete(userId, true)
 
                 _uiState.value = _uiState.value.copy(isLoading = false)
@@ -120,7 +128,7 @@ class EmployerRegistrationViewModel @Inject constructor(
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    error = e.message ?: "Failed to save profile"
+                    error     = e.message ?: "Failed to save profile"
                 )
                 _events.emit(EmployerRegistrationEvent.Error(e.message ?: "Failed to save profile"))
             }

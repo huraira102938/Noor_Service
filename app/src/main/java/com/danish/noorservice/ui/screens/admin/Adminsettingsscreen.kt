@@ -1,5 +1,6 @@
 package com.danish.noorservice.ui.screens.admin
 
+import android.content.Context
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -27,20 +28,16 @@ import com.danish.noorservice.ui.screens.employer.AdminProposalStatus
 import com.danish.noorservice.ui.screens.employer.AdminProposalStore
 import com.danish.noorservice.ui.theme.*
 import com.danish.noorservice.viewmodel.admin.AdminProposalViewModel
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import coil3.compose.AsyncImage
 import com.danish.noorservice.ui.screens.employer.AdminProposal
 import com.danish.noorservice.ui.screens.employer.VendorProposal
-import coil3.compose.AsyncImage
-import androidx.compose.foundation.Image
-import androidx.compose.ui.layout.ContentScale
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Admin Settings Screen
@@ -376,12 +373,18 @@ private fun AdminProposalManageCard(
                         modifier = Modifier.weight(1f)
                     ) {
                         Box(
-                            modifier = Modifier.size(40.dp).clip(CircleShape).background(proposal.avatarColor),
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(NoorBlueLight),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                proposal.workerInitials, fontSize = 13.sp,
-                                fontWeight = FontWeight.ExtraBold, color = Color.White
+                                when (proposal.proposalType) {
+                                    "vendor" -> "🏢"
+                                    else     -> "👷"
+                                },
+                                fontSize = 20.sp
                             )
                         }
                         Column {
@@ -540,11 +543,16 @@ private fun AdminVendorProposalManageCard(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         modifier = Modifier.weight(1f)
                     ) {
+                        // FIXED: Hardcoded emoji instead of proposal.vendorEmoji
                         Box(
-                            modifier = Modifier.size(40.dp).clip(CircleShape)
-                                .background(AdminPurple),
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(VendorTealLight),
                             contentAlignment = Alignment.Center
-                        ) { Text(proposal.vendorEmoji.ifBlank { "🏢" }, fontSize = 16.sp) }
+                        ) {
+                            Text("🏢", fontSize = 20.sp)
+                        }
                         Column {
                             Text(
                                 proposal.vendorName, fontSize = 13.sp,
@@ -793,7 +801,8 @@ fun AdminWorkerProposalDetailScreen(
                     city = proposal.employerCity,
                     area = proposal.employerArea,
                     address = proposal.employerAddress,
-                    context = context
+                    context = context,
+                    photoUrl = proposal.employerPhotoUrl
                 )
             }
 
@@ -805,7 +814,8 @@ fun AdminWorkerProposalDetailScreen(
                     city = proposal.workerCity,
                     area = proposal.workerArea,
                     address = proposal.workerAddress,
-                    context = context
+                    context = context,
+                    photoUrl = proposal.workerPhotoUrl
                 )
 
                 Spacer(Modifier.height(10.dp))
@@ -1000,7 +1010,8 @@ fun AdminVendorProposalDetailScreen(
                     city = proposal.employerCity,
                     area = proposal.employerArea,
                     address = proposal.employerAddress,
-                    context = context
+                    context = context,
+                    photoUrl = proposal.employerphotourl
                 )
             }
 
@@ -1012,7 +1023,8 @@ fun AdminVendorProposalDetailScreen(
                     city = proposal.vendorCity,
                     area = "",
                     address = proposal.vendorAddress,
-                    context = context
+                    context = context,
+                    photoUrl = proposal.vendorLogoUrl
                 )
 
                 Spacer(Modifier.height(10.dp))
@@ -1174,7 +1186,8 @@ private fun AdminContactCard(
     city: String,
     area: String,
     address: String,
-    context: android.content.Context
+    context: Context,
+    photoUrl: String = ""
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -1183,10 +1196,22 @@ private fun AdminContactCard(
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Box(
-                    modifier = Modifier.size(40.dp).clip(CircleShape).background(AdminPurple),
-                    contentAlignment = Alignment.Center
-                ) { Text(name.take(2).uppercase(), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White) }
+                if (photoUrl.isNotBlank()) {
+                    AsyncImage(
+                        model              = photoUrl,
+                        contentDescription = "Photo",
+                        modifier           = Modifier.size(40.dp).clip(CircleShape),
+                        contentScale       = ContentScale.Crop
+                    )
+                } else {
+                    Box(
+                        modifier         = Modifier.size(40.dp).clip(CircleShape).background(AdminPurple),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(name.take(2).uppercase(), fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold, color = Color.White)
+                    }
+                }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(name.ifBlank { "N/A" }, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = NoorTextPrimary)
                     if (city.isNotBlank() || area.isNotBlank()) {

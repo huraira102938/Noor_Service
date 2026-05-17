@@ -148,7 +148,9 @@ class ProposalRepository @Inject constructor(
                             workerHourlyRate = p.wHourlyRate,
                             workerMonthlyRate = p.wMonthlyRate,
                             workerBio = p.wBio,
-                            workerPhotoUrl = p.wPhotoUrl
+                            workerPhotoUrl = p.wPhotoUrl,
+                            employerPhotoUrl = p.ePhotoUrl,   // ADD THIS
+                            proposalType = p.proposalType
                         )
                     )
                     Log.d("ProposalRepository", "syncStoresFromFirestore: AdminProposal created employerName=${p.eFullName}, workerName=${p.wName}")
@@ -173,6 +175,7 @@ class ProposalRepository @Inject constructor(
                             employerCity = p.eCity,
                             employerArea = p.eArea,
                             employerAddress = p.eAddress,
+                            employerphotourl = p.ePhotoUrl,
                             status = when (p.status) {
                                 "accepted" -> com.danish.noorservice.ui.screens.employer.VendorProposalStatus.ACCEPTED
                                 "declined" -> com.danish.noorservice.ui.screens.employer.VendorProposalStatus.DECLINED

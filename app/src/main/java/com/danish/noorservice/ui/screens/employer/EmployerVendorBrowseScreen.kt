@@ -2,11 +2,6 @@ package com.danish.noorservice.ui.screens.employer
 
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -44,6 +39,7 @@ import coil3.compose.AsyncImage
 import com.danish.noorservice.data.model.Category
 import com.danish.noorservice.data.model.Vendor
 import com.danish.noorservice.data.model.VendorService
+import com.danish.noorservice.ui.components.FullScreenImageDialog
 import com.danish.noorservice.ui.screens.vendor.VendorServiceListing
 import com.danish.noorservice.ui.components.VendorBrowseShimmer
 import com.danish.noorservice.ui.theme.*
@@ -332,7 +328,6 @@ private fun VendorBrowseChip(label: String, selected: Boolean, onClick: () -> Un
 // ─────────────────────────────────────────────────────────────────────────────
 // Employer Vendor Detail Screen
 // ─────────────────────────────────────────────────────────────────────────────
-
 @Composable
 fun EmployerVendorDetailScreen(
     vendor: PublicVendorProfile,
@@ -344,6 +339,7 @@ fun EmployerVendorDetailScreen(
     val context = LocalContext.current
     var showProposalSheet by remember { mutableStateOf(false) }
     var hasExistingProposal by remember { mutableStateOf(false) }
+    var showFullLogo by remember { mutableStateOf(false) }
 
     LaunchedEffect(vendor.id) {
         hasExistingProposal = VendorProposalStore.proposals.any {
@@ -353,19 +349,28 @@ fun EmployerVendorDetailScreen(
 
     Column(modifier = Modifier.fillMaxSize().background(NoorBackground)) {
         Box(
-            modifier = Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(NoorBlue, NoorBlueDark))).statusBarsPadding().padding(top = 12.dp)
+            modifier = Modifier.fillMaxWidth()
+                .background(Brush.linearGradient(listOf(NoorBlue, NoorBlueDark)))
+                .statusBarsPadding().padding(top = 12.dp)
         ) {
             Column {
-                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(32.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.2f)).clickable { onBack() }, contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White, modifier = Modifier.size(16.dp))
+                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.size(32.dp).clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.2f)).clickable { onBack() },
+                        contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back",
+                            tint = Color.White, modifier = Modifier.size(16.dp))
                     }
                     Spacer(Modifier.width(12.dp))
                     Text("Vendor Profile", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     Spacer(Modifier.weight(1f))
                     if (vendor.isISOCertified) {
-                        Box(modifier = Modifier.clip(RoundedCornerShape(20.dp)).background(Color.White.copy(alpha = 0.2f)).padding(horizontal = 10.dp, vertical = 4.dp)) {
-                            Text("🏅 ISO Certified", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Box(modifier = Modifier.clip(RoundedCornerShape(20.dp))
+                            .background(Color.White.copy(alpha = 0.2f))
+                            .padding(horizontal = 10.dp, vertical = 4.dp)) {
+                            Text("🏅 ISO Certified", fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold, color = Color.White)
                         }
                     }
                 }
@@ -379,22 +384,40 @@ fun EmployerVendorDetailScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
-                Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = NoorSurface), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
+                Card(shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = NoorSurface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Box(modifier = Modifier.size(64.dp).clip(RoundedCornerShape(16.dp)).background(NoorBlueLight), contentAlignment = Alignment.Center) {
+                        Row(verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Box(
+                                modifier = Modifier.size(64.dp).clip(RoundedCornerShape(16.dp))
+                                    .background(NoorBlueLight)
+                                    .clickable { if (vendor.logoUrl.isNotBlank()) showFullLogo = true },
+                                contentAlignment = Alignment.Center
+                            ) {
                                 if (vendor.logoUrl.isNotBlank()) {
-                                    AsyncImage(model = vendor.logoUrl, contentDescription = "Logo", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                                    AsyncImage(
+                                        model = vendor.logoUrl,
+                                        contentDescription = "Logo",
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
                                 } else {
                                     Text(vendor.emoji, fontSize = 32.sp)
                                 }
                             }
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(vendor.businessName, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = NoorTextPrimary)
-                                Text("${vendor.city} · Joined ${vendor.joinedDate}", fontSize = 11.sp, color = NoorTextHint)
+                                Text(vendor.businessName, fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold, color = NoorTextPrimary)
+                                Text("${vendor.city} · Joined ${vendor.joinedDate}",
+                                    fontSize = 11.sp, color = NoorTextHint)
                                 if (vendor.isVerified) {
-                                    Box(modifier = Modifier.padding(top = 4.dp).clip(RoundedCornerShape(6.dp)).background(NoorBlueLight).padding(horizontal = 6.dp, vertical = 2.dp)) {
-                                        Text("✓ Verified", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = NoorBlue)
+                                    Box(modifier = Modifier.padding(top = 4.dp)
+                                        .clip(RoundedCornerShape(6.dp)).background(NoorBlueLight)
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)) {
+                                        Text("✓ Verified", fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold, color = NoorBlue)
                                     }
                                 }
                             }
@@ -421,7 +444,9 @@ fun EmployerVendorDetailScreen(
                 item {
                     VendorDetailSection(title = "Operating Cities") {
                         vendor.operatingCities.forEach { city ->
-                            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically) {
                                 Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(NoorBlue))
                                 Text(city, fontSize = 12.sp, color = NoorTextPrimary)
                             }
@@ -433,10 +458,15 @@ fun EmployerVendorDetailScreen(
             if (vendor.notableClients.isNotEmpty()) {
                 item {
                     VendorDetailSection(title = "Notable Clients") {
-                        Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             vendor.notableClients.forEach { client ->
-                                Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(NoorBackground).border(1.dp, NoorBorder, RoundedCornerShape(8.dp)).padding(horizontal = 10.dp, vertical = 4.dp)) {
-                                    Text(client, fontSize = 10.sp, fontWeight = FontWeight.Medium, color = NoorTextSecondary)
+                                Box(modifier = Modifier.clip(RoundedCornerShape(8.dp))
+                                    .background(NoorBackground)
+                                    .border(1.dp, NoorBorder, RoundedCornerShape(8.dp))
+                                    .padding(horizontal = 10.dp, vertical = 4.dp)) {
+                                    Text(client, fontSize = 10.sp, fontWeight = FontWeight.Medium,
+                                        color = NoorTextSecondary)
                                 }
                             }
                         }
@@ -449,14 +479,21 @@ fun EmployerVendorDetailScreen(
                     VendorDetailSection(title = "Services Offered (${services.size})") {
                         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             services.filter { it.isActive }.forEach { service ->
-                                Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = NoorBackground), elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)) {
+                                Card(shape = RoundedCornerShape(12.dp),
+                                    colors = CardDefaults.cardColors(containerColor = NoorBackground),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)) {
                                     Column(modifier = Modifier.padding(12.dp)) {
-                                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            Box(modifier = Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(NoorBlueLight), contentAlignment = Alignment.Center) {
+                                        Row(verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            Box(modifier = Modifier.size(36.dp)
+                                                .clip(RoundedCornerShape(10.dp))
+                                                .background(NoorBlueLight),
+                                                contentAlignment = Alignment.Center) {
                                                 Text("🔧", fontSize = 18.sp)
                                             }
                                             Column(modifier = Modifier.weight(1f)) {
-                                                Text(service.description.take(60), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = NoorTextPrimary)
+                                                Text(service.description.take(60), fontSize = 12.sp,
+                                                    fontWeight = FontWeight.SemiBold, color = NoorTextPrimary)
                                                 Spacer(Modifier.height(2.dp))
                                                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                                     VendorMiniPill("💰 ${service.pricingModel}", NoorGreenLight, NoorGreen)
@@ -465,16 +502,23 @@ fun EmployerVendorDetailScreen(
                                             }
                                         }
                                         Spacer(Modifier.height(6.dp))
-                                        Text(service.priceRange, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = NoorBlue)
+                                        Text(service.priceRange, fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold, color = NoorBlue)
                                         if (service.coverageAreas.isNotEmpty()) {
                                             Spacer(Modifier.height(4.dp))
-                                            Text("Coverage: ${service.coverageAreas.take(3).joinToString(", ")}", fontSize = 10.sp, color = NoorTextHint)
+                                            Text("Coverage: ${service.coverageAreas.take(3).joinToString(", ")}",
+                                                fontSize = 10.sp, color = NoorTextHint)
                                         }
                                         if (service.highlights.isNotEmpty()) {
                                             Spacer(Modifier.height(4.dp))
-                                            Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            Row(modifier = Modifier.fillMaxWidth()
+                                                .horizontalScroll(rememberScrollState()),
+                                                horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                                 service.highlights.take(3).forEach { h ->
-                                                    Box(modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(NoorBackground).border(1.dp, NoorBorder, RoundedCornerShape(6.dp)).padding(horizontal = 6.dp, vertical = 2.dp)) {
+                                                    Box(modifier = Modifier.clip(RoundedCornerShape(6.dp))
+                                                        .background(NoorBackground)
+                                                        .border(1.dp, NoorBorder, RoundedCornerShape(6.dp))
+                                                        .padding(horizontal = 6.dp, vertical = 2.dp)) {
                                                         Text(h, fontSize = 9.sp, color = NoorTextSecondary)
                                                     }
                                                 }
@@ -491,10 +535,16 @@ fun EmployerVendorDetailScreen(
             item {
                 Spacer(Modifier.height(4.dp))
                 if (hasExistingProposal) {
-                    Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = NoorGreenLight.copy(alpha = 0.3f)), elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)) {
-                        Row(modifier = Modifier.fillMaxWidth().padding(14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Check, contentDescription = null, tint = NoorGreen, modifier = Modifier.size(20.dp))
-                            Text("Proposal already sent to admin. Track it in your Vendor Proposals tab.", fontSize = 12.sp, color = NoorGreen, fontWeight = FontWeight.Medium)
+                    Card(shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = NoorGreenLight.copy(alpha = 0.3f)),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)) {
+                        Row(modifier = Modifier.fillMaxWidth().padding(14.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Check, contentDescription = null,
+                                tint = NoorGreen, modifier = Modifier.size(20.dp))
+                            Text("Proposal already sent to admin. Track it in your Vendor Proposals tab.",
+                                fontSize = 12.sp, color = NoorGreen, fontWeight = FontWeight.Medium)
                         }
                     }
                 } else {
@@ -504,15 +554,28 @@ fun EmployerVendorDetailScreen(
                         shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = NoorBlue)
                     ) {
-                        Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Check, contentDescription = null,
+                            tint = Color.White, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text("Send Proposal to Admin", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Text("Send Proposal to Admin", fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold, color = Color.White)
                     }
                 }
             }
 
-            item { Spacer(Modifier.height(24.dp)) }
+            item {
+                Spacer(Modifier.height(8.dp))
+                WhatsAppAdminButtonVendor()
+                Spacer(Modifier.height(24.dp))
+            }
         }
+    }
+
+    if (showFullLogo && vendor.logoUrl.isNotBlank()) {
+        FullScreenImageDialog(
+            imageUrl = vendor.logoUrl,
+            onDismiss = { showFullLogo = false }
+        )
     }
 
     if (showProposalSheet && employerProfile != null) {
@@ -626,7 +689,16 @@ private fun VendorProposalBottomSheet(
                             employerName = employerProfile.fullName,
                             employerPhone = employerProfile.phone,
                             employerCity = employerProfile.city,
-                            vendorId = vendor.id
+                            vendorId = vendor.id,
+                            vendorLogoUrl = vendor.logoUrl,      // ← ADD THIS
+                            vendorBio = vendor.bio,              // ← ADD THIS
+                            vendorOperatingCities = vendor.operatingCities,  // ← ADD THIS
+                            vendorWorkforceScale = vendor.workforceScale,    // ← ADD THIS
+                            vendorYearsInBusiness = vendor.yearsInBusiness.toIntOrNull() ?: 0,  // ← ADD THIS
+                            vendorIsoCertified = vendor.isISOCertified,      // ← ADD THIS
+                            vendorNotableClients = vendor.notableClients,    // ← ADD THIS
+
+
                         )
                         onSend(proposal)
                     },
@@ -723,96 +795,132 @@ fun VendorProposalInboxScreen(viewModel: EmployerProposalViewModel = hiltViewMod
         }
     }
 }
-
 @Composable
 private fun VendorProposalCard(proposal: VendorProposal) {
-    var expanded by remember { mutableStateOf(false) }
+    var showDetails by remember { mutableStateOf(false) }
 
     val (accentColor, pillBg, statusLabel, statusEmoji) = when (proposal.status) {
-        VendorProposalStatus.PENDING -> listOf(NoorBlue, NoorBlueLight, "Pending", "⏳")
+        VendorProposalStatus.PENDING  -> listOf(NoorBlue,  NoorBlueLight,  "Pending",  "⏳")
         VendorProposalStatus.ACCEPTED -> listOf(NoorGreen, NoorGreenLight, "Accepted", "✅")
-        VendorProposalStatus.DECLINED -> listOf(NoorRed, NoorRedLight, "Declined", "❌")
+        VendorProposalStatus.DECLINED -> listOf(NoorRed,   NoorRedLight,   "Declined", "❌")
     }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = NoorSurface),
+        modifier  = Modifier.fillMaxWidth().clickable { showDetails = true },
+        shape     = RoundedCornerShape(16.dp),
+        colors    = CardDefaults.cardColors(containerColor = NoorSurface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column {
-            Row(modifier = Modifier.fillMaxWidth()) {
-                Box(
-                    modifier = Modifier.width(4.dp).fillMaxHeight().background(accentColor as Color, RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp))
-                )
-                Column(modifier = Modifier.weight(1f).padding(14.dp)) {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.weight(1f)) {
-                            Box(modifier = Modifier.size(42.dp).clip(CircleShape).background(NoorBlueLight), contentAlignment = Alignment.Center) {
-                                Text(proposal.vendorEmoji, fontSize = 20.sp)
-                            }
-                            Column {
-                                Text(proposal.vendorName, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = NoorTextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text(proposal.vendorCity, fontSize = 11.sp, color = NoorTextHint)
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Box(
+                modifier = Modifier
+                    .width(4.dp).fillMaxHeight()
+                    .background(accentColor as Color, RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp))
+            )
+            Column(modifier = Modifier.weight(1f).padding(14.dp)) {
+                Row(
+                    modifier              = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment     = Alignment.Top
+                ) {
+                    Row(
+                        verticalAlignment     = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier              = Modifier.weight(1f)
+                    ) {
+                        // Avatar: logo or initials
+                        if (proposal.vendorLogoUrl.isNotBlank()) {
+                            AsyncImage(
+                                model              = proposal.vendorLogoUrl,
+                                contentDescription = "Vendor logo",
+                                modifier           = Modifier.size(42.dp).clip(CircleShape),
+                                contentScale       = ContentScale.Crop
+                            )
+                        } else {
+                            Box(
+                                modifier         = Modifier.size(42.dp).clip(CircleShape)
+                                    .background(VendorTealLight),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    proposal.vendorName.split(" ")
+                                        .take(2)
+                                        .mapNotNull { it.firstOrNull()?.uppercase() }
+                                        .joinToString("")
+                                        .ifEmpty { "V" },
+                                    fontSize   = 14.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color      = VendorTeal
+                                )
                             }
                         }
-                        Spacer(Modifier.width(8.dp))
-                        Box(modifier = Modifier.clip(RoundedCornerShape(20.dp)).background(pillBg as Color).padding(horizontal = 8.dp, vertical = 4.dp)) {
-                            Text("$statusEmoji $statusLabel", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = accentColor)
+
+                        Column {
+                            Text(
+                                proposal.vendorName, fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold, color = NoorTextPrimary,
+                                maxLines = 1, overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                proposal.vendorCity, fontSize = 11.sp, color = NoorTextHint
+                            )
                         }
                     }
-                    Spacer(Modifier.height(8.dp))
-                    Text(proposal.jobTitle, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = NoorTextPrimary)
-                    Text("Budget: ${proposal.budget} · ${proposal.location}", fontSize = 11.sp, color = NoorTextHint)
-                    Spacer(Modifier.height(8.dp))
-                    Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        VendorProposalTag("📅", proposal.startDate)
-                        VendorProposalTag("⏰", proposal.schedule)
-                        VendorProposalTag("💰", proposal.budget)
-                        VendorProposalTag("🕐", proposal.sentAt)
+
+                    Spacer(Modifier.width(6.dp))
+
+                    // Type + Status pills
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment     = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(VendorTealLight)
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text("🏢 Vendor", fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold, color = VendorTeal)
+                        }
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(pillBg as Color)
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text("$statusEmoji $statusLabel", fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold, color = accentColor)
+                        }
                     }
                 }
-            }
 
-            AnimatedVisibility(visible = expanded, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
-                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp).padding(bottom = 14.dp)) {
-                    HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
-                    Spacer(Modifier.height(10.dp))
-                    Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = NoorBackground), elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)) {
-                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text("PROPOSAL DETAILS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = NoorBlue, letterSpacing = 0.5.sp)
-                            DetailRow("💼", "Job Title", proposal.jobTitle)
-                            DetailRow("📍", "Location", proposal.location)
-                            DetailRow("📅", "Preferred Start Date", proposal.startDate)
-                            DetailRow("💰", "Budget / Offer", proposal.budget)
-                            if (proposal.note.isNotBlank())
-                                DetailRow("📝", "Note to Admin", proposal.note, isMultiline = true)
-                            Text("VENDOR INFORMATION", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = NoorBlue, letterSpacing = 0.5.sp, modifier = Modifier.padding(top = 4.dp))
-                            DetailRow("🏢", "Vendor", proposal.vendorName)
-                            DetailRow("🌆", "Headquarters", proposal.vendorCity)
-                            DetailRow("📨", "Proposal Sent", proposal.sentAt)
-                            Text("ID: ${proposal.id.take(8)}", fontSize = 9.sp, color = NoorTextHint, modifier = Modifier.padding(top = 4.dp))
-                        }
-                    }
+                Spacer(Modifier.height(10.dp))
 
-                    if (proposal.status == VendorProposalStatus.ACCEPTED) {
-                        Spacer(Modifier.height(10.dp))
-                        Box(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(NoorGreenLight).padding(10.dp)) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Check, contentDescription = null, tint = NoorGreen, modifier = Modifier.size(16.dp))
-                                Text("Admin has accepted and connected you with this vendor. Expect a call soon.", fontSize = 11.sp, color = NoorGreen, fontWeight = FontWeight.Medium, lineHeight = 16.sp)
-                            }
-                        }
-                    }
-                }
-            }
+                Text(proposal.jobTitle, fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold, color = NoorTextPrimary)
+                Text("${proposal.serviceLabel} · ${proposal.location}",
+                    fontSize = 11.sp, color = NoorTextHint)
 
-            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp).padding(bottom = 10.dp), horizontalArrangement = Arrangement.Center) {
-                TextButton(onClick = { expanded = !expanded }, colors = ButtonDefaults.textButtonColors(contentColor = NoorTextHint)) {
-                    Text(if (expanded) "Hide details ▲" else "View details ▼", fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                Spacer(Modifier.height(8.dp))
+                HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
+                Spacer(Modifier.height(8.dp))
+
+                Row(
+                    modifier              = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    VendorProposalTag("📅", proposal.startDate)
+                    VendorProposalTag("⏰", proposal.schedule)
+                    VendorProposalTag("💰", proposal.budget)
+                    VendorProposalTag("🕐", "Sent ${proposal.sentAt}")
                 }
             }
         }
+    }
+
+    if (showDetails) {
+        VendorProposalDetailsDialog(proposal = proposal, onDismiss = { showDetails = false })
     }
 }
 
@@ -881,5 +989,241 @@ private fun DetailRow(icon: String, label: String, value: String, isMultiline: B
                 Text(value, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = NoorTextPrimary)
             }
         }
+    }
+}
+
+@Composable
+private fun VendorProposalDetailsDialog(
+    proposal: VendorProposal,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape            = RoundedCornerShape(20.dp),
+        containerColor   = NoorSurface,
+        title = {
+            Column {
+                Text("📄 Vendor Proposal Details",
+                    fontWeight = FontWeight.Bold, fontSize = 18.sp, color = NoorTextPrimary)
+                Text("for ${proposal.vendorName}", fontSize = 12.sp, color = NoorTextHint)
+            }
+        },
+        text = {
+            Column(
+                modifier            = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                // Employer + Vendor
+                DetailCard {
+                    Text("People Involved", fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold, color = NoorBlue)
+                    Spacer(Modifier.height(10.dp))
+
+                    // Employer
+                    Row(
+                        verticalAlignment     = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier              = Modifier.fillMaxWidth()
+                    ) {
+                        if (proposal.employerphotourl.isNotBlank()) {
+                            AsyncImage(
+                                model              = proposal.employerphotourl,
+                                contentDescription = "Employer photo",
+                                modifier           = Modifier.size(48.dp).clip(CircleShape),
+                                contentScale       = ContentScale.Crop
+                            )
+                        } else {
+                            Box(
+                                modifier         = Modifier.size(48.dp).clip(CircleShape)
+                                    .background(NoorOrange),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    proposal.employerName.split(" ").take(2)
+                                        .mapNotNull { it.firstOrNull()?.uppercase() }
+                                        .joinToString("").ifEmpty { "E" },
+                                    fontSize = 16.sp, fontWeight = FontWeight.ExtraBold,
+                                    color = Color.White
+                                )
+                            }
+                        }
+                        Column {
+                            Box(
+                                modifier = Modifier.clip(RoundedCornerShape(4.dp))
+                                    .background(NoorOrangeLight)
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text("🏠 Employer", fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold, color = NoorOrange)
+                            }
+                            Spacer(Modifier.height(3.dp))
+                            Text(proposal.employerName.ifBlank { "Unknown Employer" },
+                                fontSize = 13.sp, fontWeight = FontWeight.Bold, color = NoorTextPrimary)
+                            if (proposal.employerPhone.isNotBlank())
+                                Text(proposal.employerPhone, fontSize = 11.sp, color = NoorTextHint)
+                            if (proposal.employerCity.isNotBlank())
+                                Text("${proposal.employerArea}, ${proposal.employerCity}",
+                                    fontSize = 11.sp, color = NoorTextHint)
+                        }
+                    }
+
+                    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                        contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Box(Modifier.width(2.dp).height(8.dp).background(NoorDivider))
+                            Text("⬇", fontSize = 14.sp, color = NoorTextHint)
+                            Box(Modifier.width(2.dp).height(8.dp).background(NoorDivider))
+                        }
+                    }
+
+                    // Vendor
+                    Row(
+                        verticalAlignment     = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier              = Modifier.fillMaxWidth()
+                    ) {
+                        if (proposal.vendorLogoUrl.isNotBlank()) {
+                            AsyncImage(
+                                model              = proposal.vendorLogoUrl,
+                                contentDescription = "Vendor logo",
+                                modifier           = Modifier.size(48.dp).clip(CircleShape),
+                                contentScale       = ContentScale.Crop
+                            )
+                        } else {
+                            Box(
+                                modifier         = Modifier.size(48.dp).clip(CircleShape)
+                                    .background(VendorTealLight),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    proposal.vendorName.split(" ").take(2)
+                                        .mapNotNull { it.firstOrNull()?.uppercase() }
+                                        .joinToString("").ifEmpty { "V" },
+                                    fontSize = 16.sp, fontWeight = FontWeight.ExtraBold,
+                                    color = VendorTeal
+                                )
+                            }
+                        }
+                        Column {
+                            Box(
+                                modifier = Modifier.clip(RoundedCornerShape(4.dp))
+                                    .background(VendorTealLight)
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text("🏢 Vendor", fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold, color = VendorTeal)
+                            }
+                            Spacer(Modifier.height(3.dp))
+                            Text(proposal.vendorName, fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold, color = NoorTextPrimary)
+                            if (proposal.vendorCity.isNotBlank())
+                                Text(proposal.vendorCity, fontSize = 11.sp, color = NoorTextHint)
+                        }
+                    }
+                }
+
+                // Job Details
+                DetailCard {
+                    Text("Job Information", fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold, color = NoorBlue)
+                    Spacer(Modifier.height(8.dp))
+                    DetailInfoRow("💼", "Job Title",   proposal.jobTitle)
+                    DetailInfoRow("🔧", "Service",     proposal.serviceLabel)
+                    DetailInfoRow("📍", "Location",    proposal.location)
+                    DetailInfoRow("⏰", "Schedule",    proposal.schedule)
+                    DetailInfoRow("🗓", "Start Date",  proposal.startDate)
+                    DetailInfoRow("💰", "Budget",      proposal.budget)
+                }
+
+                if (proposal.note.isNotBlank()) {
+                    DetailCard {
+                        Text("📝 Note to Admin", fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold, color = NoorBlue)
+                        Spacer(Modifier.height(6.dp))
+                        Text(proposal.note, fontSize = 13.sp,
+                            color = NoorTextSecondary, lineHeight = 19.sp)
+                    }
+                }
+
+                // Status
+                DetailCard {
+                    Row(modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Text("Status", fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold, color = NoorBlue)
+                        val (color, label, emoji) = when (proposal.status) {
+                            VendorProposalStatus.PENDING  -> Triple(NoorBlue,  "Pending",  "⏳")
+                            VendorProposalStatus.ACCEPTED -> Triple(NoorGreen, "Accepted", "✅")
+                            VendorProposalStatus.DECLINED -> Triple(NoorRed,   "Declined", "❌")
+                        }
+                        Box(modifier = Modifier.clip(RoundedCornerShape(20.dp))
+                            .background(color.copy(alpha = 0.12f))
+                            .padding(horizontal = 10.dp, vertical = 5.dp)) {
+                            Text("$emoji $label", fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold, color = color)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = onDismiss, shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = NoorBlue),
+                modifier = Modifier.height(40.dp)) {
+                Text("Close", color = Color.White, fontWeight = FontWeight.SemiBold)
+            }
+        }
+    )
+}
+
+@Composable
+private fun DetailCard(content: @Composable ColumnScope.() -> Unit) {
+    Card(
+        modifier  = Modifier.fillMaxWidth(),
+        shape     = RoundedCornerShape(12.dp),
+        colors    = CardDefaults.cardColors(containerColor = NoorBackground),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column(modifier = Modifier.padding(12.dp), content = content)
+    }
+}
+
+@Composable
+private fun DetailInfoRow(icon: String, label: String, value: String) {
+    Row(
+        modifier              = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment     = Alignment.CenterVertically
+    ) {
+        Row(
+            verticalAlignment     = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier              = Modifier.weight(0.45f)
+        ) {
+            Text(icon,  fontSize = 13.sp)
+            Text(label, fontSize = 11.sp, color = NoorTextSecondary, fontWeight = FontWeight.Medium)
+        }
+        Text(value, fontSize = 12.sp, fontWeight = FontWeight.Medium,
+            color = NoorTextPrimary, modifier = Modifier.weight(0.55f))
+    }
+}
+@Composable
+private fun WhatsAppAdminButtonVendor(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    Button(
+        onClick = {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/923123339015"))
+            context.startActivity(intent)
+        },
+        modifier = modifier.fillMaxWidth().height(54.dp),
+        shape = RoundedCornerShape(14.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)),
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+    ) {
+        Text("💬", fontSize = 20.sp)
+        Spacer(Modifier.width(8.dp))
+        Text("Contact Admin on WhatsApp", fontSize = 15.sp,
+            fontWeight = FontWeight.SemiBold, color = Color.White)
     }
 }

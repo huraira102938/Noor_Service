@@ -72,6 +72,7 @@ data class AdminEmployerRecord(
     val name: String,
     val initials: String,
     val avatarColor: Color,
+    val photoUrl: String = "",
     val city: String,
     val area: String,
     val email: String,
@@ -200,20 +201,20 @@ fun AdminWorkersScreen(
 
     if (selectedWorker != null) {
         AdminWorkerDetailScreen(
-            entry              = selectedWorker!!,
+            entry               = selectedWorker!!,
             managementViewModel = managementViewModel,
-            onBack             = { selectedWorker = null },
-            onApprove          = { entry ->
+            onBack              = { selectedWorker = null },
+            onApprove           = { entry ->
                 pendingAction = entry.profile.id
-                managementViewModel.updateProfileApproval(entry.profile.id, "employee", true)
+                managementViewModel.approveAndActivateUser(entry.profile.id, "employee")
             },
-            onSuspend          = { entry ->
+            onSuspend           = { entry ->
                 pendingAction = entry.profile.id
                 managementViewModel.updateUserActive(entry.profile.id, "employee", false)
             },
-            onActivate         = { entry ->
+            onActivate          = { entry ->
                 pendingAction = entry.profile.id
-                managementViewModel.updateUserActive(entry.profile.id, "employee", true)
+                managementViewModel.approveAndActivateUser(entry.profile.id, "employee")
             }
         )
         return
@@ -267,11 +268,11 @@ fun AdminWorkersScreen(
                         leadingIcon   = {
                             Icon(Icons.Default.Search, contentDescription = null, tint = NoorTextHint)
                         },
-                        modifier      = Modifier.fillMaxWidth(),
-                        shape         = RoundedCornerShape(14.dp),
-                        singleLine    = true,
+                        modifier        = Modifier.fillMaxWidth(),
+                        shape           = RoundedCornerShape(14.dp),
+                        singleLine      = true,
                         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
-                        colors        = OutlinedTextFieldDefaults.colors(
+                        colors          = OutlinedTextFieldDefaults.colors(
                             focusedContainerColor   = NoorSurface,
                             unfocusedContainerColor = NoorSurface,
                             focusedBorderColor      = Color.Transparent,
@@ -281,23 +282,30 @@ fun AdminWorkersScreen(
                     )
                 }
             }
-        } // end header Box
+        }
 
         // ── Filter chips ──────────────────────────────────────────────────────
         LazyRow(
-            modifier            = Modifier.fillMaxWidth().background(NoorSurface),
-            contentPadding      = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+            modifier              = Modifier.fillMaxWidth().background(NoorSurface),
+            contentPadding        = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            item { AdminFilterChip("All",          filterStatus == null)                            { filterStatus = null } }
-            item { AdminFilterChip("✅ Approved",   filterStatus == WorkerApprovalStatus.APPROVED)  { filterStatus = WorkerApprovalStatus.APPROVED } }
-            item { AdminFilterChip("⏳ Pending",    filterStatus == WorkerApprovalStatus.PENDING)   { filterStatus = WorkerApprovalStatus.PENDING } }
-            item { AdminFilterChip("🚫 Suspended",  filterStatus == WorkerApprovalStatus.SUSPENDED) { filterStatus = WorkerApprovalStatus.SUSPENDED } }
+            item { AdminFilterChip("All",         filterStatus == null)                            { filterStatus = null } }
+            item { AdminFilterChip("✅ Approved",  filterStatus == WorkerApprovalStatus.APPROVED)  { filterStatus = WorkerApprovalStatus.APPROVED } }
+            item { AdminFilterChip("⏳ Pending",   filterStatus == WorkerApprovalStatus.PENDING)   { filterStatus = WorkerApprovalStatus.PENDING } }
+            item { AdminFilterChip("🚫 Suspended", filterStatus == WorkerApprovalStatus.SUSPENDED) { filterStatus = WorkerApprovalStatus.SUSPENDED } }
         }
         HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
 
         // ── List ──────────────────────────────────────────────────────────────
-        if (filtered.isEmpty()) {
+        if (uiState.isLoading || !uiState.hasLoaded) {
+            LazyColumn(
+                contentPadding      = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(6) { AdminShimmerCard() }
+            }
+        } else if (filtered.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("🔍", fontSize = 48.sp)
@@ -310,8 +318,8 @@ fun AdminWorkersScreen(
             }
         } else {
             LazyColumn(
-                contentPadding        = PaddingValues(16.dp),
-                verticalArrangement   = Arrangement.spacedBy(10.dp)
+                contentPadding      = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 item {
                     Text(
@@ -325,9 +333,8 @@ fun AdminWorkersScreen(
             }
         }
 
-    } // end outer Column
+    }
 }
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Worker Card
 // ─────────────────────────────────────────────────────────────────────────────
@@ -837,24 +844,27 @@ fun AdminEmployersScreen(
 
     val employerRecords = uiState.employers.map { employer ->
         AdminEmployerRecord(
-            id            = employer.uid,
-            name          = employer.fullName.ifBlank { "Unknown" },
-            initials      = employer.fullName
+            id          = employer.uid,
+            name        = employer.fullName.ifBlank { "Unknown" },
+            initials    = employer.fullName
                 .split(" ")
                 .mapNotNull { it.firstOrNull()?.toString() }
                 .take(2)
                 .joinToString("")
                 .ifEmpty { "?" },
-            avatarColor   = AdminPurple,
-            city          = employer.city,
-            area          = employer.area,
-            email         = employer.email,
-            phone         = employer.phone,
-            address       = employer.address,
-            joinedDate    =  SimpleDateFormat("MMM yyyy", Locale.getDefault())
+            avatarColor = avatarColors[
+                kotlin.math.abs(employer.uid.hashCode()) % avatarColors.size
+            ],
+            photoUrl    = employer.photoUrl ?: "",
+            city        = employer.city,
+            area        = employer.area,
+            email       = employer.email,
+            phone       = employer.phone,
+            address     = employer.address,
+            joinedDate  = SimpleDateFormat("MMM yyyy", Locale.getDefault())
                 .format(Date(employer.createdAt)),
-            isVerified    = true,            // employers are always verified by default
-            bio           = employer.about
+            isVerified  = true,
+            bio         = employer.about
         )
     }
 
@@ -867,10 +877,9 @@ fun AdminEmployersScreen(
     }
 
     val filtered = employerRecords.filter { e ->
-        val matchQuery = query.isBlank() ||
+        query.isBlank() ||
                 e.name.contains(query, ignoreCase = true) ||
                 e.city.contains(query, ignoreCase = true)
-        matchQuery
     }
 
     Column(modifier = Modifier.fillMaxSize().background(NoorBackground)) {
@@ -884,8 +893,10 @@ fun AdminEmployersScreen(
                 .padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 20.dp)
         ) {
             Column {
-                Text("Employers", fontSize = 22.sp, fontWeight = FontWeight.Bold,
-                    color = Color.White, letterSpacing = (-0.3).sp)
+                Text(
+                    "Employers", fontSize = 22.sp, fontWeight = FontWeight.Bold,
+                    color = Color.White, letterSpacing = (-0.3).sp
+                )
                 Text(
                     "${employerRecords.size} registered",
                     fontSize = 12.sp, color = Color.White.copy(alpha = 0.72f)
@@ -910,10 +921,10 @@ fun AdminEmployersScreen(
                         leadingIcon   = {
                             Icon(Icons.Default.Search, contentDescription = null, tint = NoorTextHint)
                         },
-                        modifier      = Modifier.fillMaxWidth(),
-                        shape         = RoundedCornerShape(14.dp),
-                        singleLine    = true,
-                        colors        = OutlinedTextFieldDefaults.colors(
+                        modifier  = Modifier.fillMaxWidth(),
+                        shape     = RoundedCornerShape(14.dp),
+                        singleLine = true,
+                        colors    = OutlinedTextFieldDefaults.colors(
                             focusedContainerColor   = NoorSurface,
                             unfocusedContainerColor = NoorSurface,
                             focusedBorderColor      = Color.Transparent,
@@ -923,27 +934,36 @@ fun AdminEmployersScreen(
                     )
                 }
             }
-        } // end header Box
+        }
 
         HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
 
         // ── List ──────────────────────────────────────────────────────────────
-        LazyColumn(
-            contentPadding      = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            item {
-                Text(
-                    "${filtered.size} employer${if (filtered.size != 1) "s" else ""} found",
-                    fontSize = 11.sp, color = NoorTextHint, fontWeight = FontWeight.SemiBold
-                )
+        if (uiState.isLoading || !uiState.hasLoaded) {
+            LazyColumn(
+                contentPadding      = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(6) { AdminShimmerCard() }
             }
-            items(filtered, key = { it.id }) { record ->
-                AdminEmployerCard(record = record, onClick = { selectedEmployer = record })
+        } else {
+            LazyColumn(
+                contentPadding      = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                item {
+                    Text(
+                        "${filtered.size} employer${if (filtered.size != 1) "s" else ""} found",
+                        fontSize = 11.sp, color = NoorTextHint, fontWeight = FontWeight.SemiBold
+                    )
+                }
+                items(filtered, key = { it.id }) { record ->
+                    AdminEmployerCard(record = record, onClick = { selectedEmployer = record })
+                }
             }
         }
 
-    } // end outer Column
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -963,12 +983,22 @@ private fun AdminEmployerCard(record: AdminEmployerRecord, onClick: () -> Unit) 
             verticalAlignment     = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Box(
-                modifier         = Modifier.size(48.dp).clip(CircleShape).background(record.avatarColor),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(record.initials, fontSize = 16.sp,
-                    fontWeight = FontWeight.ExtraBold, color = Color.White)
+            // Avatar — photo or initials fallback
+            if (record.photoUrl.isNotBlank()) {
+                AsyncImage(
+                    model              = record.photoUrl,
+                    contentDescription = "Employer photo",
+                    modifier           = Modifier.size(48.dp).clip(CircleShape),
+                    contentScale       = ContentScale.Crop
+                )
+            } else {
+                Box(
+                    modifier         = Modifier.size(48.dp).clip(CircleShape).background(record.avatarColor),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(record.initials, fontSize = 16.sp,
+                        fontWeight = FontWeight.ExtraBold, color = Color.White)
+                }
             }
 
             Column(modifier = Modifier.weight(1f)) {
@@ -1031,6 +1061,7 @@ private fun AdminEmployerDetailScreen(
     onBack: () -> Unit
 ) {
     val employerProposals = AdminProposalStore.proposals.filter { true }
+    var selectedImageUrl by remember { mutableStateOf<String?>(null) }
 
     Column(modifier = Modifier.fillMaxSize().background(NoorBackground)) {
 
@@ -1056,13 +1087,31 @@ private fun AdminEmployerDetailScreen(
                     verticalAlignment     = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    Box(
-                        modifier         = Modifier.size(64.dp).clip(CircleShape).background(record.avatarColor),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(record.initials, fontSize = 22.sp,
-                            fontWeight = FontWeight.ExtraBold, color = Color.White)
+                    // Avatar — photo with tap-to-expand, or initials fallback
+                    if (record.photoUrl.isNotBlank()) {
+                        Box(
+                            modifier = Modifier
+                                .size(64.dp)
+                                .clip(CircleShape)
+                                .clickable { selectedImageUrl = record.photoUrl }
+                        ) {
+                            AsyncImage(
+                                model              = record.photoUrl,
+                                contentDescription = "Employer photo",
+                                modifier           = Modifier.fillMaxSize(),
+                                contentScale       = ContentScale.Crop
+                            )
+                        }
+                    } else {
+                        Box(
+                            modifier         = Modifier.size(64.dp).clip(CircleShape).background(record.avatarColor),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(record.initials, fontSize = 22.sp,
+                                fontWeight = FontWeight.ExtraBold, color = Color.White)
+                        }
                     }
+
                     Column(modifier = Modifier.weight(1f)) {
                         Text(record.name, fontSize = 19.sp,
                             fontWeight = FontWeight.Bold, color = Color.White)
@@ -1083,21 +1132,20 @@ private fun AdminEmployerDetailScreen(
                     }
                 }
             }
-        } // end header Box
+        }
 
-// ── Scrollable body ───────────────────────────────────────────────────
+        // ── Scrollable body ───────────────────────────────────────────────────
         Column(
             modifier            = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-
             // Contact & Location
             AdminDetailSection("Contact & Location") {
-                AdminDetailRow("📧", "Email", record.email.ifBlank { "Not provided" })
+                AdminDetailRow("📧", "Email",    record.email.ifBlank { "Not provided" })
                 AdminDetailRow("📞", "Phone Number", record.phone.ifBlank { "Not provided" })
-                AdminDetailRow("📍", "City", record.city.ifBlank { "Not provided" })
-                AdminDetailRow("🏘", "Area", record.area.ifBlank { "Not provided" })
-                AdminDetailRow("🏠", "Address", record.address.ifBlank { "Not provided" })
+                AdminDetailRow("📍", "City",     record.city.ifBlank { "Not provided" })
+                AdminDetailRow("🏘", "Area",     record.area.ifBlank { "Not provided" })
+                AdminDetailRow("🏠", "Address",  record.address.ifBlank { "Not provided" })
             }
 
             // About
@@ -1108,12 +1156,22 @@ private fun AdminEmployerDetailScreen(
                 }
             }
 
-            // Member Since
+            // Account Info
             AdminDetailSection("Account Info") {
                 AdminDetailRow("🗓", "Member Since", record.joinedDate.ifBlank { "Not provided" })
-                AdminDetailRow("🏷", "User ID", record.id.take(8))
+                AdminDetailRow("🏷", "User ID",      record.id.take(8))
             }
+
+            Spacer(Modifier.height(8.dp))
         }
+    }
+
+    // Full-screen image viewer
+    if (selectedImageUrl != null) {
+        FullScreenImageViewer(
+            imageUrl  = selectedImageUrl!!,
+            onDismiss = { selectedImageUrl = null }
+        )
     }
 }
 
@@ -1145,10 +1203,10 @@ fun AdminVendorsScreen(
             val displayName = category?.label ?: svc.serviceId.replace("_", " ").replaceFirstChar { it.uppercase() }
             AdminVendorServiceDetail(
                 categoryLabel = displayName,
-                emoji = category?.emoji ?: "🛠",
-                pricingModel = svc.pricingModel,
-                priceRange = svc.priceRange,
-                minContract = svc.minContractDuration,
+                emoji         = category?.emoji ?: "🛠",
+                pricingModel  = svc.pricingModel,
+                priceRange    = svc.priceRange,
+                minContract   = svc.minContractDuration,
                 coverageAreas = svc.coverageAreas
             )
         }
@@ -1163,9 +1221,9 @@ fun AdminVendorsScreen(
             joinedDate         = SimpleDateFormat("MMM yyyy", Locale.getDefault())
                 .format(Date(vendor.createdAt)),
             verificationStatus = when {
-                !vendor.isActive -> VendorVerificationStatus.REJECTED
-                vendor.isProfileApproved -> VendorVerificationStatus.VERIFIED
-                else -> VendorVerificationStatus.PENDING
+                !vendor.isActive          -> VendorVerificationStatus.REJECTED
+                vendor.isProfileApproved  -> VendorVerificationStatus.VERIFIED
+                else                      -> VendorVerificationStatus.PENDING
             },
             email              = vendor.email,
             phone              = vendor.phone,
@@ -1186,7 +1244,6 @@ fun AdminVendorsScreen(
 
     if (selectedVendor != null) {
         val vendor = uiState.vendors.find { it.uid == selectedVendor!!.id }
-        val vendorServiceList = vendorServices[selectedVendor!!.id]
         AdminVendorDetailScreen(
             record              = selectedVendor!!,
             managementViewModel = managementViewModel,
@@ -1194,7 +1251,7 @@ fun AdminVendorsScreen(
             isActive            = vendor?.isActive ?: true,
             onBack              = { selectedVendor = null },
             onVerify            = { r ->
-                managementViewModel.updateProfileApproval(r.id, "vendor", true)
+                managementViewModel.approveAndActivateUser(r.id, "vendor")
                 selectedVendor = null
             },
             onReject            = { r ->
@@ -1206,7 +1263,7 @@ fun AdminVendorsScreen(
                 selectedVendor = null
             },
             onActivate          = { r ->
-                managementViewModel.updateUserActive(r.id, "vendor", true)
+                managementViewModel.approveAndActivateUser(r.id, "vendor")
                 selectedVendor = null
             }
         )
@@ -1258,10 +1315,10 @@ fun AdminVendorsScreen(
                         leadingIcon   = {
                             Icon(Icons.Default.Search, contentDescription = null, tint = NoorTextHint)
                         },
-                        modifier      = Modifier.fillMaxWidth(),
-                        shape         = RoundedCornerShape(14.dp),
-                        singleLine    = true,
-                        colors        = OutlinedTextFieldDefaults.colors(
+                        modifier   = Modifier.fillMaxWidth(),
+                        shape      = RoundedCornerShape(14.dp),
+                        singleLine = true,
+                        colors     = OutlinedTextFieldDefaults.colors(
                             focusedContainerColor   = NoorSurface,
                             unfocusedContainerColor = NoorSurface,
                             focusedBorderColor      = Color.Transparent,
@@ -1271,7 +1328,7 @@ fun AdminVendorsScreen(
                     )
                 }
             }
-        } // end header Box
+        }
 
         // ── Filter chips ──────────────────────────────────────────────────────
         LazyRow(
@@ -1279,30 +1336,39 @@ fun AdminVendorsScreen(
             contentPadding        = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            item { AdminFilterChip("All",          filterStatus == null)                                  { filterStatus = null } }
-            item { AdminFilterChip("✅ Verified",   filterStatus == VendorVerificationStatus.VERIFIED)    { filterStatus = VendorVerificationStatus.VERIFIED } }
-            item { AdminFilterChip("⏳ Pending",    filterStatus == VendorVerificationStatus.PENDING)     { filterStatus = VendorVerificationStatus.PENDING } }
-            item { AdminFilterChip("❌ Rejected",   filterStatus == VendorVerificationStatus.REJECTED)    { filterStatus = VendorVerificationStatus.REJECTED } }
+            item { AdminFilterChip("All",         filterStatus == null)                               { filterStatus = null } }
+            item { AdminFilterChip("✅ Verified",  filterStatus == VendorVerificationStatus.VERIFIED) { filterStatus = VendorVerificationStatus.VERIFIED } }
+            item { AdminFilterChip("⏳ Pending",   filterStatus == VendorVerificationStatus.PENDING)  { filterStatus = VendorVerificationStatus.PENDING } }
+            item { AdminFilterChip("❌ Rejected",  filterStatus == VendorVerificationStatus.REJECTED) { filterStatus = VendorVerificationStatus.REJECTED } }
         }
         HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
 
         // ── List ──────────────────────────────────────────────────────────────
-        LazyColumn(
-            contentPadding      = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            item {
-                Text(
-                    "${filtered.size} vendor${if (filtered.size != 1) "s" else ""} found",
-                    fontSize = 11.sp, color = NoorTextHint, fontWeight = FontWeight.SemiBold
-                )
+        if (uiState.isLoading || !uiState.hasLoaded) {
+            LazyColumn(
+                contentPadding      = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(6) { AdminShimmerCard() }
             }
-            items(filtered, key = { it.id }) { record ->
-                AdminVendorCard(record = record, onClick = { selectedVendor = record })
+        } else {
+            LazyColumn(
+                contentPadding      = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                item {
+                    Text(
+                        "${filtered.size} vendor${if (filtered.size != 1) "s" else ""} found",
+                        fontSize = 11.sp, color = NoorTextHint, fontWeight = FontWeight.SemiBold
+                    )
+                }
+                items(filtered, key = { it.id }) { record ->
+                    AdminVendorCard(record = record, onClick = { selectedVendor = record })
+                }
             }
         }
 
-    } // end outer Column
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2033,4 +2099,67 @@ private fun FullScreenImageViewer(
             }
         }
     )
+}
+
+@Composable
+fun AdminShimmerCard() {
+    val brush = rememberShimmerBrush()
+    Card(
+        modifier  = Modifier.fillMaxWidth(),
+        shape     = RoundedCornerShape(14.dp),
+        colors    = CardDefaults.cardColors(containerColor = NoorSurface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier              = Modifier.padding(14.dp),
+            verticalAlignment     = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Avatar placeholder
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(brush)
+            )
+            Column(
+                modifier            = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Name line
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.55f)
+                        .height(13.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(brush)
+                )
+                // Subtitle line
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.75f)
+                        .height(11.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(brush)
+                )
+                // Tag chips row
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .width(64.dp)
+                            .height(18.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(brush)
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(72.dp)
+                            .height(18.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(brush)
+                    )
+                }
+            }
+        }
+    }
 }

@@ -1,5 +1,6 @@
 package com.danish.noorservice.ui.screens.admin
 
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -25,6 +26,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
+import coil3.request.crossfade
 import com.danish.noorservice.R
 import com.danish.noorservice.ui.components.ShimmerBox
 import com.danish.noorservice.ui.components.rememberShimmerBrush
@@ -275,17 +278,20 @@ fun AdminDashboardScreen(
                 Spacer(Modifier.height(8.dp))
 
                 AdminProposalStore.proposals
-                    .filter { it.status == AdminProposalStatus.PENDING }  // ← was SENT
+                    .filter { it.status == AdminProposalStatus.PENDING }
                     .take(3)
                     .forEach { proposal ->
+                        Log.d("DashboardCard", "workerPhotoUrl=${proposal.workerPhotoUrl}, employerPhotoUrl=${proposal.employerPhotoUrl}")
+
                         DashboardProposalCard(
-                            workerName     = proposal.workerName,
-                            workerUsername = proposal.workerUsername,
-                            jobTitle       = proposal.jobTitle,
-                            sentAt         = proposal.sentAt,
-                            avatarColor    = proposal.avatarColor,
-                            initials       = proposal.workerInitials,
-                            proposalId     = proposal.id,
+                            workerName        = proposal.workerName,
+                            workerUsername    = proposal.workerUsername,
+                            jobTitle          = proposal.jobTitle,
+                            sentAt            = proposal.sentAt,
+                            avatarColor       = proposal.avatarColor,
+                            initials          = proposal.workerInitials,
+                            workerPhotoUrl    = proposal.workerPhotoUrl,  // ADD THIS
+                            proposalId        = proposal.id,
                             proposalViewModel = proposalViewModel,
                             onConnect = { proposalViewModel?.acceptWorkerProposal(proposal.id) },
                             onDecline = { proposalViewModel?.declineWorkerProposal(proposal.id) }
@@ -399,10 +405,13 @@ fun AdminStatCard(
 private fun DashboardProposalCard(
     workerName: String, workerUsername: String, jobTitle: String,
     sentAt: String, avatarColor: Color, initials: String,
+    workerPhotoUrl: String = "",
     proposalId: String = "",
     proposalViewModel: AdminProposalViewModel? = null,
     onConnect: () -> Unit, onDecline: () -> Unit
 ) {
+    var showDeclineDialog by remember { mutableStateOf(false) }
+
     Card(
         modifier  = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
         shape     = RoundedCornerShape(14.dp),
@@ -420,13 +429,26 @@ private fun DashboardProposalCard(
                     verticalAlignment     = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Box(
-                        modifier = Modifier.size(36.dp).clip(CircleShape).background(avatarColor),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(initials, fontSize = 12.sp,
-                            fontWeight = FontWeight.ExtraBold, color = Color.White)
+                    // ── Avatar: photo or initials ─────────────────────────────
+                    if (workerPhotoUrl.isNotBlank()) {
+                        AsyncImage(
+                            model              = workerPhotoUrl,
+                            contentDescription = "Worker photo",
+                            modifier           = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape),
+                            contentScale       = ContentScale.Crop
+                        )
+                    } else {
+                        Box(
+                            modifier         = Modifier.size(36.dp).clip(CircleShape).background(avatarColor),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(initials, fontSize = 12.sp,
+                                fontWeight = FontWeight.ExtraBold, color = Color.White)
+                        }
                     }
+
                     Column(modifier = Modifier.weight(1f)) {
                         Text(workerName, fontSize = 13.sp,
                             fontWeight = FontWeight.Bold, color = NoorTextPrimary)
@@ -437,11 +459,11 @@ private fun DashboardProposalCard(
                 Spacer(Modifier.height(10.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
-                        onClick         = onConnect,
-                        modifier        = Modifier.weight(1f).height(34.dp),
-                        shape           = RoundedCornerShape(8.dp),
-                        colors          = ButtonDefaults.buttonColors(containerColor = NoorGreen),
-                        contentPadding  = PaddingValues(0.dp)
+                        onClick        = onConnect,
+                        modifier       = Modifier.weight(1f).height(34.dp),
+                        shape          = RoundedCornerShape(8.dp),
+                        colors         = ButtonDefaults.buttonColors(containerColor = NoorGreen),
+                        contentPadding = PaddingValues(0.dp)
                     ) {
                         Icon(Icons.Default.Check, contentDescription = null,
                             modifier = Modifier.size(14.dp))
@@ -449,11 +471,11 @@ private fun DashboardProposalCard(
                         Text("Accept", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                     }
                     OutlinedButton(
-                        onClick         = onDecline,
-                        modifier        = Modifier.weight(1f).height(34.dp),
-                        shape           = RoundedCornerShape(8.dp),
-                        colors          = ButtonDefaults.outlinedButtonColors(contentColor = NoorRed),
-                        contentPadding  = PaddingValues(0.dp)
+                        onClick        = { showDeclineDialog = true },
+                        modifier       = Modifier.weight(1f).height(34.dp),
+                        shape          = RoundedCornerShape(8.dp),
+                        colors         = ButtonDefaults.outlinedButtonColors(contentColor = NoorRed),
+                        contentPadding = PaddingValues(0.dp)
                     ) {
                         Icon(Icons.Default.Close, contentDescription = null,
                             modifier = Modifier.size(14.dp))
@@ -463,5 +485,31 @@ private fun DashboardProposalCard(
                 }
             }
         }
+    }
+
+    if (showDeclineDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeclineDialog = false },
+            shape            = RoundedCornerShape(20.dp),
+            title = {
+                Text("Decline Proposal?", fontWeight = FontWeight.Bold, color = NoorRed)
+            },
+            text = {
+                Text(
+                    "The proposal for $workerName ($workerUsername) will be declined.",
+                    fontSize = 13.sp, color = NoorTextSecondary
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showDeclineDialog = false; onDecline() }) {
+                    Text("Decline", color = NoorRed, fontWeight = FontWeight.SemiBold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeclineDialog = false }) {
+                    Text("Cancel", color = NoorTextHint)
+                }
+            }
+        )
     }
 }

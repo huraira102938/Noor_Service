@@ -21,6 +21,7 @@ data class VendorProposal(
     val sentAt: String,
     val status: VendorProposalStatus = VendorProposalStatus.PENDING,
     val employerName: String = "",
+    val employerphotourl: String = "",
     val employerPhone: String = "",
     val employerEmail: String = "",
     val employerCity: String = "",

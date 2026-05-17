@@ -3,8 +3,6 @@ package com.danish.noorservice.viewmodel.admin
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.danish.noorservice.data.repository.ProposalRepository
-import com.danish.noorservice.ui.screens.employer.AdminProposalStore
-import com.danish.noorservice.ui.screens.employer.VendorProposalStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,8 +35,14 @@ class AdminProposalViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             proposalRepository.updateProposalStatus(proposalId, "accepted").fold(
-                onSuccess = { _uiState.value = _uiState.value.copy(isLoading = false) },
-                onFailure = { e -> _uiState.value = _uiState.value.copy(isLoading = false, error = e.message) }
+                onSuccess = {
+                    // Re-sync so AdminProposalStore reflects the new status immediately
+                    proposalRepository.syncStoresFromFirestore()
+                    _uiState.value = _uiState.value.copy(isLoading = false)
+                },
+                onFailure = { e ->
+                    _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                }
             )
         }
     }
@@ -47,8 +51,13 @@ class AdminProposalViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             proposalRepository.updateProposalStatus(proposalId, "declined").fold(
-                onSuccess = { _uiState.value = _uiState.value.copy(isLoading = false) },
-                onFailure = { e -> _uiState.value = _uiState.value.copy(isLoading = false, error = e.message) }
+                onSuccess = {
+                    proposalRepository.syncStoresFromFirestore()
+                    _uiState.value = _uiState.value.copy(isLoading = false)
+                },
+                onFailure = { e ->
+                    _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                }
             )
         }
     }
@@ -57,8 +66,13 @@ class AdminProposalViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             proposalRepository.updateProposalStatus(proposalId, "accepted").fold(
-                onSuccess = { _uiState.value = _uiState.value.copy(isLoading = false) },
-                onFailure = { e -> _uiState.value = _uiState.value.copy(isLoading = false, error = e.message) }
+                onSuccess = {
+                    proposalRepository.syncStoresFromFirestore()
+                    _uiState.value = _uiState.value.copy(isLoading = false)
+                },
+                onFailure = { e ->
+                    _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                }
             )
         }
     }
@@ -67,8 +81,13 @@ class AdminProposalViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             proposalRepository.updateProposalStatus(proposalId, "declined").fold(
-                onSuccess = { _uiState.value = _uiState.value.copy(isLoading = false) },
-                onFailure = { e -> _uiState.value = _uiState.value.copy(isLoading = false, error = e.message) }
+                onSuccess = {
+                    proposalRepository.syncStoresFromFirestore()
+                    _uiState.value = _uiState.value.copy(isLoading = false)
+                },
+                onFailure = { e ->
+                    _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                }
             )
         }
     }

@@ -24,23 +24,28 @@ data class VendorRegistrationState(
     val error: String? = null,
     val categories: List<Category> = emptyList(),
 
-    // Step 1
+    // Step 1 — required
     val businessName: String = "",
     val contactPerson: String = "",
     val phone: String = "",
     val email: String = "",
-    val ntn: String = "",
-    val regNumber: String = "",
     val city: String = "",
     val address: String = "",
+    val headOffice: String = "",
+
+    // Step 1 — optional
+    val ntn: String = "",
+    val regNumber: String = "",
     val bio: String = "",
     val operatingCities: List<String> = emptyList(),
     val logoUri: Uri? = null,
 
-    // Step 2
+    // Step 2 — required
     val selectedServiceIds: List<String> = emptyList(),
     val serviceDetails: Map<String, VendorServiceInput> = emptyMap(),
     val serviceScale: String = "",
+
+    // Step 2 — optional
     val yearsInBusiness: String = "",
     val isoCertified: Boolean = false,
     val notableClients: List<String> = emptyList()
@@ -50,8 +55,10 @@ data class VendorServiceInput(
     val pricingModel: String = "",
     val priceRange: String = "",
     val minContractDuration: String = "",
-    val coverageAreas: List<String> = emptyList(),
-    val skills: List<String> = emptyList()
+    val description: String = "",           // required
+    val coverageAreas: List<String> = emptyList(), // at least one required
+    val highlights: List<String> = emptyList(),    // optional
+    val skills: List<String> = emptyList()         // optional
 )
 
 sealed class VendorRegistrationEvent {
@@ -73,9 +80,7 @@ class VendorRegistrationViewModel @Inject constructor(
 
     private var userId: String = ""
 
-    fun setUserId(uid: String) {
-        userId = uid
-    }
+    fun setUserId(uid: String) { userId = uid }
 
     fun loadCategories() {
         viewModelScope.launch {
@@ -113,32 +118,43 @@ class VendorRegistrationViewModel @Inject constructor(
         return category?.skills?.map { it.name } ?: emptyList()
     }
 
-    // Step 1 fields
+    // Step 1 — required
     fun updateBusinessName(value: String)  { _uiState.value = _uiState.value.copy(businessName  = value) }
     fun updateContactPerson(value: String) { _uiState.value = _uiState.value.copy(contactPerson = value) }
     fun updatePhone(value: String)         { _uiState.value = _uiState.value.copy(phone         = value) }
     fun updateEmail(value: String)         { _uiState.value = _uiState.value.copy(email         = value) }
-    fun updateNtn(value: String)           { _uiState.value = _uiState.value.copy(ntn           = value) }
-    fun updateRegNumber(value: String)     { _uiState.value = _uiState.value.copy(regNumber     = value) }
     fun updateCity(value: String)          { _uiState.value = _uiState.value.copy(city          = value) }
     fun updateAddress(value: String)       { _uiState.value = _uiState.value.copy(address       = value) }
+    fun updateHeadOffice(value: String)    { _uiState.value = _uiState.value.copy(headOffice    = value) }
+
+    // Step 1 — optional
+    fun updateNtn(value: String)           { _uiState.value = _uiState.value.copy(ntn           = value) }
+    fun updateRegNumber(value: String)     { _uiState.value = _uiState.value.copy(regNumber     = value) }
     fun updateBio(value: String)           { if (value.length <= 300) _uiState.value = _uiState.value.copy(bio = value) }
     fun updateOperatingCities(cities: List<String>) { _uiState.value = _uiState.value.copy(operatingCities = cities) }
     fun setLogoUri(uri: Uri?)              { _uiState.value = _uiState.value.copy(logoUri       = uri) }
 
     fun isStep1Valid(): Boolean {
-        val state = _uiState.value
-        return state.businessName.isNotBlank() && state.contactPerson.isNotBlank() &&
-                state.phone.isNotBlank() && state.city.isNotBlank()
+        val s = _uiState.value
+        return s.businessName.isNotBlank()
+                && s.contactPerson.isNotBlank()
+                && s.phone.isNotBlank()
+                && s.email.isNotBlank()
+                && s.city.isNotBlank()
+                && s.address.isNotBlank()
+                && s.headOffice.isNotBlank()
     }
 
     fun goToStep2() {
-        if (isStep1Valid()) {
-            _uiState.value = _uiState.value.copy(currentStep = 2)
-        }
+        if (isStep1Valid()) _uiState.value = _uiState.value.copy(currentStep = 2)
     }
 
-    // Step 2 fields
+    fun goBack() {
+        val current = _uiState.value.currentStep
+        if (current > 1) _uiState.value = _uiState.value.copy(currentStep = current - 1)
+    }
+
+    // Step 2
     fun updateSelectedServices(serviceIds: List<String>) {
         _uiState.value = _uiState.value.copy(selectedServiceIds = serviceIds)
     }
@@ -149,28 +165,29 @@ class VendorRegistrationViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(serviceDetails = current)
     }
 
-    fun updateServiceScale(value: String)          { _uiState.value = _uiState.value.copy(serviceScale     = value) }
-    fun updateYearsInBusiness(value: String)        { _uiState.value = _uiState.value.copy(yearsInBusiness  = value) }
-    fun updateIsoCertified(value: Boolean)          { _uiState.value = _uiState.value.copy(isoCertified     = value) }
-    fun updateNotableClients(clients: List<String>) { _uiState.value = _uiState.value.copy(notableClients   = clients) }
+    fun updateServiceScale(value: String)           { _uiState.value = _uiState.value.copy(serviceScale    = value) }
+    fun updateYearsInBusiness(value: String)         { _uiState.value = _uiState.value.copy(yearsInBusiness = value) }
+    fun updateIsoCertified(value: Boolean)           { _uiState.value = _uiState.value.copy(isoCertified    = value) }
+    fun updateNotableClients(clients: List<String>)  { _uiState.value = _uiState.value.copy(notableClients  = clients) }
 
     fun isStep2Valid(): Boolean {
-        val state = _uiState.value
-        return state.selectedServiceIds.isNotEmpty() && state.serviceScale.isNotBlank() &&
-                state.serviceDetails.values.all { it.pricingModel.isNotBlank() && it.priceRange.isNotBlank() }
-    }
-
-    fun goBack() {
-        val current = _uiState.value.currentStep
-        if (current > 1) {
-            _uiState.value = _uiState.value.copy(currentStep = current - 1)
+        val s = _uiState.value
+        if (s.selectedServiceIds.isEmpty()) return false
+        if (s.serviceScale.isBlank()) return false
+        return s.selectedServiceIds.all { id ->
+            val detail = s.serviceDetails[id]
+            detail != null
+                    && detail.pricingModel.isNotBlank()
+                    && detail.priceRange.isNotBlank()
+                    && detail.minContractDuration.isNotBlank()
+                    && detail.description.isNotBlank()
+                    && detail.coverageAreas.isNotEmpty()
         }
     }
 
     fun saveVendorProfile() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-
             try {
                 var logoUrl = ""
                 _uiState.value.logoUri?.let { uri ->
@@ -178,44 +195,45 @@ class VendorRegistrationViewModel @Inject constructor(
                 }
 
                 val vendor = Vendor(
-                    uid           = userId,
-                    businessName  = _uiState.value.businessName,
-                    contactPerson = _uiState.value.contactPerson,
-                    phone         = _uiState.value.phone,
-                    email         = _uiState.value.email,
-                    ntn           = _uiState.value.ntn,
-                    regNumber     = _uiState.value.regNumber,
-                    city          = _uiState.value.city,
-                    address       = _uiState.value.address,
-                    logoUrl       = logoUrl,
-                    bio           = _uiState.value.bio,
-                    operatingCities  = _uiState.value.operatingCities,
-                    serviceScale     = _uiState.value.serviceScale,
-                    yearsInBusiness  = _uiState.value.yearsInBusiness.toIntOrNull() ?: 0,
-                    isoCertified     = _uiState.value.isoCertified,
-                    notableClients   = _uiState.value.notableClients,
+                    uid               = userId,
+                    businessName      = _uiState.value.businessName,
+                    contactPerson     = _uiState.value.contactPerson,
+                    phone             = _uiState.value.phone,
+                    email             = _uiState.value.email,
+                    ntn               = _uiState.value.ntn,
+                    regNumber         = _uiState.value.regNumber,
+                    city              = _uiState.value.city,
+                    address           = _uiState.value.address,
+                    headOffice        = _uiState.value.headOffice,
+                    logoUrl           = logoUrl,
+                    bio               = _uiState.value.bio,
+                    operatingCities   = _uiState.value.operatingCities,
+                    serviceScale      = _uiState.value.serviceScale,
+                    yearsInBusiness   = _uiState.value.yearsInBusiness.toIntOrNull() ?: 0,
+                    isoCertified      = _uiState.value.isoCertified,
+                    notableClients    = _uiState.value.notableClients,
                     isProfileApproved = false,
                     isActive          = true
                 )
 
                 userRepository.saveVendorProfile(vendor)
 
-                val services = _uiState.value.serviceDetails.map { (serviceId, detail) ->
+                val services = _uiState.value.selectedServiceIds.map { serviceId ->
+                    val detail = _uiState.value.serviceDetails[serviceId] ?: VendorServiceInput()
                     VendorService(
                         serviceId           = serviceId,
                         pricingModel        = detail.pricingModel,
                         priceRange          = detail.priceRange,
                         minContractDuration = detail.minContractDuration,
+                        description         = detail.description,
                         coverageAreas       = detail.coverageAreas,
-                        skills              = detail.skills
+                        highlights          = detail.highlights,
+                        skills              = detail.skills,
+                        isActive            = true
                     )
                 }
 
                 userRepository.saveVendorServices(userId, services)
-
-                // ✅ FIX: Mark profile complete in Firestore so the app
-                // routes to VendorHome on next launch instead of back
-                // to the registration screen.
                 userRepository.updateUserProfileComplete(userId, true)
 
                 _uiState.value = _uiState.value.copy(isLoading = false)

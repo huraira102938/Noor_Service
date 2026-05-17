@@ -470,7 +470,7 @@ private fun AdminContactRow(emoji: String, label: String, value: String, onPhone
             .fillMaxWidth()
             .then(
                 if (onPhoneClick) Modifier.clickable {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/9231233339015"))
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/923123339015"))
                     context.startActivity(intent)
                 }
                 else if (onEmailClick) Modifier.clickable {

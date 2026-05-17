@@ -36,32 +36,19 @@ import com.danish.noorservice.ui.theme.*
 import com.danish.noorservice.viewmodel.employer.EmployerRegistrationEvent
 import com.danish.noorservice.viewmodel.employer.EmployerRegistrationViewModel
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Employer Registration Screen
-// Shown after user selects "I want to Hire" on the sign-up screen.
-//
-// FIX: The screen now uses EmployerRegistrationViewModel so that data is
-// persisted to Firestore and isProfileComplete is set to true.  Previously
-// the button called onRegistered() directly without saving anything, which
-// caused the employer to land back on this screen every time the app was
-// reopened.
-// ─────────────────────────────────────────────────────────────────────────────
-
 @Composable
 fun EmployerRegistrationScreen(
     onBack: () -> Unit,
     onRegistered: () -> Unit,
-    // ✅ FIX: Accept (or create) the ViewModel so we can save data
     viewModel: EmployerRegistrationViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    // ✅ FIX: Listen for success/error events from the ViewModel
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
                 is EmployerRegistrationEvent.Success -> onRegistered()
-                is EmployerRegistrationEvent.Error   -> { /* error shown in UI via uiState.error */ }
+                is EmployerRegistrationEvent.Error   -> { }
             }
         }
     }
@@ -75,7 +62,6 @@ fun EmployerRegistrationScreen(
             .fillMaxSize()
             .background(NoorBackground)
     ) {
-
         // ── Gradient Header ───────────────────────────────────────────────────
         Box(
             modifier = Modifier
@@ -85,7 +71,6 @@ fun EmployerRegistrationScreen(
                 .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 28.dp)
         ) {
             Column {
-                // Back button
                 Box(
                     modifier = Modifier
                         .size(38.dp)
@@ -104,7 +89,6 @@ fun EmployerRegistrationScreen(
 
                 Spacer(Modifier.height(20.dp))
 
-                // Avatar picker + title row
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -123,15 +107,12 @@ fun EmployerRegistrationScreen(
                                     model = uiState.photoUri,
                                     contentDescription = "Profile photo",
                                     contentScale = ContentScale.Crop,
-                                    modifier = Modifier
-                                        .size(76.dp)
-                                        .clip(CircleShape)
+                                    modifier = Modifier.size(76.dp).clip(CircleShape)
                                 )
                             } else {
                                 Text("📷", fontSize = 28.sp)
                             }
                         }
-                        // Camera badge
                         Box(
                             modifier = Modifier
                                 .size(26.dp)
@@ -160,7 +141,7 @@ fun EmployerRegistrationScreen(
                         )
                         Spacer(Modifier.height(4.dp))
                         Text(
-                            "Tap photo to add a picture",
+                            "Photo optional · tap to add",
                             fontSize = 12.sp,
                             color = Color.White.copy(alpha = 0.72f)
                         )
@@ -178,7 +159,7 @@ fun EmployerRegistrationScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
-            // Basic Info card
+            // Basic Info
             NoorSectionCard {
                 EmployerRegSectionLabel("Basic Information")
                 Spacer(Modifier.height(14.dp))
@@ -192,15 +173,24 @@ fun EmployerRegistrationScreen(
                 Spacer(Modifier.height(12.dp))
 
                 NoorTextField(
+                    value           = uiState.phone,
+                    onValueChange   = { viewModel.updatePhone(it) },
+                    label           = "Phone Number *",
+                    placeholder     = "e.g. 03001234567",
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+                )
+                Spacer(Modifier.height(12.dp))
+
+                NoorTextField(
                     value           = uiState.email,
                     onValueChange   = { viewModel.updateEmail(it) },
-                    label           = "Email",
+                    label           = "Email *",
                     placeholder     = "you@email.com",
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
                 )
             }
 
-            // Location card
+            // Location
             NoorSectionCard {
                 EmployerRegSectionLabel("Location")
                 Spacer(Modifier.height(12.dp))
@@ -216,7 +206,7 @@ fun EmployerRegistrationScreen(
                 NoorTextField(
                     value         = uiState.area,
                     onValueChange = { viewModel.updateArea(it) },
-                    label         = "Area / Sector",
+                    label         = "Area / Sector *",
                     placeholder   = "e.g. DHA Phase 3"
                 )
                 Spacer(Modifier.height(12.dp))
@@ -224,22 +214,22 @@ fun EmployerRegistrationScreen(
                 NoorTextField(
                     value         = uiState.address,
                     onValueChange = { viewModel.updateAddress(it) },
-                    label         = "Full Address",
+                    label         = "Full Address *",
                     placeholder   = "Street, House No…",
                     singleLine    = false,
                     maxLines      = 3
                 )
             }
 
-            // About card
+            // About (optional)
             NoorSectionCard {
-                EmployerRegSectionLabel("About")
+                EmployerRegSectionLabel("About (Optional)")
                 Spacer(Modifier.height(12.dp))
 
                 NoorTextField(
                     value         = uiState.about,
                     onValueChange = { viewModel.updateAbout(it) },
-                    label         = "Short Bio (optional)",
+                    label         = "Short Bio",
                     placeholder   = "Tell workers about your household needs…",
                     singleLine    = false,
                     maxLines      = 4
@@ -252,7 +242,7 @@ fun EmployerRegistrationScreen(
                 )
             }
 
-            // Error banner
+            // Error
             uiState.error?.let { errorMsg ->
                 Text(
                     text     = "⚠️ $errorMsg",
@@ -262,18 +252,15 @@ fun EmployerRegistrationScreen(
                 )
             }
 
-            // ✅ FIX: Call viewModel.saveEmployerProfile() instead of onRegistered() directly.
-            // The ViewModel will save the employer document, mark isProfileComplete = true in
-            // Firestore, then emit Success which triggers onRegistered() via LaunchedEffect above.
             NoorPrimaryButton(
-                text    = if (uiState.isLoading) "Saving…" else "Create Account & Continue",
-                enabled = viewModel.isFormValid() && !uiState.isLoading,
-                onClick = { viewModel.saveEmployerProfile() },
+                text     = if (uiState.isLoading) "Saving…" else "Create Account & Continue",
+                enabled  = viewModel.isFormValid() && !uiState.isLoading,
+                onClick  = { viewModel.saveEmployerProfile() },
                 modifier = Modifier.padding(top = 4.dp)
             )
 
             Text(
-                "* Required fields",
+                "* Required fields · Profile photo can be added later",
                 fontSize = 11.sp,
                 color    = NoorTextHint,
                 modifier = Modifier.align(Alignment.CenterHorizontally)

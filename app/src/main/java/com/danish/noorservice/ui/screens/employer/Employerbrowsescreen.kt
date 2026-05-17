@@ -43,6 +43,7 @@ import com.danish.noorservice.data.model.Employee
 import com.danish.noorservice.data.model.EmployeeService
 import com.danish.noorservice.data.model.WorkerServiceDetail
 import com.danish.noorservice.ui.components.EmployeeBrowseShimmer
+import com.danish.noorservice.ui.components.FullScreenImageDialog
 import com.danish.noorservice.ui.theme.*
 import com.danish.noorservice.viewmodel.employer.EmployerBrowseViewModel
 import com.danish.noorservice.viewmodel.employer.EmployerProposalViewModel
@@ -540,7 +541,7 @@ private fun WhatsAppAdminButtonWorker(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     Button(
         onClick = {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/9231233339015"))
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/923123339015"))
             context.startActivity(intent)
         },
         modifier = modifier.fillMaxWidth().height(54.dp),
@@ -566,7 +567,7 @@ fun EmployerWorkerDetailScreen(
 ) {
     Log.d("EmployerBrowse", "EmployerWorkerDetailScreen: received employerProfile=${employerProfile?.fullName}/${employerProfile?.phone}")
     var showProposalDialog by remember { mutableStateOf(false) }
-    // Proposal is considered sent if already in store for this worker
+    var showFullPhoto by remember { mutableStateOf(false) }
     var proposalSent by remember {
         mutableStateOf(
             AdminProposalStore.proposals.any { it.workerUsername == worker.workerUsername }
@@ -574,7 +575,6 @@ fun EmployerWorkerDetailScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize().background(NoorBackground)) {
-        // ── Header ────────────────────────────────────────────────────────────
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -597,7 +597,8 @@ fun EmployerWorkerDetailScreen(
                     horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     Box(
                         modifier = Modifier.size(70.dp).clip(CircleShape)
-                            .background(worker.avatarColor),
+                            .background(worker.avatarColor)
+                            .clickable { if (worker.photoUrl.isNotBlank()) showFullPhoto = true },
                         contentAlignment = Alignment.Center
                     ) {
                         if (worker.photoUrl.isNotBlank()) {
@@ -628,7 +629,6 @@ fun EmployerWorkerDetailScreen(
                         Text("${worker.area}, ${worker.city}", fontSize = 12.sp,
                             color = Color.White.copy(alpha = 0.75f))
                         Spacer(Modifier.height(6.dp))
-                        // Username — prominent on the detail page
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
@@ -649,19 +649,16 @@ fun EmployerWorkerDetailScreen(
             }
         }
 
-        // ── Body ──────────────────────────────────────────────────────────────
         Column(
             modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Info tiles
             Row(modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 WorkerInfoTile("💰", "Daily Rate",  worker.dailyRate,  Modifier.weight(1f))
                 WorkerInfoTile("🕐",  "Time Slot",   worker.timeSlot,   Modifier.weight(1f))
             }
 
-            // Services
             if (services.isNotEmpty()) {
                 WorkerDetailSection("Services Offered") {
                     services.forEach { empService ->
@@ -673,10 +670,7 @@ fun EmployerWorkerDetailScreen(
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        category?.emoji ?: "🔧",
-                                        fontSize = 16.sp
-                                    )
+                                    Text(category?.emoji ?: "🔧", fontSize = 16.sp)
                                     Spacer(Modifier.width(8.dp))
                                     Text(
                                         category?.label ?: empService.serviceId,
@@ -690,7 +684,7 @@ fun EmployerWorkerDetailScreen(
                                     Text("Experience: ${empService.experience}", fontSize = 12.sp, color = NoorTextSecondary)
                                 }
                                 if (empService.availabilityDays.isNotEmpty()) {
-                                    Text("Available: ${empService.availabilityDays.joinToString(", ")} (${empService.availabilityTime})", 
+                                    Text("Available: ${empService.availabilityDays.joinToString(", ")} (${empService.availabilityTime})",
                                         fontSize = 12.sp, color = NoorTextSecondary)
                                 }
                                 if (empService.dailyRate.isNotBlank()) {
@@ -714,12 +708,10 @@ fun EmployerWorkerDetailScreen(
                 }
             }
 
-            // About
             WorkerDetailSection("About") {
                 Text(worker.bio.ifBlank { "No bio available" }, fontSize = 13.sp, color = NoorTextSecondary, lineHeight = 20.sp)
             }
 
-            // Skills
             WorkerDetailSection("Skills") {
                 val allSkills = services.flatMap { it.skills }.distinct()
                 if (allSkills.isNotEmpty()) {
@@ -739,7 +731,6 @@ fun EmployerWorkerDetailScreen(
                 }
             }
 
-            // Languages
             WorkerDetailSection("Languages") {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     worker.languages.forEach { lang ->
@@ -752,7 +743,6 @@ fun EmployerWorkerDetailScreen(
                 }
             }
 
-            // Member since
             Box(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
                 .background(NoorBlueLight).padding(12.dp)
             ) {
@@ -764,7 +754,6 @@ fun EmployerWorkerDetailScreen(
                 }
             }
 
-            // ── CTA ───────────────────────────────────────────────────────────
             if (proposalSent) {
                 Box(
                     modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
@@ -804,12 +793,16 @@ fun EmployerWorkerDetailScreen(
             }
 
             Spacer(Modifier.height(8.dp))
-
-            // WhatsApp button
             WhatsAppAdminButtonWorker()
-
             Spacer(Modifier.height(8.dp))
         }
+    }
+
+    if (showFullPhoto && worker.photoUrl.isNotBlank()) {
+        FullScreenImageDialog(
+            imageUrl = worker.photoUrl,
+            onDismiss = { showFullPhoto = false }
+        )
     }
 
     if (showProposalDialog) {
