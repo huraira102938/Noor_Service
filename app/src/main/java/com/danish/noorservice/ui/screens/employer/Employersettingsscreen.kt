@@ -22,6 +22,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import com.danish.noorservice.ui.screens.info.AboutUsScreen
+import com.danish.noorservice.ui.screens.info.DeleteAccountScreen
+import com.danish.noorservice.ui.screens.info.PrivacyPolicyScreen
+import com.danish.noorservice.ui.screens.info.TermsAndConditionsScreen
 import com.danish.noorservice.ui.theme.*
 import com.danish.noorservice.viewmodel.employer.EmployerSettingsViewModel
 
@@ -30,7 +34,12 @@ import com.danish.noorservice.viewmodel.employer.EmployerSettingsViewModel
 // ─────────────────────────────────────────────────────────────────────────────
 
 private enum class EmployerSettingsSubScreen {
-    NONE, EDIT_PROFILE
+    NONE,
+    EDIT_PROFILE,
+    TERMS,
+    PRIVACY,
+    ABOUT,
+    DELETE_ACCOUNT
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -51,21 +60,38 @@ fun EmployerSettingsScreen(
 
     var subScreen by remember { mutableStateOf(EmployerSettingsSubScreen.NONE) }
 
+    // ── Sub-screen routing ────────────────────────────────────────────────────
     when (subScreen) {
         EmployerSettingsSubScreen.EDIT_PROFILE -> {
             EmployerEditProfileScreen(
-                userId = userId,
-                profile = uiState.profile,
+                userId    = userId,
+                profile   = uiState.profile,
                 viewModel = viewModel,
-                onBack  = { subScreen = EmployerSettingsSubScreen.NONE },
-                onSaved = { subScreen = EmployerSettingsSubScreen.NONE }
+                onBack    = { subScreen = EmployerSettingsSubScreen.NONE },
+                onSaved   = { subScreen = EmployerSettingsSubScreen.NONE }
             )
+            return
+        }
+        EmployerSettingsSubScreen.TERMS -> {
+            TermsAndConditionsScreen(onBack = { subScreen = EmployerSettingsSubScreen.NONE })
+            return
+        }
+        EmployerSettingsSubScreen.PRIVACY -> {
+            PrivacyPolicyScreen(onBack = { subScreen = EmployerSettingsSubScreen.NONE })
+            return
+        }
+        EmployerSettingsSubScreen.ABOUT -> {
+            AboutUsScreen(onBack = { subScreen = EmployerSettingsSubScreen.NONE })
+            return
+        }
+        EmployerSettingsSubScreen.DELETE_ACCOUNT -> {
+            DeleteAccountScreen(onBack = { subScreen = EmployerSettingsSubScreen.NONE })
             return
         }
         EmployerSettingsSubScreen.NONE -> {}
     }
 
-    var showLogoutDialog  by remember { mutableStateOf(false) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize().background(NoorBackground)) {
 
@@ -78,61 +104,103 @@ fun EmployerSettingsScreen(
                 .padding(horizontal = 20.dp, vertical = 18.dp)
         ) {
             Column {
-                Text("Settings", fontSize = 22.sp, fontWeight = FontWeight.Bold,
-                    color = Color.White, letterSpacing = (-0.3).sp)
-                Text("Manage your preferences", fontSize = 12.sp,
-                    color = Color.White.copy(alpha = 0.72f))
+                Text(
+                    "Settings",
+                    fontSize      = 22.sp,
+                    fontWeight    = FontWeight.Bold,
+                    color         = Color.White,
+                    letterSpacing = (-0.3).sp
+                )
+                Text(
+                    "Manage your preferences",
+                    fontSize = 12.sp,
+                    color    = Color.White.copy(alpha = 0.72f)
+                )
             }
         }
 
         Column(
-            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
 
             // ── Profile summary card ──────────────────────────────────────────
             Card(
-                modifier  = Modifier.fillMaxWidth()
+                modifier  = Modifier
+                    .fillMaxWidth()
                     .clickable { subScreen = EmployerSettingsSubScreen.EDIT_PROFILE },
                 shape     = RoundedCornerShape(16.dp),
                 colors    = CardDefaults.cardColors(containerColor = NoorSurface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Row(
-                    modifier             = Modifier.padding(16.dp),
-                    verticalAlignment    = Alignment.CenterVertically,
+                    modifier              = Modifier.padding(16.dp),
+                    verticalAlignment     = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     Box(
-                        modifier = Modifier.size(56.dp).clip(CircleShape).background(NoorOrange),
+                        modifier         = Modifier
+                            .size(56.dp)
+                            .clip(CircleShape)
+                            .background(NoorOrange),
                         contentAlignment = Alignment.Center
                     ) {
                         val initials = uiState.profile?.fullName?.take(2)?.uppercase() ?: "EM"
                         if (!uiState.profile?.photoUrl.isNullOrBlank()) {
                             AsyncImage(
-                                model = uiState.profile!!.photoUrl,
+                                model              = uiState.profile!!.photoUrl,
                                 contentDescription = "Profile photo",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.size(56.dp).clip(CircleShape)
+                                contentScale       = ContentScale.Crop,
+                                modifier           = Modifier.size(56.dp).clip(CircleShape)
                             )
                         } else {
-                            Text(initials, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                            Text(
+                                initials,
+                                fontSize   = 20.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color      = Color.White
+                            )
                         }
                     }
+
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(uiState.profile?.fullName ?: "—", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = NoorTextPrimary)
+                        Text(
+                            uiState.profile?.fullName ?: "—",
+                            fontSize   = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color      = NoorTextPrimary
+                        )
                         Spacer(Modifier.height(2.dp))
-                        Text(uiState.profile?.email ?: "—", fontSize = 11.sp, color = NoorTextHint)
+                        Text(
+                            uiState.profile?.email ?: "—",
+                            fontSize = 11.sp,
+                            color    = NoorTextHint
+                        )
                         Spacer(Modifier.height(6.dp))
                         Box(
-                            modifier = Modifier.clip(RoundedCornerShape(20.dp))
-                                .background(NoorOrangeLight).padding(horizontal = 8.dp, vertical = 3.dp)
-                        ) { Text("🏠 Employer Account", fontSize = 10.sp,
-                            fontWeight = FontWeight.SemiBold, color = NoorOrange) }
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(NoorOrangeLight)
+                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                        ) {
+                            Text(
+                                "🏠 Employer Account",
+                                fontSize   = 10.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color      = NoorOrange
+                            )
+                        }
                     }
-                    Icon(Icons.Default.ChevronRight, contentDescription = null,
-                        tint = NoorTextHint, modifier = Modifier.size(20.dp))
+
+                    Icon(
+                        Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint               = NoorTextHint,
+                        modifier           = Modifier.size(20.dp)
+                    )
                 }
             }
 
@@ -142,14 +210,33 @@ fun EmployerSettingsScreen(
                     subScreen = EmployerSettingsSubScreen.EDIT_PROFILE
                 }
                 HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
-                EmployerSettingsNavItem("📄", NoorBackground, "Terms & Conditions") {}
+                EmployerSettingsNavItem("📄", NoorBackground, "Terms & Conditions") {
+                    subScreen = EmployerSettingsSubScreen.TERMS
+                }
                 HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
-                EmployerSettingsNavItem("🛡️", NoorBackground, "Privacy Policy") {}
+                EmployerSettingsNavItem("🛡️", NoorBackground, "Privacy Policy") {
+                    subScreen = EmployerSettingsSubScreen.PRIVACY
+                }
+                HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
+                EmployerSettingsNavItem("🌟", NoorBlueLight, "About Us") {
+                    subScreen = EmployerSettingsSubScreen.ABOUT
+                }
+                HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
+                EmployerSettingsNavItem(
+                    emoji      = "🗑️",
+                    emojiBg    = NoorRedLight,
+                    title      = "Delete Account",
+                    titleColor = NoorRed
+                ) {
+                    subScreen = EmployerSettingsSubScreen.DELETE_ACCOUNT
+                }
             }
 
             // ── Session ───────────────────────────────────────────────────────
             EmployerSettingsGroup("Session") {
-                EmployerSettingsNavItem("🚪", NoorBlueLight, "Log Out") { showLogoutDialog = true }
+                EmployerSettingsNavItem("🚪", NoorBlueLight, "Log Out") {
+                    showLogoutDialog = true
+                }
             }
 
             Spacer(Modifier.height(8.dp))
@@ -161,13 +248,19 @@ fun EmployerSettingsScreen(
             onDismissRequest = { showLogoutDialog = false },
             shape            = RoundedCornerShape(20.dp),
             title            = { Text("Log Out", fontWeight = FontWeight.Bold, fontSize = 16.sp) },
-            text             = { Text("Are you sure you want to log out?", fontSize = 13.sp, color = NoorTextSecondary) },
-            confirmButton    = {
+            text             = {
+                Text(
+                    "Are you sure you want to log out?",
+                    fontSize = 13.sp,
+                    color    = NoorTextSecondary
+                )
+            },
+            confirmButton = {
                 TextButton(onClick = { showLogoutDialog = false; onLogout() }) {
                     Text("Log Out", color = NoorBlue, fontWeight = FontWeight.SemiBold)
                 }
             },
-            dismissButton    = {
+            dismissButton = {
                 TextButton(onClick = { showLogoutDialog = false }) {
                     Text("Cancel", color = NoorTextHint)
                 }
@@ -206,23 +299,41 @@ private fun EmployerSettingsGroup(
 
 @Composable
 private fun EmployerSettingsNavItem(
-    emoji: String, emojiBg: Color, title: String,
-    titleColor: Color = NoorTextPrimary, onClick: () -> Unit
+    emoji: String,
+    emojiBg: Color,
+    title: String,
+    titleColor: Color = NoorTextPrimary,
+    onClick: () -> Unit
 ) {
     Row(
-        modifier             = Modifier.fillMaxWidth().clickable { onClick() }
+        modifier              = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
             .padding(horizontal = 14.dp, vertical = 13.dp),
-        verticalAlignment    = Alignment.CenterVertically,
+        verticalAlignment     = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Box(modifier = Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(emojiBg),
-            contentAlignment = Alignment.Center) {
+        Box(
+            modifier         = Modifier
+                .size(36.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(emojiBg),
+            contentAlignment = Alignment.Center
+        ) {
             Text(emoji, fontSize = 16.sp)
         }
-        Text(title, fontSize = 13.sp, fontWeight = FontWeight.Medium,
-            color = titleColor, modifier = Modifier.weight(1f))
-        Icon(Icons.Default.ChevronRight, contentDescription = null,
-            tint     = if (titleColor == NoorRed) NoorRed else NoorTextHint,
-            modifier = Modifier.size(18.dp))
+        Text(
+            title,
+            fontSize   = 13.sp,
+            fontWeight = FontWeight.Medium,
+            color      = titleColor,
+            modifier   = Modifier.weight(1f)
+        )
+        Icon(
+            Icons.Default.ChevronRight,
+            contentDescription = null,
+            tint               = if (titleColor == NoorRed) NoorRed else NoorTextHint,
+            modifier           = Modifier.size(18.dp)
+        )
     }
 }

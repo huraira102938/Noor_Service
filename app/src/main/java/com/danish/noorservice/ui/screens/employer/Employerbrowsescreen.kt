@@ -541,7 +541,7 @@ private fun WhatsAppAdminButtonWorker(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     Button(
         onClick = {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/923123339015"))
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/+92 3009254605"))
             context.startActivity(intent)
         },
         modifier = modifier.fillMaxWidth().height(54.dp),

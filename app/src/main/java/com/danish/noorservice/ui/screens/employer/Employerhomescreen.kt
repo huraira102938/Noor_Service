@@ -15,8 +15,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -47,7 +45,6 @@ import com.danish.noorservice.viewmodel.employer.EmployerSettingsViewModel
 // contact with workers.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Sub-screen sealed class (defined at top so it's resolved before use)
 sealed class EmployerSubScreen {
     object None          : EmployerSubScreen()
     object Notifications : EmployerSubScreen()
@@ -102,7 +99,8 @@ fun EmployerHomeScreen(
             .fillMaxSize()
             .background(NoorBackground)
     ) {
-// ── Top App Bar ───────────────────────────────────────────────────────
+
+        // ── Top App Bar ───────────────────────────────────────────────────────
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -133,15 +131,19 @@ fun EmployerHomeScreen(
                 }
                 Spacer(Modifier.width(10.dp))
                 Column {
-                    Text("Noor Services", fontSize = 15.sp, fontWeight = FontWeight.Bold,
-                        color = Color.White, letterSpacing = (-0.2).sp)
-                    Text("Provider (Pvt.) Ltd.", fontSize = 10.sp,
-                        color = Color.White.copy(alpha = 0.65f), letterSpacing = 0.5.sp)
+                    Text(
+                        "Noor Services", fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                        color = Color.White, letterSpacing = (-0.2).sp
+                    )
+                    Text(
+                        "Provider (Pvt.) Ltd.", fontSize = 10.sp,
+                        color = Color.White.copy(alpha = 0.65f), letterSpacing = 0.5.sp
+                    )
                 }
             }
         }
 
-        // Full content area
+        // ── Loading / Content ─────────────────────────────────────────────────
         if (uiState.isLoading || uiState.profile == null) {
             val brush = rememberShimmerBrush()
             Column(
@@ -151,11 +153,12 @@ fun EmployerHomeScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 ShimmerBox(modifier = Modifier.fillMaxWidth().height(100.dp).clip(RoundedCornerShape(20.dp)), brush = brush)
-                ShimmerBox(modifier = Modifier.fillMaxWidth().height(80.dp).clip(RoundedCornerShape(14.dp)), brush = brush)
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     ShimmerBox(modifier = Modifier.weight(1f).height(80.dp).clip(RoundedCornerShape(14.dp)), brush = brush)
                     ShimmerBox(modifier = Modifier.weight(1f).height(80.dp).clip(RoundedCornerShape(14.dp)), brush = brush)
                 }
+                ShimmerBox(modifier = Modifier.fillMaxWidth().height(80.dp).clip(RoundedCornerShape(14.dp)), brush = brush)
+                ShimmerBox(modifier = Modifier.fillMaxWidth().height(120.dp).clip(RoundedCornerShape(16.dp)), brush = brush)
                 ShimmerBox(modifier = Modifier.fillMaxWidth().height(100.dp).clip(RoundedCornerShape(16.dp)), brush = brush)
             }
         } else {
@@ -165,246 +168,251 @@ fun EmployerHomeScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(bottom = 16.dp)
             ) {
-            // ── Employer Profile Card ─────────────────────────────────────────
-            Box(
-                modifier = Modifier
-                    .padding(16.dp)
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(Brush.linearGradient(listOf(NoorOrange, Color(0xFFB84800))))
-                    .padding(18.dp)
-                    .clickable { subScreen = EmployerSubScreen.EditProfile }
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+
+                // ── Employer Profile Card ─────────────────────────────────────
+                Box(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Brush.linearGradient(listOf(NoorOrange, Color(0xFFB84800))))
+                        .padding(18.dp)
+                        .clickable { subScreen = EmployerSubScreen.EditProfile }
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(58.dp)
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.22f)),
-                        contentAlignment = Alignment.Center
+                    Row(
+                        verticalAlignment      = Alignment.CenterVertically,
+                        horizontalArrangement  = Arrangement.spacedBy(14.dp)
                     ) {
-                        val initials = uiState.profile?.fullName?.take(2)?.uppercase() ?: "EM"
-                        if (!uiState.profile?.photoUrl.isNullOrBlank()) {
-                            AsyncImage(
-                                model = uiState.profile!!.photoUrl,
-                                contentDescription = "Profile photo",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.size(58.dp).clip(CircleShape)
-                            )
-                        } else {
-                            Text(
-                                initials,
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = Color.White
-                            )
-                        }
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            uiState.profile?.fullName ?: "—",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                        val area = uiState.profile?.area ?: ""
-                        val city = uiState.profile?.city ?: ""
-                        val location = if (area.isNotBlank() && city.isNotBlank()) {
-                            "$area, $city"
-                        } else if (area.isNotBlank()) {
-                            area
-                        } else {
-                            city
-                        }
-                        Text(
-                            location.ifBlank { "—" }, fontSize = 11.sp,
-                            color = Color.White.copy(alpha = 0.72f)
-                        )
-                        Spacer(Modifier.height(8.dp))
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(Color.White.copy(alpha = 0.2f))
-                                .padding(horizontal = 10.dp, vertical = 4.dp)
+                                .size(58.dp)
+                                .clip(CircleShape)
+                                .background(Color.White.copy(alpha = 0.22f)),
+                            contentAlignment = Alignment.Center
                         ) {
+                            val initials = uiState.profile?.fullName?.take(2)?.uppercase() ?: "EM"
+                            if (!uiState.profile?.photoUrl.isNullOrBlank()) {
+                                AsyncImage(
+                                    model            = uiState.profile!!.photoUrl,
+                                    contentDescription = "Profile photo",
+                                    contentScale     = ContentScale.Crop,
+                                    modifier         = Modifier.size(58.dp).clip(CircleShape)
+                                )
+                            } else {
+                                Text(initials, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                            }
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                "Employer Account", fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold, color = Color.White
+                                uiState.profile?.fullName ?: "—",
+                                fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White
                             )
+                            val area     = uiState.profile?.area ?: ""
+                            val city     = uiState.profile?.city ?: ""
+                            val location = when {
+                                area.isNotBlank() && city.isNotBlank() -> "$area, $city"
+                                area.isNotBlank()                      -> area
+                                else                                   -> city
+                            }
+                            Text(
+                                location.ifBlank { "—" }, fontSize = 11.sp,
+                                color = Color.White.copy(alpha = 0.72f)
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(20.dp))
+                                    .background(Color.White.copy(alpha = 0.2f))
+                                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                            ) {
+                                Text("Employer Account", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            }
                         }
                     }
+                    Text(
+                        "✏️ Edit",
+                        fontSize = 10.sp, fontWeight = FontWeight.SemiBold,
+                        color = Color.White.copy(alpha = 0.8f),
+                        modifier = Modifier.align(Alignment.TopEnd)
+                    )
                 }
 
+                // ── Platform Overview ─────────────────────────────────────────
                 Text(
-                    "✏️ Edit",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White.copy(alpha = 0.8f),
-                    modifier = Modifier.align(Alignment.TopEnd)
+                    "Platform Overview", fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                    color = NoorTextPrimary, modifier = Modifier.padding(horizontal = 16.dp)
                 )
-            }
-
-            // ── How It Works Banner ───────────────────────────────────────────
-            Box(
-                modifier = Modifier
-                    .padding(horizontal = 16.dp)
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(NoorBlueLight)
-                    .padding(14.dp)
-            ) {
+                Spacer(Modifier.height(12.dp))
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.Top
+                    modifier              = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Text("ℹ️", fontSize = 16.sp)
-                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    EmployerStatCard(uiState.workerCount.toString(), "Workers Listed", NoorBlue,   Modifier.weight(1f))
+                    EmployerStatCard(uiState.vendorCount.toString(), "Vendors Listed", NoorOrange, Modifier.weight(1f))
+                }
+
+                Spacer(Modifier.height(20.dp))
+
+                // ── Available Worker Services ─────────────────────────────────
+                if (uiState.workerServiceCategories.isNotEmpty()) {
+                    Text(
+                        "Available Worker Services", fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                        color = NoorTextPrimary, modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    LazyRow(
+                        modifier              = Modifier.fillMaxWidth(),
+                        contentPadding        = PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(uiState.workerServiceCategories) { category ->
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(NoorBlueLight)
+                                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                            ) {
+                                Text(
+                                    "${category.emoji} ${category.label}", fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold, color = NoorBlueDark
+                                )
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(20.dp))
+                }
+
+                // ── Available Vendor Services ─────────────────────────────────
+                if (uiState.vendorCategories.isNotEmpty()) {
+                    Text(
+                        "Available Vendor Services", fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                        color = NoorTextPrimary, modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    LazyRow(
+                        modifier              = Modifier.fillMaxWidth(),
+                        contentPadding        = PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(uiState.vendorCategories) { category ->
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(NoorOrangeLight)
+                                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                            ) {
+                                Text(
+                                    "${category.emoji} ${category.label}", fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold, color = NoorOrange
+                                )
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(20.dp))
+                }
+
+                // ── Your Safety Is Non-Negotiable ─────────────────────────────
+                Card(
+                    modifier  = Modifier
+                        .padding(horizontal = 16.dp)
+                        .fillMaxWidth(),
+                    shape     = RoundedCornerShape(16.dp),
+                    colors    = CardDefaults.cardColors(containerColor = Color(0xFF0A0F1E)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            "How it works",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = NoorBlueDark
+                            "Your safety is non-negotiable.",
+                            fontSize = 14.sp, fontWeight = FontWeight.Bold,
+                            color = Color.White
                         )
+                        Spacer(Modifier.height(6.dp))
                         Text(
-                            "Browse worker profiles and find your match. To hire, contact the Noor Services admin — " +
-                                    "they will connect you with the worker and handle the arrangement.",
+                            "We screen and verify every worker, cross-check their credentials, confirm their police clearance, and ensure they are fully vetted for your safety and complete peace of mind.",
                             fontSize = 12.sp,
-                            color = NoorBlueDark,
-                            lineHeight = 17.sp
+                            color    = Color(0xFF7A9CC0),
+                            lineHeight = 18.sp
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            SafetyPill(label = "Police verified", containerColor = Color(0xFF0E3A7A), textColor = Color(0xFF90C4FF))
+                            SafetyPill(label = "Licence checked", containerColor = Color(0xFF064E3B), textColor = Color(0xFF6EE7B7))
+                            SafetyPill(label = "Admin arranged", containerColor = Color(0xFF78350F), textColor = Color(0xFFFDE68A))
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(20.dp))
+
+                // ── Quick Actions ─────────────────────────────────────────────
+                Text(
+                    "Quick Actions", fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                    color = NoorTextPrimary, modifier = Modifier.padding(horizontal = 16.dp)
+                )
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    modifier              = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    QuickActionCard(
+                        emoji   = "🔍",
+                        label   = "Find Workers",
+                        bg      = NoorBlueLight,
+                        onClick = onBrowse,
+                        modifier = Modifier.weight(1f)
+                    )
+                    QuickActionCard(
+                        emoji   = "🔔",
+                        label   = "Notifications",
+                        bg      = NoorOrangeLight,
+                        onClick = { subScreen = EmployerSubScreen.Notifications },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Spacer(Modifier.height(20.dp))
+
+                // ── Contact Admin ─────────────────────────────────────────────
+                Text(
+                    "Contact Admin", fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                    color = NoorTextPrimary, modifier = Modifier.padding(horizontal = 16.dp)
+                )
+                Spacer(Modifier.height(12.dp))
+                Card(
+                    modifier  = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
+                    shape     = RoundedCornerShape(16.dp),
+                    colors    = CardDefaults.cardColors(containerColor = NoorSurface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(
+                        modifier            = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            "Found someone you'd like to hire?",
+                            fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = NoorTextPrimary
+                        )
+                        Text(
+                            "Send your proposal to our admin — we verify the worker and arrange your meeting.",
+                            fontSize = 12.sp, color = NoorTextHint, lineHeight = 17.sp
+                        )
+                        HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
+                        AdminContactRow(
+                            emoji        = "📞",
+                            label        = "Phone / WhatsApp",
+                            value        = "03009254605",
+                            onPhoneClick = true
+                        )
+                        AdminContactRow(
+                            emoji         = "📧",
+                            label         = "Email",
+                            value         = "noorservicesprovider@gmail.com",
+                            onEmailClick  = true
                         )
                     }
                 }
-            }
 
-            Spacer(Modifier.height(16.dp))
-
-            // ── Stats Row ─────────────────────────────────────────────────────
-            Row(
-                modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                EmployerStatCard(uiState.workerCount.toString(),  "Workers Listed", NoorBlue,   Modifier.weight(1f))
-                EmployerStatCard(uiState.serviceCount.toString(), "Services",       NoorGreen,  Modifier.weight(1f))
-                EmployerStatCard(uiState.vendorCount.toString(),  "Vendors Listed", NoorOrange, Modifier.weight(1f))
-            }
-
-            Spacer(Modifier.height(20.dp))
-
-            if (uiState.workerServiceCategories.isNotEmpty()) {
-                Text("Available Workers Services", fontSize = 15.sp, fontWeight = FontWeight.Bold,
-                    color = NoorTextPrimary, modifier = Modifier.padding(horizontal = 16.dp))
-                Spacer(Modifier.height(12.dp))
-                LazyRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(uiState.workerServiceCategories) { category ->
-                        Box(modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(NoorBlueLight)
-                            .padding(horizontal = 12.dp, vertical = 8.dp)
-                        ) {
-                            Text("${category.emoji} ${category.label}", fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold, color = NoorBlueDark)
-                        }
-                    }
-                }
-                Spacer(Modifier.height(20.dp))
-            }
-
-            if (uiState.vendorCategories.isNotEmpty()) {
-                Text("Available Vendor Services", fontSize = 15.sp, fontWeight = FontWeight.Bold,
-                    color = NoorTextPrimary, modifier = Modifier.padding(horizontal = 16.dp))
-                Spacer(Modifier.height(12.dp))
-                LazyRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(uiState.vendorCategories) { category ->
-                        Box(modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(NoorOrangeLight)
-                            .padding(horizontal = 12.dp, vertical = 8.dp)
-                        ) {
-                            Text("${category.emoji} ${category.label}", fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold, color = NoorOrange)
-                        }
-                    }
-                }
-                Spacer(Modifier.height(20.dp))
-            }
-
-            // ── Quick Actions ─────────────────────────────────────────────────
-            Text("Quick Actions", fontSize = 15.sp, fontWeight = FontWeight.Bold,
-                color = NoorTextPrimary, modifier = Modifier.padding(horizontal = 16.dp))
-            Spacer(Modifier.height(12.dp))
-
-            Row(
-                modifier              = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                QuickActionCard(
-                    emoji    = "🔍",
-                    label    = "Find Workers",
-                    bg       = NoorBlueLight,
-                    onClick  = onBrowse,
-                    modifier = Modifier.weight(1f)
-                )
-                QuickActionCard(
-                    emoji    = "🔔",
-                    label    = "Notifications",
-                    bg       = NoorOrangeLight,
-                    onClick  = { subScreen = EmployerSubScreen.Notifications },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Spacer(Modifier.height(20.dp))
-
-            // ── Contact Admin Card ────────────────────────────────────────────
-            Text("Contact Admin", fontSize = 15.sp, fontWeight = FontWeight.Bold,
-                color = NoorTextPrimary, modifier = Modifier.padding(horizontal = 16.dp))
-            Spacer(Modifier.height(12.dp))
-
-            Card(
-                modifier  = Modifier
-                    .padding(horizontal = 16.dp)
-                    .fillMaxWidth(),
-                shape     = RoundedCornerShape(16.dp),
-                colors    = CardDefaults.cardColors(containerColor = NoorSurface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(
-                    modifier            = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(
-                        "Found a worker you'd like to hire?",
-                        fontSize   = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color      = NoorTextPrimary
-                    )
-                    Text(
-                        "Share the worker's name and your requirements with our admin. " +
-                                "We'll verify and connect you with the right candidate.",
-                        fontSize   = 12.sp,
-                        color      = NoorTextHint,
-                        lineHeight = 17.sp
-                    )
-                    HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
-                    AdminContactRow(emoji = "📞", label = "Phone / WhatsApp", value = "03123339015", onPhoneClick = true)
-                    AdminContactRow(emoji = "📧", label = "Email", value = "noorservicesprovider@gmail.com", onEmailClick = true)
-                }
-            }
-
-            Spacer(Modifier.height(20.dp))
-
-            Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(24.dp))
             }
         }
     }
@@ -413,6 +421,18 @@ fun EmployerHomeScreen(
 // ─────────────────────────────────────────────────────────────────────────────
 // Small composables
 // ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun SafetyPill(label: String, containerColor: Color, textColor: Color) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(containerColor)
+            .padding(horizontal = 10.dp, vertical = 4.dp)
+    ) {
+        Text(label, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = textColor)
+    }
+}
 
 @Composable
 fun EmployerStatCard(number: String, label: String, accent: Color, modifier: Modifier = Modifier) {
@@ -428,8 +448,7 @@ fun EmployerStatCard(number: String, label: String, accent: Color, modifier: Mod
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(number, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = accent)
-            Text(label, fontSize = 9.sp, color = NoorTextHint,
-                fontWeight = FontWeight.SemiBold, letterSpacing = 0.3.sp)
+            Text(label, fontSize = 9.sp, color = NoorTextHint, fontWeight = FontWeight.SemiBold, letterSpacing = 0.3.sp)
         }
     }
 }
@@ -463,23 +482,29 @@ private fun QuickActionCard(
 }
 
 @Composable
-private fun AdminContactRow(emoji: String, label: String, value: String, onPhoneClick: Boolean = false, onEmailClick: Boolean = false) {
+private fun AdminContactRow(
+    emoji: String,
+    label: String,
+    value: String,
+    onPhoneClick: Boolean = false,
+    onEmailClick: Boolean = false
+) {
     val context = LocalContext.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .then(
-                if (onPhoneClick) Modifier.clickable {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/923123339015"))
-                    context.startActivity(intent)
+                when {
+                    onPhoneClick -> Modifier.clickable {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/923009254605")))
+                    }
+                    onEmailClick -> Modifier.clickable {
+                        context.startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:$value")))
+                    }
+                    else -> Modifier
                 }
-                else if (onEmailClick) Modifier.clickable {
-                    val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:${value}"))
-                    context.startActivity(intent)
-                }
-                else Modifier
             ),
-        verticalAlignment    = Alignment.CenterVertically,
+        verticalAlignment     = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Text(emoji, fontSize = 16.sp)
@@ -501,14 +526,14 @@ fun EmployerActivityItem(emoji: String, bg: Color, title: String, subtitle: Stri
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(
-            modifier             = Modifier.padding(12.dp),
-            verticalAlignment    = Alignment.CenterVertically,
+            modifier              = Modifier.padding(12.dp),
+            verticalAlignment     = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Box(modifier = Modifier.size(38.dp).clip(CircleShape).background(bg),
-                contentAlignment = Alignment.Center) {
-                Text(emoji, fontSize = 16.sp)
-            }
+            Box(
+                modifier = Modifier.size(38.dp).clip(CircleShape).background(bg),
+                contentAlignment = Alignment.Center
+            ) { Text(emoji, fontSize = 16.sp) }
             Column(modifier = Modifier.weight(1f)) {
                 Text(title, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = NoorTextPrimary)
                 Spacer(Modifier.height(2.dp))
@@ -518,4 +543,3 @@ fun EmployerActivityItem(emoji: String, bg: Color, title: String, subtitle: Stri
         }
     }
 }
-

@@ -43,6 +43,10 @@ import com.danish.noorservice.data.model.UserAnnouncement
 import com.danish.noorservice.ui.components.NoorSectionCard
 import com.danish.noorservice.ui.components.NoorSelectableChip
 import com.danish.noorservice.ui.components.NoorTextField
+import com.danish.noorservice.ui.screens.info.AboutUsScreen
+import com.danish.noorservice.ui.screens.info.DeleteAccountScreen
+import com.danish.noorservice.ui.screens.info.PrivacyPolicyScreen
+import com.danish.noorservice.ui.screens.info.TermsAndConditionsScreen
 import com.danish.noorservice.ui.theme.*
 import com.danish.noorservice.viewmodel.vendor.VendorCatalogViewModel
 import com.danish.noorservice.viewmodel.vendor.VendorHomeViewModel
@@ -198,11 +202,25 @@ private fun VendorBottomNav(
     }
 }
 
+
+
 // ─────────────────────────────────────────────────────────────────────────────
-// Vendor Settings Screen
+// Sub-screen enum
 // ─────────────────────────────────────────────────────────────────────────────
 
-private enum class VendorSettingsSubScreen { NONE, EDIT_PROFILE, NOTIFICATIONS }
+private enum class VendorSettingsSubScreen {
+    NONE,
+    EDIT_PROFILE,
+    NOTIFICATIONS,
+    TERMS,
+    PRIVACY,
+    ABOUT,
+    DELETE_ACCOUNT
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Settings Screen
+// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 fun VendorSettingsScreen(
@@ -215,11 +233,10 @@ fun VendorSettingsScreen(
     var subScreen by remember { mutableStateOf(VendorSettingsSubScreen.NONE) }
 
     LaunchedEffect(userId) {
-        if (userId.isNotBlank()) {
-            settingsViewModel.loadProfile(userId)
-        }
+        if (userId.isNotBlank()) settingsViewModel.loadProfile(userId)
     }
 
+    // ── Sub-screen routing ────────────────────────────────────────────────────
     when (subScreen) {
         VendorSettingsSubScreen.EDIT_PROFILE -> {
             VendorEditProfileScreen(
@@ -243,15 +260,29 @@ fun VendorSettingsScreen(
             }
             subScreen = VendorSettingsSubScreen.NONE
         }
+        VendorSettingsSubScreen.TERMS -> {
+            TermsAndConditionsScreen(onBack = { subScreen = VendorSettingsSubScreen.NONE })
+            return
+        }
+        VendorSettingsSubScreen.PRIVACY -> {
+            PrivacyPolicyScreen(onBack = { subScreen = VendorSettingsSubScreen.NONE })
+            return
+        }
+        VendorSettingsSubScreen.ABOUT -> {
+            AboutUsScreen(onBack = { subScreen = VendorSettingsSubScreen.NONE })
+            return
+        }
+        VendorSettingsSubScreen.DELETE_ACCOUNT -> {
+            DeleteAccountScreen(onBack = { subScreen = VendorSettingsSubScreen.NONE })
+            return
+        }
         VendorSettingsSubScreen.NONE -> { /* fall through */ }
     }
 
     var showLogoutDialog by remember { mutableStateOf(false) }
 
-    // Derive live values directly from the profile in state so the card
-    // always reflects what's actually stored, not a stale snapshot.
-    val isActive = uiState.isActive ?: false
-    val isApproved      = uiState.profile?.isProfileApproved == true
+    val isActive   = uiState.isActive ?: false
+    val isApproved = uiState.profile?.isProfileApproved == true
 
     Column(modifier = Modifier.fillMaxSize().background(NoorBackground)) {
 
@@ -264,9 +295,9 @@ fun VendorSettingsScreen(
                 .padding(horizontal = 20.dp, vertical = 18.dp)
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier              = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment     = Alignment.CenterVertically
             ) {
                 Column {
                     Text(
@@ -284,9 +315,9 @@ fun VendorSettingsScreen(
                 }
                 IconButton(onClick = { settingsViewModel.loadProfile(userId) }) {
                     Icon(
-                        imageVector = Icons.Default.Refresh,
+                        imageVector        = Icons.Default.Refresh,
                         contentDescription = "Refresh",
-                        tint = Color.White
+                        tint               = Color.White
                     )
                 }
             }
@@ -301,9 +332,7 @@ fun VendorSettingsScreen(
 
         if (uiState.profile == null) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Pull to refresh", color = NoorTextHint, fontSize = 14.sp)
-                }
+                Text("Pull to refresh", color = NoorTextHint, fontSize = 14.sp)
             }
             return
         }
@@ -318,7 +347,9 @@ fun VendorSettingsScreen(
 
             // ── Profile summary card ──────────────────────────────────────────
             Card(
-                modifier  = Modifier.fillMaxWidth().clickable { subScreen = VendorSettingsSubScreen.EDIT_PROFILE },
+                modifier  = Modifier
+                    .fillMaxWidth()
+                    .clickable { subScreen = VendorSettingsSubScreen.EDIT_PROFILE },
                 shape     = RoundedCornerShape(16.dp),
                 colors    = CardDefaults.cardColors(containerColor = NoorSurface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -329,7 +360,7 @@ fun VendorSettingsScreen(
                     horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     Box(
-                        modifier = Modifier
+                        modifier         = Modifier
                             .size(56.dp)
                             .clip(RoundedCornerShape(14.dp))
                             .background(VendorTeal),
@@ -363,7 +394,6 @@ fun VendorSettingsScreen(
                             color    = NoorTextHint
                         )
                         Spacer(Modifier.height(6.dp))
-                        // Live status tags — reflect actual Firestore state
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             VendorMiniTag(
                                 label     = if (isActive) "🟢 Active" else "🔴 Inactive",
@@ -410,14 +440,29 @@ fun VendorSettingsScreen(
                     emoji   = "📄",
                     emojiBg = NoorBackground,
                     title   = "Terms & Conditions",
-                    onClick = {}
+                    onClick = { subScreen = VendorSettingsSubScreen.TERMS }
                 )
                 HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
                 VendorSettingsNavItem(
                     emoji   = "🛡️",
                     emojiBg = NoorBackground,
                     title   = "Privacy Policy",
-                    onClick = {}
+                    onClick = { subScreen = VendorSettingsSubScreen.PRIVACY }
+                )
+                HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
+                VendorSettingsNavItem(
+                    emoji   = "🌟",
+                    emojiBg = VendorTealLight,
+                    title   = "About Us",
+                    onClick = { subScreen = VendorSettingsSubScreen.ABOUT }
+                )
+                HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
+                VendorSettingsNavItem(
+                    emoji      = "🗑️",
+                    emojiBg    = NoorRedLight,
+                    title      = "Delete Account",
+                    titleColor = NoorRed,
+                    onClick    = { subScreen = VendorSettingsSubScreen.DELETE_ACCOUNT }
                 )
             }
 
@@ -438,11 +483,9 @@ fun VendorSettingsScreen(
     if (showLogoutDialog) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
-            shape = RoundedCornerShape(20.dp),
-            title = {
-                Text("Log Out", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            },
-            text = {
+            shape            = RoundedCornerShape(20.dp),
+            title            = { Text("Log Out", fontWeight = FontWeight.Bold, fontSize = 16.sp) },
+            text             = {
                 Text(
                     "Are you sure you want to log out?",
                     fontSize = 13.sp,
@@ -463,6 +506,86 @@ fun VendorSettingsScreen(
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Reusable settings components
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+fun VendorMiniTag(label: String, bg: Color, textColor: Color) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(bg)
+            .padding(horizontal = 8.dp, vertical = 3.dp)
+    ) {
+        Text(label, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = textColor)
+    }
+}
+
+@Composable
+private fun VendorSettingsGroup(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
+        Text(
+            text          = title.uppercase(),
+            fontSize      = 10.sp,
+            fontWeight    = FontWeight.Bold,
+            color         = NoorTextHint,
+            letterSpacing = 0.8.sp,
+            modifier      = Modifier.padding(start = 4.dp, bottom = 6.dp)
+        )
+        Card(
+            modifier  = Modifier.fillMaxWidth(),
+            shape     = RoundedCornerShape(16.dp),
+            colors    = CardDefaults.cardColors(containerColor = NoorSurface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            content   = { Column(content = content) }
+        )
+    }
+}
+
+@Composable
+private fun VendorSettingsNavItem(
+    emoji: String,
+    emojiBg: Color,
+    title: String,
+    titleColor: Color = NoorTextPrimary,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier              = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(horizontal = 14.dp, vertical = 13.dp),
+        verticalAlignment     = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(
+            modifier         = Modifier
+                .size(36.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(emojiBg),
+            contentAlignment = Alignment.Center
+        ) { Text(emoji, fontSize = 16.sp) }
+
+        Text(
+            title,
+            fontSize   = 13.sp,
+            fontWeight = FontWeight.Medium,
+            color      = titleColor,
+            modifier   = Modifier.weight(1f)
+        )
+
+        Icon(
+            Icons.Default.ChevronRight,
+            contentDescription = null,
+            tint               = if (titleColor == NoorRed) NoorRed else NoorTextHint,
+            modifier           = Modifier.size(18.dp)
+        )
+    }
+}
 // ─────────────────────────────────────────────────────────────────────────────
 // Vendor Edit Profile Screen
 // ─────────────────────────────────────────────────────────────────────────────
@@ -950,7 +1073,8 @@ fun VendorEditProfileScreen(
                             city            = city,
                             address         = address,
                             bio             = bio,
-                            logoUrl         = logoUrl,   // existing URL; see note below
+                            logoUrl         = logoUrl,
+                            pendingLogoUri  = pendingLogoUri,// existing URL; see note below
                             operatingCities = operatingCities.toList(),
                             serviceScale    = serviceScale,
                             yearsInBusiness = yearsInBusiness.toIntOrNull() ?: 0,
@@ -1302,109 +1426,3 @@ private fun VendorAnnouncementRow(
 // ─────────────────────────────────────────────────────────────────────────────
 // Reusable Settings components
 // ─────────────────────────────────────────────────────────────────────────────
-
-@Composable
-private fun VendorSettingsGroup(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
-        Text(
-            title.uppercase(),
-            fontSize   = 10.sp,
-            fontWeight = FontWeight.Bold,
-            color      = NoorTextHint,
-            letterSpacing = 0.8.sp,
-            modifier   = Modifier.padding(start = 4.dp, bottom = 6.dp)
-        )
-        Card(
-            modifier  = Modifier.fillMaxWidth(),
-            shape     = RoundedCornerShape(16.dp),
-            colors    = CardDefaults.cardColors(containerColor = NoorSurface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-            content   = { Column(content = content) }
-        )
-    }
-}
-
-@Composable
-private fun VendorSettingsToggleItem(
-    emoji: String, emojiBg: Color,
-    title: String, subtitle: String,
-    checked: Boolean, onToggle: (Boolean) -> Unit
-) {
-    Row(
-        modifier              = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 13.dp),
-        verticalAlignment     = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(emojiBg),
-            contentAlignment = Alignment.Center
-        ) { Text(emoji, fontSize = 16.sp) }
-        Column(modifier = Modifier.weight(1f)) {
-            Text(title,    fontSize = 13.sp, fontWeight = FontWeight.Medium, color = NoorTextPrimary)
-            Text(subtitle, fontSize = 10.sp, color = NoorTextHint, lineHeight = 14.sp)
-        }
-        Switch(
-            checked         = checked,
-            onCheckedChange = onToggle,
-            colors          = SwitchDefaults.colors(
-                checkedThumbColor   = Color.White,
-                checkedTrackColor   = VendorTeal,
-                uncheckedThumbColor = Color.White,
-                uncheckedTrackColor = NoorBorder
-            )
-        )
-    }
-}
-
-@Composable
-private fun VendorSettingsNavItem(
-    emoji: String, emojiBg: Color,
-    title: String,
-    titleColor: Color = NoorTextPrimary,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(horizontal = 14.dp, vertical = 13.dp),
-        verticalAlignment     = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(emojiBg),
-            contentAlignment = Alignment.Center
-        ) { Text(emoji, fontSize = 16.sp) }
-        Text(
-            title,
-            fontSize   = 13.sp,
-            fontWeight = FontWeight.Medium,
-            color      = titleColor,
-            modifier   = Modifier.weight(1f)
-        )
-        Icon(
-            Icons.Default.ChevronRight,
-            contentDescription = null,
-            tint               = if (titleColor == NoorRed) NoorRed else NoorTextHint,
-            modifier           = Modifier.size(18.dp)
-        )
-    }
-}
-
-@Composable
-private fun VendorMiniTag(label: String, bg: Color, textColor: Color) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(bg)
-            .padding(horizontal = 8.dp, vertical = 3.dp)
-    ) {
-        Text(label, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = textColor)
-    }
-}

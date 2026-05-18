@@ -24,13 +24,32 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.danish.noorservice.ui.components.SettingsScreenShimmer
+import com.danish.noorservice.ui.screens.info.AboutUsScreen
+import com.danish.noorservice.ui.screens.info.DeleteAccountScreen
+import com.danish.noorservice.ui.screens.info.PrivacyPolicyScreen
+import com.danish.noorservice.ui.screens.info.TermsAndConditionsScreen
 import com.danish.noorservice.ui.theme.*
 import com.danish.noorservice.viewmodel.employee.EmployeeNotificationsViewModel
 import com.danish.noorservice.viewmodel.employee.EmployeeSettingsViewModel
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Sub-screen enum
+// ─────────────────────────────────────────────────────────────────────────────
+
 private enum class SettingsSubScreen {
-    NONE, EDIT_PROFILE, CHANGE_PASSWORD, NOTIFICATIONS
+    NONE,
+    EDIT_PROFILE,
+    CHANGE_PASSWORD,
+    NOTIFICATIONS,
+    TERMS,
+    PRIVACY,
+    ABOUT,
+    DELETE_ACCOUNT
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Settings Screen
+// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 fun EmployeeSettingsScreen(
@@ -40,19 +59,16 @@ fun EmployeeSettingsScreen(
     notificationsViewModel: EmployeeNotificationsViewModel? = null,
     settingsViewModel: EmployeeSettingsViewModel
 ) {
-    val uiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
+    val uiState   by settingsViewModel.uiState.collectAsStateWithLifecycle()
     var subScreen by remember { mutableStateOf(SettingsSubScreen.NONE) }
 
     LaunchedEffect(userId) {
-        if (userId.isNotBlank()) {
-            settingsViewModel.loadProfile(userId)
-        }
+        if (userId.isNotBlank()) settingsViewModel.loadProfile(userId)
     }
 
+    // ── Sub-screen routing ────────────────────────────────────────────────────
     when (subScreen) {
         SettingsSubScreen.EDIT_PROFILE -> {
-            // ✅ FIX: Pass the SAME viewModel instance so EditProfileScreen
-            // reads the already-loaded profile without firing another fetch.
             EditProfileScreen(
                 userId    = userId,
                 onBack    = { subScreen = SettingsSubScreen.NONE },
@@ -75,20 +91,36 @@ fun EmployeeSettingsScreen(
             val notifVm = notificationsViewModel
             if (notifVm != null) {
                 NotificationsScreen(
-                    userId = userId,
-                    onBack = { subScreen = SettingsSubScreen.NONE },
+                    userId    = userId,
+                    onBack    = { subScreen = SettingsSubScreen.NONE },
                     viewModel = notifVm
                 )
                 return
             }
             subScreen = SettingsSubScreen.NONE
         }
+        SettingsSubScreen.TERMS -> {
+            TermsAndConditionsScreen(onBack = { subScreen = SettingsSubScreen.NONE })
+            return
+        }
+        SettingsSubScreen.PRIVACY -> {
+            PrivacyPolicyScreen(onBack = { subScreen = SettingsSubScreen.NONE })
+            return
+        }
+        SettingsSubScreen.ABOUT -> {
+            AboutUsScreen(onBack = { subScreen = SettingsSubScreen.NONE })
+            return
+        }
+        SettingsSubScreen.DELETE_ACCOUNT -> {
+            DeleteAccountScreen(onBack = { subScreen = SettingsSubScreen.NONE })
+            return
+        }
         SettingsSubScreen.NONE -> { /* fall through */ }
     }
 
     var showLogoutDialog by remember { mutableStateOf(false) }
 
-    val profile = uiState.profile
+    val profile  = uiState.profile
     val initials = profile?.fullName
         ?.split(" ")
         ?.filter { it.isNotBlank() }
@@ -117,9 +149,9 @@ fun EmployeeSettingsScreen(
                 Column {
                     Text(
                         "Settings",
-                        fontSize   = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color      = Color.White,
+                        fontSize      = 22.sp,
+                        fontWeight    = FontWeight.Bold,
+                        color         = Color.White,
                         letterSpacing = (-0.3).sp
                     )
                     Text(
@@ -129,20 +161,20 @@ fun EmployeeSettingsScreen(
                     )
                 }
                 Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.18f))
-                            .clickable { settingsViewModel.loadProfile(userId) },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Default.Refresh,
-                            contentDescription = "Refresh",
-                            tint     = Color.White,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
+                    modifier         = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.18f))
+                        .clickable { settingsViewModel.loadProfile(userId) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.Refresh,
+                        contentDescription = "Refresh",
+                        tint               = Color.White,
+                        modifier           = Modifier.size(18.dp)
+                    )
+                }
             }
         }
 
@@ -167,6 +199,7 @@ fun EmployeeSettingsScreen(
                 .padding(horizontal = 16.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
+
             // ── Profile summary card ──────────────────────────────────────────
             Card(
                 modifier  = Modifier
@@ -177,14 +210,12 @@ fun EmployeeSettingsScreen(
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Row(
-                    modifier  = Modifier.padding(16.dp),
+                    modifier              = Modifier.padding(16.dp),
                     verticalAlignment     = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    // ✅ FIX: Show actual profile photo when available.
-                    // Falls back to initials avatar when no photo is set.
                     Box(
-                        modifier = Modifier
+                        modifier         = Modifier
                             .size(56.dp)
                             .clip(CircleShape)
                             .background(NoorBlue),
@@ -195,9 +226,7 @@ fun EmployeeSettingsScreen(
                                 model              = profile!!.photoUrl,
                                 contentDescription = "Profile photo",
                                 contentScale       = ContentScale.Crop,
-                                modifier           = Modifier
-                                    .size(56.dp)
-                                    .clip(CircleShape)
+                                modifier           = Modifier.size(56.dp).clip(CircleShape)
                             )
                         } else {
                             Text(
@@ -238,11 +267,12 @@ fun EmployeeSettingsScreen(
                             )
                         }
                     }
+
                     Icon(
                         Icons.Default.ChevronRight,
                         contentDescription = null,
-                        tint     = NoorTextHint,
-                        modifier = Modifier.size(20.dp)
+                        tint               = NoorTextHint,
+                        modifier           = Modifier.size(20.dp)
                     )
                 }
             }
@@ -250,10 +280,10 @@ fun EmployeeSettingsScreen(
             // ── Availability ──────────────────────────────────────────────────
             SettingsGroup(title = "Availability") {
                 SettingsToggleItem(
-                    emoji   = "🟢",
-                    emojiBg = NoorGreenLight,
-                    title   = "Available for Work",
-                    checked = uiState.isActive,
+                    emoji    = "🟢",
+                    emojiBg  = NoorGreenLight,
+                    title    = "Available for Work",
+                    checked  = uiState.isActive,
                     onToggle = { settingsViewModel.updateAvailability(userId, it) }
                 )
             }
@@ -277,9 +307,34 @@ fun EmployeeSettingsScreen(
                     onClick = { subScreen = SettingsSubScreen.EDIT_PROFILE }
                 )
                 HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
-                SettingsNavItem(emoji = "📄", emojiBg = NoorBackground, title = "Terms & Conditions", onClick = {})
+                SettingsNavItem(
+                    emoji   = "📄",
+                    emojiBg = NoorBackground,
+                    title   = "Terms & Conditions",
+                    onClick = { subScreen = SettingsSubScreen.TERMS }
+                )
                 HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
-                SettingsNavItem(emoji = "🛡️", emojiBg = NoorBackground, title = "Privacy Policy", onClick = {})
+                SettingsNavItem(
+                    emoji   = "🛡️",
+                    emojiBg = NoorBackground,
+                    title   = "Privacy Policy",
+                    onClick = { subScreen = SettingsSubScreen.PRIVACY }
+                )
+                HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
+                SettingsNavItem(
+                    emoji   = "🌟",
+                    emojiBg = NoorBlueLight,
+                    title   = "About Us",
+                    onClick = { subScreen = SettingsSubScreen.ABOUT }
+                )
+                HorizontalDivider(color = NoorDivider, thickness = 0.6.dp)
+                SettingsNavItem(
+                    emoji      = "🗑️",
+                    emojiBg    = NoorRedLight,
+                    title      = "Delete Account",
+                    titleColor = NoorRed,
+                    onClick    = { subScreen = SettingsSubScreen.DELETE_ACCOUNT }
+                )
             }
 
             // ── Session ───────────────────────────────────────────────────────
@@ -299,14 +354,17 @@ fun EmployeeSettingsScreen(
     if (showLogoutDialog) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
-            shape = RoundedCornerShape(20.dp),
-            title = { Text("Log Out", fontWeight = FontWeight.Bold, fontSize = 16.sp) },
-            text  = { Text("Are you sure you want to log out?", fontSize = 13.sp, color = NoorTextSecondary) },
+            shape            = RoundedCornerShape(20.dp),
+            title            = { Text("Log Out", fontWeight = FontWeight.Bold, fontSize = 16.sp) },
+            text             = {
+                Text(
+                    "Are you sure you want to log out?",
+                    fontSize = 13.sp,
+                    color    = NoorTextSecondary
+                )
+            },
             confirmButton = {
-                TextButton(onClick = {
-                    showLogoutDialog = false
-                    onLogout()
-                }) {
+                TextButton(onClick = { showLogoutDialog = false; onLogout() }) {
                     Text("Log Out", color = NoorBlue, fontWeight = FontWeight.SemiBold)
                 }
             },
@@ -317,8 +375,6 @@ fun EmployeeSettingsScreen(
             }
         )
     }
-
-
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -358,14 +414,14 @@ private fun SettingsToggleItem(
     onToggle: (Boolean) -> Unit
 ) {
     Row(
-        modifier  = Modifier
+        modifier              = Modifier
             .fillMaxWidth()
             .padding(horizontal = 14.dp, vertical = 13.dp),
         verticalAlignment     = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Box(
-            modifier = Modifier
+            modifier         = Modifier
                 .size(36.dp)
                 .clip(RoundedCornerShape(10.dp))
                 .background(emojiBg),
@@ -383,7 +439,7 @@ private fun SettingsToggleItem(
         Switch(
             checked         = checked,
             onCheckedChange = onToggle,
-            colors = SwitchDefaults.colors(
+            colors          = SwitchDefaults.colors(
                 checkedThumbColor   = Color.White,
                 checkedTrackColor   = NoorBlue,
                 uncheckedThumbColor = Color.White,
@@ -402,7 +458,7 @@ private fun SettingsNavItem(
     onClick: () -> Unit
 ) {
     Row(
-        modifier  = Modifier
+        modifier              = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
             .padding(horizontal = 14.dp, vertical = 13.dp),
@@ -410,7 +466,7 @@ private fun SettingsNavItem(
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Box(
-            modifier = Modifier
+            modifier         = Modifier
                 .size(36.dp)
                 .clip(RoundedCornerShape(10.dp))
                 .background(emojiBg),
@@ -428,8 +484,8 @@ private fun SettingsNavItem(
         Icon(
             Icons.Default.ChevronRight,
             contentDescription = null,
-            tint     = if (titleColor == NoorRed) NoorRed else NoorTextHint,
-            modifier = Modifier.size(18.dp)
+            tint               = if (titleColor == NoorRed) NoorRed else NoorTextHint,
+            modifier           = Modifier.size(18.dp)
         )
     }
 }

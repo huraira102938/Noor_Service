@@ -1,9 +1,11 @@
 package com.danish.noorservice.viewmodel.vendor
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.danish.noorservice.data.model.Vendor
 import com.danish.noorservice.data.repository.AuthRepository
+import com.danish.noorservice.data.repository.ImageRepository
 import com.danish.noorservice.data.repository.UserRepository
 import com.google.firebase.firestore.FirebaseFirestore
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -26,7 +28,8 @@ data class VendorSettingsState(
 class VendorSettingsViewModel @Inject constructor(
     private val userRepository: UserRepository,
     private val authRepository: AuthRepository,
-    private val firestore: FirebaseFirestore          // ← direct Firestore for field-only update
+    private val imageRepository: ImageRepository,
+    private val firestore: FirebaseFirestore
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(VendorSettingsState())
@@ -38,9 +41,9 @@ class VendorSettingsViewModel @Inject constructor(
             try {
                 val profile = userRepository.getVendorProfile(userId)
                 _uiState.value = _uiState.value.copy(
-                    isLoading  = false,
-                    profile    = profile,
-                    isActive   = profile?.isActive
+                    isLoading = false,
+                    profile   = profile,
+                    isActive  = profile?.isActive
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
@@ -59,13 +62,11 @@ class VendorSettingsViewModel @Inject constructor(
     fun updateActiveStatus(userId: String, isActive: Boolean) {
         viewModelScope.launch {
             try {
-                // Field-level update — does NOT rewrite the whole document
                 firestore.collection("vendors")
                     .document(userId)
                     .update("isActive", isActive)
                     .await()
 
-                // Mirror the change into local state so the UI reacts instantly
                 val updatedProfile = _uiState.value.profile?.copy(isActive = isActive)
                 _uiState.value = _uiState.value.copy(
                     isActive = isActive,
@@ -93,6 +94,7 @@ class VendorSettingsViewModel @Inject constructor(
         address: String,
         bio: String,
         logoUrl: String,
+        pendingLogoUri: Uri? = null,
         operatingCities: List<String>,
         serviceScale: String,
         yearsInBusiness: Int,
@@ -103,6 +105,17 @@ class VendorSettingsViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
             try {
+                // ── Upload new logo if one was picked ──────────────────────
+                var resolvedLogoUrl = logoUrl
+                pendingLogoUri?.let { uri ->
+                    try {
+                        resolvedLogoUrl = imageRepository.uploadProfileImage(uri, userId)
+                    } catch (e: Exception) {
+                        onError("Image upload failed: ${e.message}")
+                        return@launch
+                    }
+                }
+
                 val current = _uiState.value.profile ?: Vendor(uid = userId)
                 val updated = current.copy(
                     businessName    = businessName,
@@ -114,7 +127,7 @@ class VendorSettingsViewModel @Inject constructor(
                     city            = city,
                     address         = address,
                     bio             = bio,
-                    logoUrl         = logoUrl,
+                    logoUrl         = resolvedLogoUrl,
                     operatingCities = operatingCities,
                     serviceScale    = serviceScale,
                     yearsInBusiness = yearsInBusiness,
@@ -122,10 +135,12 @@ class VendorSettingsViewModel @Inject constructor(
                     notableClients  = notableClients
                     // isActive and isProfileApproved are preserved from `current`
                 )
+
                 userRepository.saveVendorProfile(updated)
+
                 _uiState.value = _uiState.value.copy(
-                    profile   = updated,
-                    isActive  = updated.isActive
+                    profile  = updated,
+                    isActive = updated.isActive
                 )
                 onSuccess()
             } catch (e: Exception) {
